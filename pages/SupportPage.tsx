@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Mail, MessageSquare, Phone, ChevronDown, ChevronUp, Send, HelpCircle, CheckCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom'; //this is a comment //this is a comment
-
+import { useNavigate } from 'react-router-dom'; //this is a example hope jit rrachest u 
 const FAQS = [
     {
         question: "Is there a fee for candidates to apply?",
