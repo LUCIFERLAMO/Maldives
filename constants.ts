@@ -1,0 +1,157 @@
+
+import { Job, JobStatus, ApplicationStatus, CandidateApplication } from './types';
+
+export const MOCK_JOBS: Job[] = [
+  {
+    id: '1',
+    title: 'Senior Guest Relations Officer',
+    company: 'LuxResorts Maldives',
+    logo: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=150&h=150&q=80',
+    location: 'Male Atoll',
+    type: 'Full-time',
+    salaryRange: '$1200 - $1800 USD',
+    experience: '3-5 Years',
+    industry: 'Hospitality',
+    postedDate: '2023-10-25',
+    status: JobStatus.OPEN,
+    isReopened: true,
+    description: 'Seeking a charismatic Senior Guest Relations Officer.',
+    requirements: ['Fluent English', 'Hospitality Degree']
+  },
+  {
+    id: '2',
+    title: 'Head Nurse',
+    company: 'Maldives Int. Hospital',
+    logo: 'https://images.unsplash.com/photo-1538108149393-fbbd81895907?auto=format&fit=crop&w=150&h=150&q=80',
+    location: 'Hulhumale',
+    type: 'Full-time',
+    salaryRange: '$2500 - $3500 USD',
+    experience: '5+ Years',
+    industry: 'Healthcare',
+    postedDate: '2023-10-20',
+    status: JobStatus.OPEN,
+    isReopened: true,
+    description: 'Oversee patient care in our new wing.',
+    requirements: ['Valid Nursing License']
+  },
+  {
+    id: '3',
+    title: 'Sous Chef (Pastry)',
+    company: 'Azure Sands Resort',
+    location: 'Baa Atoll',
+    type: 'Full-time',
+    salaryRange: '$2200 - $2800 USD',
+    experience: '4 Years',
+    industry: 'Hospitality',
+    postedDate: '2024-01-05',
+    status: JobStatus.OPEN,
+    isReopened: true,
+    description: 'Lead the pastry team.',
+    requirements: ['Luxury Resort Experience']
+  },
+  {
+    id: '4',
+    title: 'IT Support Engineer',
+    company: 'Male Tech Solutions',
+    location: 'Male City',
+    type: 'Full-time',
+    salaryRange: '$1500 - $2000 USD',
+    experience: '2-3 Years',
+    industry: 'IT',
+    postedDate: '2024-01-15',
+    status: JobStatus.OPEN,
+    description: 'Tech support for corporate clients.',
+    requirements: ['CCNA Certification']
+  },
+  {
+    id: '5',
+    title: 'Executive Chauffeur',
+    company: 'Island Transfers Ltd',
+    location: 'Male City',
+    type: 'Full-time',
+    salaryRange: '$1100 - $1400 USD',
+    experience: '3-5 Years',
+    industry: 'Transportation',
+    postedDate: '2024-02-10',
+    status: JobStatus.OPEN,
+    description: 'Luxury transport for VIP resort guests.',
+    requirements: ['Valid Driving License', 'English Fluency']
+  },
+  {
+    id: '6',
+    title: 'Construction Site Manager',
+    company: 'BuildMaldives Corp',
+    location: 'Addu Atoll',
+    type: 'Full-time',
+    salaryRange: '$3000 - $4000 USD',
+    experience: '7+ Years',
+    industry: 'Construction',
+    postedDate: '2024-02-12',
+    status: JobStatus.OPEN,
+    description: 'Manage large-scale resort development projects.',
+    requirements: ['Civil Engineering Degree', 'Project Management Experience']
+  }
+];
+
+export const MOCK_APPLICATIONS: CandidateApplication[] = [
+  {
+    id: 'app-1',
+    jobId: '2',
+    candidateName: 'Rahul Sharma',
+    contactNumber: '+91 9876543210',
+    email: 'rahul.s@example.com',
+    status: ApplicationStatus.APPLIED,
+    appliedDate: '2024-01-12',
+    source: 'Direct',
+    hasResume: true,
+    hasCerts: true,
+    hasPassport: true,
+    hasPCC: false,
+    hasGoodStanding: false,
+    statusAccessGranted: false,
+    statusRequestStatus: 'pending'
+  },
+  {
+    id: 'app-2',
+    jobId: '1',
+    candidateName: 'Sita Dewi',
+    contactNumber: '+62 812345678',
+    email: 'sita.dewi@example.com',
+    status: ApplicationStatus.PROCESSING,
+    appliedDate: '2023-12-20',
+    source: 'Direct',
+    hasResume: true,
+    hasCerts: true,
+    hasPassport: true,
+    hasPCC: true,
+    hasGoodStanding: true,
+    statusAccessGranted: false,
+    statusRequestStatus: 'none'
+  },
+  {
+    id: 'app-blocked-1',
+    jobId: '2',
+    candidateName: 'John Fraudster',
+    contactNumber: '+1 234567890',
+    email: 'john.f@fake.com',
+    status: ApplicationStatus.BLACKLISTED,
+    appliedDate: '2023-11-05',
+    source: 'Direct',
+    hasResume: true,
+    hasCerts: false,
+    hasPassport: true,
+    hasPCC: false,
+    hasGoodStanding: false,
+    statusAccessGranted: false,
+    blockedReason: 'Submitted fake educational certificates from a non-existent university.'
+  }
+];
+
+export const INDUSTRIES = [
+  'Hospitality', 
+  'Healthcare', 
+  'IT', 
+  'Finance', 
+  'Construction', 
+  'Transportation'
+];
