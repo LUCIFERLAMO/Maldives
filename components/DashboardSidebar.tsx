@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Briefcase, UserCheck, Globe2, UserPlus, Lock, LogOut, X } from 'lucide-react';
+import { LayoutDashboard, Briefcase, UserCheck, Globe2, UserPlus, LogOut, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface DashboardSidebarProps {
@@ -25,7 +25,6 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ activeTab, s
         { id: 'vacancies', label: 'Vacancies', icon: Briefcase },
         { id: 'network', label: 'Agencies', icon: Globe2 },
         { id: 'create_profile', label: 'Provisioning', icon: UserPlus },
-        { id: 'security', label: 'Security', icon: Lock },
     ];
 
     return (

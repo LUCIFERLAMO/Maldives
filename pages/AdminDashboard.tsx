@@ -72,7 +72,7 @@ const AdminDashboard: React.FC = () => {
                            {activeTab === 'vacancies' && (selectedIndustry ? `${selectedIndustry} Candidates` : 'Vacancy Management')}
                            {activeTab === 'network' && 'Agency Partners'}
                            {activeTab === 'create_profile' && 'Account Provisioning'}
-                           {activeTab === 'security' && 'Security Logs'}
+                           {activeTab === 'create_profile' && 'Account Provisioning'}
                         </h1>
                         <p className="text-slate-500 text-sm mt-1">
                            {activeTab === 'overview' && 'Welcome back, here is what’s happening today.'}
@@ -308,7 +308,7 @@ const AdminDashboard: React.FC = () => {
                   )}
 
                   {/* PLACEHOLDER FOR OTHER TABS */}
-                  {['network', 'security'].includes(activeTab) && (
+                  {['network'].includes(activeTab) && (
                      <div className="flex flex-col items-center justify-center p-20 bg-white rounded-xl border-2 border-dashed border-slate-200 text-center">
                         <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
                            <Briefcase className="w-8 h-8 text-slate-300" />
