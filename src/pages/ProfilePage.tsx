@@ -1,59 +1,299 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
   User,
   Mail,
   Phone,
   MapPin,
-  Download,
   ShieldCheck,
   FileText,
-  Building2,
-  Globe,
   X,
-  Save,
-  Upload,
-  Calendar,
+  Camera,
   Lock,
-  Award,
-  Target,
-  Shield,
-  Key,
-  AlertTriangle,
   Plus,
+  CheckCircle2,
+  Clock,
   Trash2,
-  Camera
+  FileBadge,
+  Sparkles,
+  Building2,
+  Download,
+  AlertTriangle
 } from 'lucide-react';
 
 // Mock Document Structure for Candidates
 const CANDIDATE_DOCS = [
-  { id: 'resume', label: 'Resume / CV', type: 'PDF', required: true },
-  { id: 'passport', label: 'Passport Front', type: 'IMG', required: true },
-  { id: 'pcc', label: 'Police Clearance', type: 'PDF', required: true },
-  { id: 'edu', label: 'Education Certs', type: 'PDF', required: true },
-  { id: 'photo', label: 'Passport Photo', type: 'IMG', required: true },
+  { id: 'resume', label: 'Resume / CV', type: 'PDF', required: true, status: 'missing' },
+  { id: 'passport', label: 'Passport Front', type: 'IMG', required: true, status: 'missing' },
+  { id: 'pcc', label: 'Police Clearance', type: 'PDF', required: true, status: 'uploaded', date: '2024-01-15' },
+  { id: 'edu', label: 'Education Certs', type: 'PDF', required: true, status: 'missing' },
+  { id: 'photo', label: 'Passport Photo', type: 'IMG', required: true, status: 'uploaded', date: '2024-02-01' },
 ];
 
 // Mock Document Structure for Agents
 const AGENT_DOCS = [
-  { id: 'license', label: 'Operating License', type: 'PDF', required: true },
-  { id: 'tax', label: 'Tax Compliance (TRC)', type: 'PDF', required: true },
-  { id: 'certs', label: 'Agency Certifications', type: 'PDF', required: false },
-  { id: 'identity', label: 'Director ID Proof', type: 'IMG', required: true },
+  { id: 'license', label: 'Operating License', type: 'PDF', required: true, status: 'uploaded', date: '2023-11-10' },
+  { id: 'tax', label: 'Tax Compliance (TRC)', type: 'PDF', required: true, status: 'missing' },
+  { id: 'certs', label: 'Agency Certifications', type: 'PDF', required: false, status: 'missing' },
+  { id: 'identity', label: 'Director ID Proof', type: 'IMG', required: true, status: 'uploaded', date: '2023-12-05' },
 ];
 
+// --- 1. COMPONENT: CANDIDATE PROFILE (Maldives Theme) ---
+const CandidateProfile: React.FC<{
+  user: any;
+  profileData: any;
+  docs: any[];
+  handleDocAction: (id: string) => void;
+  handleDeleteItem: (id: string, req: boolean) => void;
+  setIsResettingPassword: (v: boolean) => void;
+  setIsEditingPersonal: (v: boolean) => void;
+  previewImage: string | null;
+  isAddingDoc: boolean;
+  setIsAddingDoc: (v: boolean) => void;
+  newDocName: string;
+  setNewDocName: (v: string) => void;
+  handleAddDoc: () => void;
+}> = ({ user, profileData, docs, handleDocAction, handleDeleteItem, setIsResettingPassword, setIsEditingPersonal, previewImage, isAddingDoc, setIsAddingDoc, newDocName, setNewDocName, handleAddDoc }) => {
+  return (
+    <>
+      {/* MALDIVES GRADIENT HEADER (CLIENT ONLY) */}
+      <div className="bg-gradient-to-r from-teal-700 via-teal-600 to-cyan-600 shadow-lg shadow-teal-900/5">
+        <div className="container mx-auto max-w-5xl px-4 py-10">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div>
+              <h1 className="text-3xl font-bold text-white tracking-tight drop-shadow-sm">My Profile</h1>
+              <p className="text-teal-100 font-medium mt-1">Manage your identity & professional documents.</p>
+            </div>
+            <button onClick={() => setIsResettingPassword(true)} className="flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-xl text-sm font-semibold transition-colors backdrop-blur-sm">
+              <Lock className="w-4 h-4" /> Password & Security
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="container mx-auto max-w-5xl px-4 py-8 space-y-8">
+        {/* PERSONAL INFO CARD */}
+        <div className="bg-white rounded-3xl p-1 shadow-sm border border-slate-100">
+          <div className="bg-gradient-to-r from-teal-50/50 to-slate-50/50 rounded-[1.4rem] p-8 flex flex-col md:flex-row gap-8 items-start">
+            {/* Avatar */}
+            <div className="flex-shrink-0">
+              <div className="w-28 h-28 rounded-full bg-white border-4 border-white shadow-lg overflow-hidden relative group">
+                {previewImage ? (
+                  <img src={previewImage} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-slate-300"><User className="w-12 h-12" /></div>
+                )}
+                <button onClick={() => setIsEditingPersonal(true)} className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white text-xs font-bold uppercase tracking-wider">Change</button>
+              </div>
+            </div>
+            {/* Details */}
+            <div className="flex-grow space-y-6 w-full">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-900">{profileData.name}</h2>
+                  <p className="text-slate-600 font-medium text-lg">{profileData.title}</p>
+                  <div className="flex items-center gap-2 mt-2 text-sm text-teal-700 font-bold bg-teal-50 px-3 py-1 rounded-full inline-flex border border-teal-100">
+                    <ShieldCheck className="w-4 h-4" /> Verified Candidate
+                  </div>
+                </div>
+                <button onClick={() => setIsEditingPersonal(true)} className="px-5 py-2.5 text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-colors shadow-lg shadow-slate-900/10">Edit Details</button>
+              </div>
+              {/* Contact Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-6 border-t border-slate-200/60">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Email</label>
+                  <div className="flex items-center gap-2 text-slate-900 font-medium"><Mail className="w-4 h-4 text-slate-400" /> {profileData.email}</div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Phone</label>
+                  <div className="flex items-center gap-2 text-slate-900 font-medium"><Phone className="w-4 h-4 text-slate-400" /> {profileData.phone}</div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Location</label>
+                  <div className="flex items-center gap-2 text-slate-900 font-medium"><MapPin className="w-4 h-4 text-slate-400" /> {profileData.location}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* DOCUMENTS SECTION */}
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+          <div className="px-8 py-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
+            <div>
+              <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2"><FileBadge className="w-6 h-6 text-teal-600" /> My Documents</h3>
+              <p className="text-slate-500 text-sm mt-1">Upload required files for one-click applications.</p>
+            </div>
+            <button onClick={() => setIsAddingDoc(true)} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 text-sm font-bold rounded-lg hover:border-teal-300 hover:text-teal-700 transition-all shadow-sm">
+              <Plus className="w-4 h-4" /> Add Custom
+            </button>
+          </div>
+
+          {isAddingDoc && (
+            <div className="px-8 py-6 bg-slate-50 border-b border-slate-100 flex gap-3 animate-in fade-in">
+              <input type="text" value={newDocName} onChange={(e) => setNewDocName(e.target.value)} placeholder="Document Name..." className="flex-1 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-teal-500" autoFocus />
+              <button onClick={handleAddDoc} className="px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg">Add</button>
+              <button onClick={() => setIsAddingDoc(false)} className="px-4 py-2 text-slate-500 text-sm font-medium">Cancel</button>
+            </div>
+          )}
+
+          <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-5">
+            {docs.map((doc) => (
+              <div key={doc.id} className={`flex items-start justify-between p-5 rounded-2xl border transition-all hover:shadow-md ${doc.status === 'uploaded' ? 'bg-white border-slate-200' : 'bg-slate-50 border-dashed border-slate-200'}`}>
+                <div className="flex items-start gap-4">
+                  <div className={`p-3 rounded-xl ${doc.status === 'uploaded' ? 'bg-teal-50 text-teal-600' : 'bg-white text-slate-300 border border-slate-100'}`}><FileText className="w-6 h-6" /></div>
+                  <div>
+                    <h4 className="font-bold text-slate-900">{doc.label}</h4>
+                    <div className="mt-1">
+                      {doc.status === 'uploaded' ?
+                        <span className="inline-flex items-center gap-1.5 text-teal-700 text-xs font-bold"><CheckCircle2 className="w-3.5 h-3.5" /> Ready</span> :
+                        <span className="inline-flex items-center gap-1.5 text-amber-600 text-xs font-bold"><Clock className="w-3.5 h-3.5" /> Required</span>
+                      }
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <button onClick={() => handleDocAction(doc.id)} className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors ${doc.status === 'uploaded' ? 'bg-slate-100 text-slate-600 hover:bg-red-50 hover:text-red-600' : 'bg-slate-900 text-white hover:bg-slate-800'}`}>
+                    {doc.status === 'uploaded' ? 'Remove' : 'Upload'}
+                  </button>
+                  {!doc.required && <button onClick={() => handleDeleteItem(doc.id, doc.required)} className="text-slate-300 hover:text-red-500 self-end p-1"><Trash2 className="w-4 h-4" /></button>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+// --- 2. COMPONENT: AGENT PROFILE (Corporate Theme) ---
+// Strictly separate design. No Maldives gradients. Professional Slate/Gray/White.
+const AgentProfile: React.FC<{
+  user: any;
+  profileData: any;
+  docs: any[];
+  handleDocAction: (id: string) => void;
+  setIsResettingPassword: (v: boolean) => void;
+  setIsEditingPersonal: (v: boolean) => void;
+  previewImage: string | null;
+}> = ({ user, profileData, docs, handleDocAction, setIsResettingPassword, setIsEditingPersonal, previewImage }) => {
+  return (
+    <>
+      {/* CORPORATE HEADER (AGENT ONLY) */}
+      <div className="bg-white border-b border-slate-200 shadow-sm">
+        <div className="container mx-auto max-w-5xl px-4 py-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
+                <Building2 className="w-6 h-6 text-slate-400" />
+                {user?.name || 'Partner Profile'}
+              </h1>
+              <p className="text-slate-500 text-sm mt-1">Authorized Recruitment Partner • ID: {user?.id?.substring(0, 8).toUpperCase()}</p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setIsResettingPassword(true)} className="flex items-center gap-2 px-4 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors">
+                <Lock className="w-3.5 h-3.5" /> Security
+              </button>
+              <button className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white border border-slate-900 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors hover:bg-slate-800">
+                <Download className="w-3.5 h-3.5" /> Export Data
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="container mx-auto max-w-5xl px-4 py-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+
+        {/* LEFT COLUMN: Agency Info */}
+        <div className="md:col-span-1 space-y-6">
+          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+            <div className="flex flex-col items-center text-center pb-6 border-b border-slate-100 mb-6">
+              <div className="w-24 h-24 rounded-full bg-slate-50 border-2 border-slate-100 flex items-center justify-center text-slate-300 mb-4 overflow-hidden">
+                {previewImage ? <img src={previewImage} className="w-full h-full object-cover" alt="Agent" /> : <Building2 className="w-10 h-10" />}
+              </div>
+              <h2 className="font-bold text-slate-900 text-lg">{profileData.title}</h2>
+              <p className="text-slate-500 text-xs uppercase tracking-wider font-bold mt-1">Tier 1 Partner</p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Primary Contact</label>
+                <div className="font-medium text-slate-900 text-sm flex items-center gap-2 mt-1"><Mail className="w-3.5 h-3.5 text-slate-400" /> {profileData.email}</div>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Headquarters</label>
+                <div className="font-medium text-slate-900 text-sm flex items-center gap-2 mt-1"><MapPin className="w-3.5 h-3.5 text-slate-400" /> {profileData.location}</div>
+              </div>
+              <button onClick={() => setIsEditingPersonal(true)} className="w-full py-2 border border-slate-200 text-slate-600 text-xs font-bold uppercase tracking-wider rounded-lg hover:bg-slate-50 transition-colors mt-2">
+                Update Info
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-slate-900 text-slate-300 p-6 rounded-xl shadow-lg">
+            <div className="flex items-center gap-3 mb-4 text-white">
+              <ShieldCheck className="w-5 h-5" />
+              <h3 className="font-bold text-sm">Compliance Status</h3>
+            </div>
+            <div className="text-xs leading-relaxed opacity-80 mb-4">
+              Your agency license is valid until <span className="text-white font-bold">Dec 2024</span>. Ensure all candidate submissions adhere to the latest Maldives Employment Act regulations.
+            </div>
+            <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+              <div className="bg-green-500 h-full w-full"></div>
+            </div>
+            <div className="flex justify-between mt-2 text-[10px] font-bold uppercase tracking-wider">
+              <span>Audit Score</span>
+              <span className="text-white">100%</span>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN: Required Documents */}
+        <div className="md:col-span-2">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
+              <h3 className="font-bold text-slate-900 text-sm uppercase tracking-wider">Agency Compliance Documents</h3>
+              <span className="bg-slate-200 text-slate-600 px-2 py-1 rounded text-xs font-bold">{docs.filter(d => d.status === 'uploaded').length}/{docs.length}</span>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {docs.map((doc) => (
+                <div key={doc.id} className="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className={`p-2 rounded-lg ${doc.status === 'uploaded' ? 'bg-green-50 text-green-600' : 'bg-slate-100 text-slate-400'}`}>
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-sm">{doc.label}</h4>
+                      {doc.status === 'uploaded' ? (
+                        <p className="text-xs text-green-600 font-medium flex items-center gap-1 mt-0.5"><CheckCircle2 className="w-3 h-3" /> Verified on {doc.date}</p>
+                      ) : (
+                        <p className="text-xs text-amber-600 font-medium flex items-center gap-1 mt-0.5"><AlertTriangle className="w-3 h-3" /> Pending Submission</p>
+                      )}
+                    </div>
+                  </div>
+                  <button onClick={() => handleDocAction(doc.id)} className={`text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-lg border transition-all ${doc.status === 'uploaded' ? 'border-slate-200 text-slate-500 hover:text-red-600 hover:border-red-200' : 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800'}`}>
+                    {doc.status === 'uploaded' ? 'Revoke' : 'Upload File'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+// --- MAIN PROFILE PAGE CONTAINER ---
 const ProfilePage: React.FC = () => {
   const { user } = useAuth();
-  const isAgent = user?.role === 'employer';
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const isAgent = user?.role === 'employer'; // or user?.role === 'agent' depending on your types
 
-  const [isEditingDocs, setIsEditingDocs] = useState(false);
   const [isEditingPersonal, setIsEditingPersonal] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
 
   // --- STATE MANAGEMENT ---
-
-  // 1. Personal / Agency Details State
   const [profileData, setProfileData] = useState({
     name: '',
     title: isAgent ? 'Global Talent Ltd' : 'Senior Guest Relations Officer',
@@ -64,19 +304,15 @@ const ProfilePage: React.FC = () => {
     sectors: isAgent ? 'Hospitality, Healthcare, Construction' : ''
   });
 
-  // 2. Security State
   const [passwords, setPasswords] = useState({
     current: '',
     new: '',
     confirm: ''
   });
 
-  // 3. Document State
   const [docs, setDocs] = useState<any[]>([]);
   const [newDocName, setNewDocName] = useState('');
   const [isAddingDoc, setIsAddingDoc] = useState(false);
-
-  // 4. Photo State
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -91,49 +327,35 @@ const ProfilePage: React.FC = () => {
     }
   }, [user, isAgent]);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   const handlePersonalSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, you would upload the file and update the user profile here
     setIsEditingPersonal(false);
   };
 
   const handlePasswordReset = (e: React.FormEvent) => {
     e.preventDefault();
     if (passwords.new !== passwords.confirm) {
-      alert("Passwords do not match!");
+      alert("Passwords do not match");
       return;
     }
-    alert("Password updated successfully via secure gateway.");
+    alert("Password updated");
     setIsResettingPassword(false);
     setPasswords({ current: '', new: '', confirm: '' });
   };
 
-  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleDeleteDoc = (id: string) => {
-    if (window.confirm("Are you sure you want to remove this document?")) {
-      setDocs(docs.filter(d => d.id !== id));
-    }
+  const handleDocAction = (id: string) => {
+    setDocs(prevDocs => prevDocs.map(doc => {
+      if (doc.id === id) {
+        if (doc.status === 'missing') {
+          return { ...doc, status: 'uploaded', date: new Date().toISOString().split('T')[0] };
+        } else {
+          if (window.confirm("Remove this document?")) {
+            return { ...doc, status: 'missing', date: undefined };
+          }
+        }
+      }
+      return doc;
+    }));
   };
 
   const handleAddDoc = () => {
@@ -142,259 +364,93 @@ const ProfilePage: React.FC = () => {
       id: `custom-${Date.now()}`,
       label: newDocName,
       type: 'PDF',
-      required: false
+      required: false,
+      status: 'missing'
     };
     setDocs([...docs, newDoc]);
     setNewDocName('');
     setIsAddingDoc(false);
   };
 
+  const handleDeleteItem = (id: string, isRequired: boolean) => {
+    if (isRequired) return;
+    setDocs(docs.filter(d => d.id !== id));
+  };
+
+
   return (
-    <div className="min-h-screen bg-[#f8fafc] py-8 md:py-16 px-4 font-sans">
-      <div className="container mx-auto max-w-6xl">
+    <div className="min-h-screen bg-slate-50/50 pb-24 font-sans text-slate-800">
 
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 md:mb-12 gap-4">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tighter">
-              {isAgent ? 'Agency Profile' : 'My Passport Profile'}
-            </h1>
-            <p className="text-slate-400 font-bold text-sm mt-1 uppercase tracking-widest text-[10px]">
-              {isAgent ? 'Governance & Operational Identity' : 'International Career Ledger'}
-            </p>
-          </div>
+      {isAgent ? (
+        <AgentProfile
+          user={user}
+          profileData={profileData}
+          docs={docs}
+          handleDocAction={handleDocAction}
+          setIsResettingPassword={setIsResettingPassword}
+          setIsEditingPersonal={setIsEditingPersonal}
+          previewImage={previewImage}
+        />
+      ) : (
+        <CandidateProfile
+          user={user}
+          profileData={profileData}
+          docs={docs}
+          handleDocAction={handleDocAction}
+          handleDeleteItem={handleDeleteItem}
+          setIsResettingPassword={setIsResettingPassword}
+          setIsEditingPersonal={setIsEditingPersonal}
+          previewImage={previewImage}
+          isAddingDoc={isAddingDoc}
+          setIsAddingDoc={setIsAddingDoc}
+          newDocName={newDocName}
+          setNewDocName={setNewDocName}
+          handleAddDoc={handleAddDoc}
+        />
+      )}
 
-          <div className="flex items-center gap-4 w-full md:w-auto">
-            <button
-              onClick={() => setIsResettingPassword(true)}
-              className="w-full md:w-auto bg-white border border-slate-200 text-slate-600 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center justify-center gap-2 shadow-sm"
-            >
-              <Lock className="w-3.5 h-3.5" /> Security
-            </button>
+      {/* MODALS (Shared Logic, Visuals Neutral) */}
+      {isResettingPassword && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="font-bold text-slate-900">Security Settings</h3>
+              <button onClick={() => setIsResettingPassword(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+            </div>
+            <form onSubmit={handlePasswordReset} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Current Password</label>
+                <input type="password" required className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500" value={passwords.current} onChange={e => setPasswords({ ...passwords, current: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">New Password</label>
+                <input type="password" required className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500" value={passwords.new} onChange={e => setPasswords({ ...passwords, new: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Confirm Password</label>
+                <input type="password" required className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500" value={passwords.confirm} onChange={e => setPasswords({ ...passwords, confirm: e.target.value })} />
+              </div>
+              <button type="submit" className="w-full py-2.5 bg-slate-900 text-white rounded-lg font-medium text-sm hover:bg-slate-800">Update Password</button>
+            </form>
           </div>
         </div>
+      )}
 
-        {/* Redesigned Profile Layout */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden max-w-4xl mx-auto">
-
-          {/* Header Section */}
-          <div className="px-8 py-10 border-b border-slate-100 flex flex-col md:flex-row items-start md:items-center gap-6">
-            <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 border border-slate-200">
-              {previewImage ? (
-                <img src={previewImage} alt="Profile" className="w-full h-full object-cover rounded-full" />
-              ) : (
-                <User className="w-10 h-10" />
-              )}
+      {isEditingPersonal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="font-bold text-slate-900">Edit Details</h3>
+              <button onClick={() => setIsEditingPersonal(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
             </div>
-
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold text-slate-900">{isAgent ? profileData.title : profileData.name}</h2>
-              <p className="text-sm font-medium text-slate-500 mt-1">
-                {isAgent ? 'Authorized Agency Partner' : profileData.title}
-              </p>
-              <div className="mt-3 flex items-center gap-3">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-green-50 text-green-700 text-xs font-semibold border border-green-100">
-                  <ShieldCheck className="w-3.5 h-3.5" /> Verified Partner
-                </span>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setIsEditingPersonal(true)}
-              className="px-5 py-2.5 bg-slate-900 text-white text-xs font-semibold rounded-lg hover:bg-slate-800 transition-colors"
-            >
-              Edit Profile
-            </button>
+            <form onSubmit={handlePersonalSubmit} className="p-6 space-y-4">
+              <button type="submit" className="w-full py-2.5 bg-slate-900 text-white rounded-lg font-medium text-sm hover:bg-slate-800">Save Changes</button>
+            </form>
           </div>
-
-          {/* Contact Details Grid */}
-          <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Email Address</label>
-              <div className="flex items-center gap-3 text-slate-900 font-medium p-3 bg-slate-50 rounded-lg border border-slate-100">
-                <Mail className="w-4 h-4 text-slate-400" />
-                {profileData.email}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Phone Number</label>
-              <div className="flex items-center gap-3 text-slate-900 font-medium p-3 bg-slate-50 rounded-lg border border-slate-100">
-                <Phone className="w-4 h-4 text-slate-400" />
-                {profileData.phone}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Location</label>
-              <div className="flex items-center gap-3 text-slate-900 font-medium p-3 bg-slate-50 rounded-lg border border-slate-100">
-                <MapPin className="w-4 h-4 text-slate-400" />
-                {profileData.location}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Member Since</label>
-              <div className="flex items-center gap-3 text-slate-900 font-medium p-3 bg-slate-50 rounded-lg border border-slate-100">
-                <Calendar className="w-4 h-4 text-slate-400" />
-                {profileData.founded}
-              </div>
-            </div>
-          </div>
-
-
         </div>
-      </div>
-      {/* ---------------------------------------------------------------------- */}
-      {/* SECURITY / RESET PASSWORD MODAL */}
-      {/* ---------------------------------------------------------------------- */}
-      {
-        isResettingPassword && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-8 bg-[#0b0f1a]/60 backdrop-blur-md animate-in fade-in duration-300">
-            <div className="w-full max-w-lg bg-white rounded-xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
-              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white">
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900">Change Password</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">Update your account credentials</p>
-                </div>
-                <button onClick={() => setIsResettingPassword(false)} className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+      )}
 
-              <form onSubmit={handlePasswordReset} className="p-6 space-y-5">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-slate-700">Current Password</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                      type="password"
-                      required
-                      value={passwords.current}
-                      onChange={e => setPasswords({ ...passwords, current: e.target.value })}
-                      className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 outline-none transition-all"
-                      placeholder="Enter current password"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-slate-700">New Password</label>
-                    <input
-                      type="password"
-                      required
-                      value={passwords.new}
-                      onChange={e => setPasswords({ ...passwords, new: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 outline-none transition-all"
-                      placeholder="New password"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-slate-700">Confirm Password</label>
-                    <input
-                      type="password"
-                      required
-                      value={passwords.confirm}
-                      onChange={e => setPasswords({ ...passwords, confirm: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 outline-none transition-all"
-                      placeholder="Confirm new password"
-                    />
-                  </div>
-                </div>
-
-                <div className="bg-amber-50 p-4 rounded-lg border border-amber-100 flex items-start gap-3">
-                  <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-amber-700 leading-relaxed">
-                    Changing your password will sign you out of all other devices.
-                  </p>
-                </div>
-
-                <button type="submit" className="w-full py-2.5 bg-slate-900 text-white rounded-lg font-semibold text-sm hover:bg-slate-800 transition-colors shadow-sm flex items-center justify-center gap-2">
-                  Update Password
-                </button>
-              </form>
-            </div>
-          </div>
-        )
-      }
-
-      {/* EDIT MODAL (REUSED FOR AGENT) */}
-      {
-        isEditingPersonal && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-8 bg-[#0b0f1a]/60 backdrop-blur-md animate-in fade-in duration-300">
-            <div className="w-full max-w-lg bg-white rounded-xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
-              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white">
-                <h3 className="text-lg font-bold text-slate-900">Edit Profile Details</h3>
-                <button onClick={() => setIsEditingPersonal(false)} className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-all">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <form onSubmit={handlePersonalSubmit} className="p-6 space-y-5">
-                <div className="space-y-5">
-
-                  {/* Profile Photo Upload */}
-                  <div className="flex flex-col items-center justify-center space-y-3 pb-4 border-b border-slate-100">
-                    <div className="relative w-24 h-24">
-                      <div className="w-24 h-24 rounded-full overflow-hidden bg-slate-100 border-2 border-slate-200">
-                        {previewImage ? (
-                          <img src={previewImage} alt="Profile Preview" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-slate-400">
-                            <User className="w-10 h-10" />
-                          </div>
-                        )}
-                      </div>
-                      <label
-                        htmlFor="profile-upload"
-                        className="absolute bottom-0 right-0 p-1.5 bg-slate-900 rounded-full text-white cursor-pointer hover:bg-slate-800 transition-colors shadow-sm"
-                        title="Upload Photo"
-                      >
-                        <Camera className="w-4 h-4" />
-                        <input
-                          id="profile-upload"
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={handleImageChange}
-                        />
-                      </label>
-                    </div>
-                    <p className="text-xs text-slate-500 font-medium">Tap icon to change photo</p>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-slate-700">Contact Email</label>
-                    <input
-                      type="email"
-                      value={profileData.email}
-                      onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 outline-none transition-all"
-                      placeholder="Enter contact email"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-slate-700">Phone Number</label>
-                    <input
-                      type="tel"
-                      value={profileData.phone}
-                      onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 outline-none transition-all"
-                      placeholder="Enter phone number"
-                    />
-                  </div>
-                </div>
-                <div className="pt-2">
-                  <button type="submit" className="w-full py-2.5 bg-slate-900 text-white font-semibold text-sm rounded-lg hover:bg-slate-800 transition-colors shadow-sm">
-                    Save Changes
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )
-      }
-
-    </div >
+    </div>
   );
 };
 
