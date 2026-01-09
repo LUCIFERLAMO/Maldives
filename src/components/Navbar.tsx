@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Briefcase, LogOut, User, ChevronDown, Menu, X } from 'lucide-react';
+import { Briefcase, LogOut, User, ChevronDown, Menu, X, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { INDUSTRIES } from '../constants';
 
@@ -91,6 +91,9 @@ const Navbar: React.FC = () => {
 
               {isMenuOpen && (
                 <div className="absolute right-0 mt-4 w-60 bg-white rounded-2xl shadow-2xl border border-slate-100 py-3 overflow-hidden animate-in fade-in zoom-in-95 duration-200 ring-1 ring-slate-900/5 z-[120]">
+                  <Link to={user?.role === 'candidate' ? '/dashboard' : (user?.name === 'Platform Administrator' ? '/admin' : '/recruiter')} onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 px-6 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors">
+                    <LayoutDashboard className="w-4 h-4 text-slate-400" /> Dashboard
+                  </Link>
                   <Link to="/profile" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 px-6 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors">
                     <User className="w-4 h-4 text-slate-400" /> My Profile
                   </Link>

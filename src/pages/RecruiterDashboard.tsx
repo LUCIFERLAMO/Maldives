@@ -1,38 +1,15 @@
 
 import React, { useState, useMemo } from 'react';
 import { ApplicationStatus, JobStatus, Job, CandidateApplication } from '../types';
-import { MOCK_APPLICATIONS, MOCK_JOBS, INDUSTRIES } from '../constants';
+import { MOCK_APPLICATIONS, MOCK_JOBS } from '../constants';
 import {
-   Search, LayoutDashboard, Users, Briefcase, ChevronRight,
+   Search, LayoutDashboard, Users, Briefcase,
    X, Shield, LogOut, Briefcase as BriefcaseIcon,
-   Ban, PlusCircle, Filter, FileText, CheckCircle, RefreshCw,
-   FolderOpen, AlertCircle, Trash2, UserX, Download, Check,
-   MinusCircle, Eye, MessageSquare, AlertTriangle, ExternalLink, Globe,
-   ArrowRight,
-   UserPlus,
-   MapPin,
-   Award,
-   Activity,
-   User,
-   Mail,
-   Phone,
-   Upload,
-   UploadCloud,
-   Sparkles,
-   ListFilter,
-   FileUp,
-   Target,
-   Settings,
-   Hash,
-   Layers,
-   AlignLeft,
-   ChevronDown,
-   ShieldCheck,
-   Plus,
-   FilePlus,
-   TrendingUp,
-   Calendar,
-   Clock
+   Ban, PlusCircle, CheckCircle,
+   AlertTriangle, Globe, ArrowRight, UserPlus,
+   MapPin, Award, User,
+   AlignLeft, ChevronDown, ShieldCheck,
+   FilePlus, Clock
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -42,7 +19,7 @@ const RecruiterDashboard: React.FC = () => {
    const navigate = useNavigate();
    const { user, login } = useAuth();
    const { logout } = useAuth();
-   const [activeTab, setActiveTab] = useState<'overview' | 'vacancies' | 'blocked' | 'jobRequests'>('jobRequests');
+   const [activeTab, setActiveTab] = useState<'overview' | 'vacancies' | 'blocked' | 'jobRequests'>('overview');
 
 
    // Data State
