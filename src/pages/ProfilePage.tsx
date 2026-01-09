@@ -61,8 +61,7 @@ const ProfilePage: React.FC = () => {
     phone: isAgent ? '+1 (115) 555-0198' : '+91 98765 43110',
     location: isAgent ? 'Business District, Mumbai' : 'Mumbai, India',
     founded: '2016',
-    sectors: isAgent ? 'Hospitality, Healthcare, Construction' : '',
-    website: isAgent ? 'www.globaltalentltd.com' : ''
+    sectors: isAgent ? 'Hospitality, Healthcare, Construction' : ''
   });
 
   // 2. Security State
@@ -92,8 +91,20 @@ const ProfilePage: React.FC = () => {
     }
   }, [user, isAgent]);
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handlePersonalSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // In a real app, you would upload the file and update the user profile here
     setIsEditingPersonal(false);
   };
 
@@ -162,362 +173,228 @@ const ProfilePage: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-6 md:gap-10">
+        {/* Redesigned Profile Layout */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden max-w-4xl mx-auto">
 
-          {/* Left Column: Identity Card */}
-          <div className="w-full lg:w-[35%] space-y-8">
-            <div className="bg-white rounded-[2.5rem] md:rounded-[3rem] shadow-[0_20px_50px_-20px_rgba(0,0,0,0.05)] border border-slate-100 overflow-hidden relative">
-              <div className={`h-32 md:h-40 ${isAgent ? 'bg-indigo-600' : 'bg-teal-600'} relative overflow-hidden`}>
-                <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle, #ffffff 1.5px, transparent 1.5px)', backgroundSize: '20px 20px' }}></div>
-                <Globe className="absolute -bottom-10 -right-10 w-48 h-48 text-white/10" />
+          {/* Header Section */}
+          <div className="px-8 py-10 border-b border-slate-100 flex flex-col md:flex-row items-start md:items-center gap-6">
+            <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 border border-slate-200">
+              {previewImage ? (
+                <img src={previewImage} alt="Profile" className="w-full h-full object-cover rounded-full" />
+              ) : (
+                <User className="w-10 h-10" />
+              )}
+            </div>
+
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold text-slate-900">{isAgent ? profileData.title : profileData.name}</h2>
+              <p className="text-sm font-medium text-slate-500 mt-1">
+                {isAgent ? 'Authorized Agency Partner' : profileData.title}
+              </p>
+              <div className="mt-3 flex items-center gap-3">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-green-50 text-green-700 text-xs font-semibold border border-green-100">
+                  <ShieldCheck className="w-3.5 h-3.5" /> Verified Partner
+                </span>
               </div>
+            </div>
 
-              <div className={`px-6 md:px-10 pb-10 relative ${isAgent ? 'pt-10' : ''}`}>
-                {!isAgent && (
-                  <div className="-mt-16 mb-8 flex justify-center relative">
-                    <div className="w-32 h-32 rounded-[2.5rem] bg-white p-2 shadow-2xl relative group">
-                      <div className="w-full h-full rounded-[2rem] bg-slate-50 flex items-center justify-center text-slate-300 overflow-hidden border border-slate-100 relative">
-                        {previewImage ? (
-                          <img src={previewImage} alt="Profile" className="w-full h-full object-cover" />
-                        ) : (
-                          <User className="w-12 h-12" />
-                        )}
-                      </div>
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="absolute bottom-0 right-0 w-10 h-10 bg-[#0b0f1a] text-white rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
-                      >
-                        <Camera className="w-4 h-4" />
-                      </button>
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handlePhotoUpload}
-                        className="hidden"
-                        accept="image/*"
-                      />
-                    </div>
-                  </div>
-                )}
+            <button
+              onClick={() => setIsEditingPersonal(true)}
+              className="px-5 py-2.5 bg-slate-900 text-white text-xs font-semibold rounded-lg hover:bg-slate-800 transition-colors"
+            >
+              Edit Profile
+            </button>
+          </div>
 
-                <div className="text-center mb-10">
-                  <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tighter mb-2">{isAgent ? profileData.title : profileData.name}</h2>
-                  <p className={`text-[11px] font-black uppercase tracking-[0.2em] ${isAgent ? 'text-indigo-500' : 'text-teal-600'}`}>
-                    {isAgent ? 'AUTHORIZED AGENCY PARTNER' : profileData.title}
-                  </p>
-                  <div className="flex justify-center mt-6">
-                    <span className="px-5 py-2 bg-slate-900 text-white text-[10px] font-black rounded-full tracking-widest flex items-center gap-2 shadow-xl shadow-slate-900/10">
-                      <ShieldCheck className="w-4 h-4 text-teal-400" /> SYSTEM VERIFIED
-                    </span>
-                  </div>
-                </div>
+          {/* Contact Details Grid */}
+          <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Email Address</label>
+              <div className="flex items-center gap-3 text-slate-900 font-medium p-3 bg-slate-50 rounded-lg border border-slate-100">
+                <Mail className="w-4 h-4 text-slate-400" />
+                {profileData.email}
+              </div>
+            </div>
 
-                <div className="space-y-4">
-                  <div className="flex items-center gap-4 text-slate-600 p-5 bg-slate-50/50 rounded-2xl border border-slate-100/50">
-                    <Mail className="w-5 h-5 text-slate-400 flex-shrink-0" />
-                    <span className="text-xs font-bold truncate">{profileData.email}</span>
-                  </div>
-                  <div className="flex items-center gap-4 text-slate-600 p-5 bg-slate-50/50 rounded-2xl border border-slate-100/50">
-                    <Phone className="w-5 h-5 text-slate-400 flex-shrink-0" />
-                    <span className="text-xs font-bold">{profileData.phone}</span>
-                  </div>
-                  <div className="flex items-center gap-4 text-slate-600 p-5 bg-slate-50/50 rounded-2xl border border-slate-100/50">
-                    <MapPin className="w-5 h-5 text-slate-400 flex-shrink-0" />
-                    <span className="text-xs font-bold">{profileData.location}</span>
-                  </div>
-                  {isAgent && (
-                    <div className="flex items-center gap-4 text-slate-600 p-5 bg-slate-50/50 rounded-2xl border border-slate-100/50">
-                      <Globe className="w-5 h-5 text-slate-400 flex-shrink-0" />
-                      <span className="text-xs font-bold text-indigo-600 underline cursor-pointer">{profileData.website}</span>
-                    </div>
-                  )}
-                </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Phone Number</label>
+              <div className="flex items-center gap-3 text-slate-900 font-medium p-3 bg-slate-50 rounded-lg border border-slate-100">
+                <Phone className="w-4 h-4 text-slate-400" />
+                {profileData.phone}
+              </div>
+            </div>
 
-                <button
-                  onClick={() => setIsEditingPersonal(true)}
-                  className="w-full mt-10 bg-[#0b0f1a] text-white py-5 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] hover:bg-black transition-all shadow-2xl"
-                >
-                  Update Details
-                </button>
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Location</label>
+              <div className="flex items-center gap-3 text-slate-900 font-medium p-3 bg-slate-50 rounded-lg border border-slate-100">
+                <MapPin className="w-4 h-4 text-slate-400" />
+                {profileData.location}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Member Since</label>
+              <div className="flex items-center gap-3 text-slate-900 font-medium p-3 bg-slate-50 rounded-lg border border-slate-100">
+                <Calendar className="w-4 h-4 text-slate-400" />
+                {profileData.founded}
               </div>
             </div>
           </div>
 
-          {/* Right Column: Dynamic Sections */}
-          <div className="flex-1 space-y-8">
 
-            {/* Business / Qualification Details - ONLY FOR AGENT OR IF NEEDED (REMOVED QUALIFICATION DOSSIER FOR CANDIDATE) */}
-            {isAgent && (
-              <div className="bg-white rounded-[2.5rem] md:rounded-[3.5rem] p-8 md:p-12 shadow-sm border border-slate-100">
-                <div className="flex items-center justify-between mb-10">
-                  <div className="flex items-center gap-5">
-                    <div className={`w-14 h-14 ${isAgent ? 'bg-indigo-50 text-indigo-600' : 'bg-teal-50 text-teal-600'} rounded-[1.8rem] flex items-center justify-center border border-slate-50`}>
-                      <Award className="w-7 h-7" />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-black text-slate-900 tracking-tight">
-                        Agency Parameters
-                      </h3>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Operational Benchmarks</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="bg-slate-50/50 p-8 rounded-[2rem] border border-slate-100">
-                    <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                      <Target className="w-3.5 h-3.5" /> Specialized Sectors
-                    </div>
-                    <p className="text-sm font-black text-slate-800">{profileData.sectors}</p>
-                  </div>
-                  <div className="bg-slate-50/50 p-8 rounded-[2rem] border border-slate-100">
-                    <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                      <Calendar className="w-3.5 h-3.5" /> Founded Year
-                    </div>
-                    <p className="text-sm font-black text-slate-800">{profileData.founded}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Document Vault */}
-            <div className="bg-white rounded-[2.5rem] md:rounded-[3.5rem] p-8 md:p-12 shadow-sm border border-slate-100">
-              <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-10 gap-4">
-                <div className="flex items-center gap-5">
-                  <div className="w-14 h-14 bg-slate-900 text-white rounded-[1.8rem] flex items-center justify-center flex-shrink-0">
-                    <Shield className="w-7 h-7" />
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-black text-slate-900 tracking-tight">Compliance Ledger</h3>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Verified Documentation</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setIsEditingDocs(!isEditingDocs)}
-                  className={`w-full md:w-auto px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isEditingDocs ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-400 hover:text-slate-900 border border-slate-100'
-                    }`}
-                >
-                  {isEditingDocs ? 'Finish Sync' : 'Manage Docs'}
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {docs.map((doc) => (
-                  <div key={doc.id} className="group bg-slate-50/50 border border-slate-100/50 rounded-[2rem] p-6 flex items-center justify-between hover:bg-white hover:shadow-xl transition-all relative overflow-hidden">
-                    <div className="flex items-center gap-5 min-w-0">
-                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${doc.type === 'PDF' ? 'bg-red-50 text-red-600' : 'bg-indigo-50 text-indigo-600'} border border-slate-100 shadow-sm`}>
-                        <FileText className="w-7 h-7" />
-                      </div>
-                      <div className="min-w-0 pr-4">
-                        <h4 className="font-black text-slate-900 text-sm tracking-tight truncate">{doc.label}</h4>
-                        <div className="flex items-center gap-2 mt-1">
-                          {doc.required ? (
-                            <>
-                              <ShieldCheck className="w-3.5 h-3.5 text-teal-500" />
-                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest truncate">ENCRYPTED & VETTED</span>
-                            </>
-                          ) : (
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">OPTIONAL</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    {isEditingDocs ? (
-                      <div className="flex gap-2">
-                        <button className="p-3 bg-white rounded-xl text-indigo-600 shadow-sm border border-slate-100 hover:bg-indigo-600 hover:text-white transition-all">
-                          <Upload className="w-4 h-4" />
-                        </button>
-                        {!doc.required && (
-                          <button onClick={() => handleDeleteDoc(doc.id)} className="p-3 bg-white rounded-xl text-red-600 shadow-sm border border-slate-100 hover:bg-red-600 hover:text-white transition-all">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    ) : (
-                      <button className="p-3 text-slate-300 hover:text-slate-900 transition-colors flex-shrink-0">
-                        <Download className="w-5 h-5" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-
-                {/* ADD NEW DOCUMENT CARD */}
-                {isEditingDocs && (
-                  <div className="bg-slate-100 border-2 border-dashed border-slate-200 rounded-[2rem] p-6 flex flex-col items-center justify-center gap-4 hover:bg-slate-50 transition-all cursor-pointer min-h-[120px]" onClick={() => setIsAddingDoc(true)}>
-                    {!isAddingDoc ? (
-                      <>
-                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-slate-400 shadow-sm">
-                          <Plus className="w-6 h-6" />
-                        </div>
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Add Document</span>
-                      </>
-                    ) : (
-                      <div className="w-full" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          autoFocus
-                          type="text"
-                          placeholder="Document Name..."
-                          className="w-full p-3 text-sm font-bold bg-white rounded-xl border-none focus:ring-2 focus:ring-indigo-500 mb-2"
-                          value={newDocName}
-                          onChange={(e) => setNewDocName(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleAddDoc();
-                            if (e.key === 'Escape') setIsAddingDoc(false);
-                          }}
-                        />
-                        <div className="flex gap-2 justify-end">
-                          <button onClick={() => setIsAddingDoc(false)} className="px-3 py-1.5 text-[10px] font-bold text-slate-500 hover:text-slate-700">CANCEL</button>
-                          <button onClick={handleAddDoc} className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-wide hover:bg-indigo-700">Add</button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
         </div>
       </div>
-
       {/* ---------------------------------------------------------------------- */}
       {/* SECURITY / RESET PASSWORD MODAL */}
       {/* ---------------------------------------------------------------------- */}
-      {isResettingPassword && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-8 bg-[#0b0f1a]/60 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="w-full max-w-xl bg-white rounded-[2.5rem] md:rounded-[3.5rem] shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
-            <div className="p-8 md:p-10 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
-              <div className="flex items-center gap-6">
-                <div className="w-16 h-16 bg-slate-900 text-white rounded-3xl flex items-center justify-center hidden md:flex">
-                  <Key className="w-8 h-8 text-teal-400" />
-                </div>
+      {
+        isResettingPassword && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-8 bg-[#0b0f1a]/60 backdrop-blur-md animate-in fade-in duration-300">
+            <div className="w-full max-w-lg bg-white rounded-xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white">
                 <div>
-                  <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Security Access</h2>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Update Gateway Credentials</p>
+                  <h2 className="text-lg font-bold text-slate-900">Change Password</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">Update your account credentials</p>
                 </div>
-              </div>
-              <button onClick={() => setIsResettingPassword(false)} className="w-12 h-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-slate-300 hover:text-slate-900 transition-all">
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <form onSubmit={handlePasswordReset} className="p-8 md:p-10 space-y-6">
-              {/* ... (Existing Password Fields - No changes needed logic-wise, just verifying styles) ... */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Current Password</label>
-                <div className="relative group">
-                  <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-slate-900 transition-colors" />
-                  <input
-                    type="password"
-                    required
-                    value={passwords.current}
-                    onChange={e => setPasswords({ ...passwords, current: e.target.value })}
-                    className="w-full pl-14 pr-6 py-4.5 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:bg-white focus:ring-4 focus:ring-slate-900/5 transition-all"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">New Password</label>
-                  <input
-                    type="password"
-                    required
-                    value={passwords.new}
-                    onChange={e => setPasswords({ ...passwords, new: e.target.value })}
-                    className="w-full px-6 py-4.5 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:bg-white focus:ring-4 focus:ring-slate-900/5 transition-all"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Confirm New</label>
-                  <input
-                    type="password"
-                    required
-                    value={passwords.confirm}
-                    onChange={e => setPasswords({ ...passwords, confirm: e.target.value })}
-                    className="w-full px-6 py-4.5 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:bg-white focus:ring-4 focus:ring-slate-900/5 transition-all"
-                  />
-                </div>
-              </div>
-
-              <div className="bg-amber-50 p-6 rounded-2xl border border-amber-100 flex items-start gap-4">
-                <AlertTriangle className="w-5 h-5 text-amber-500 mt-1 flex-shrink-0" />
-                <p className="text-[10px] font-black text-amber-800 uppercase tracking-widest leading-relaxed">
-                  Caution: Resetting your password will log you out of all other active sessions immediately.
-                </p>
-              </div>
-
-              <button type="submit" className="w-full py-6 bg-[#0b0f1a] text-white rounded-[2rem] font-black uppercase text-[10px] tracking-[0.3em] hover:bg-black transition-all shadow-2xl flex items-center justify-center gap-3">
-                Update Password <Save className="w-4 h-4 text-teal-400" />
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* EDIT MODAL (REUSED FOR AGENT) */}
-      {isEditingPersonal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-8 bg-[#0b0f1a]/60 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="w-full max-w-2xl bg-white rounded-[2.5rem] md:rounded-[3.5rem] shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
-            <div className="p-8 md:p-10 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
-              <h3 className="font-black text-2xl text-slate-900 tracking-tight">Identity Parameters</h3>
-              <button onClick={() => setIsEditingPersonal(false)} className="w-12 h-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-slate-300 hover:text-slate-900 transition-all">
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <form onSubmit={handlePersonalSubmit} className="p-8 md:p-10 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Agency Brand Name</label>
-                  <input
-                    type="text"
-                    value={isAgent ? profileData.title : profileData.name}
-                    onChange={(e) => setProfileData({ ...profileData, title: e.target.value })}
-                    className="w-full px-6 py-4.5 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-slate-900/5 transition-all"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Contact Email</label>
-                  <input
-                    type="email"
-                    value={profileData.email}
-                    onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-                    className="w-full px-6 py-4.5 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-slate-900/5 transition-all"
-                  />
-                </div>
-              </div>
-              {isAgent && (
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Official Website</label>
-                    <input
-                      type="text"
-                      value={profileData.website}
-                      onChange={(e) => setProfileData({ ...profileData, website: e.target.value })}
-                      className="w-full px-6 py-4.5 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-slate-900/5 transition-all"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Core Sourcing Sectors</label>
-                    <input
-                      type="text"
-                      value={profileData.sectors}
-                      onChange={(e) => setProfileData({ ...profileData, sectors: e.target.value })}
-                      className="w-full px-6 py-4.5 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-slate-900/5 transition-all"
-                    />
-                  </div>
-                </div>
-              )}
-              <div className="pt-4">
-                <button type="submit" className="w-full py-6 bg-slate-900 text-white font-black uppercase text-[10px] tracking-[0.3em] rounded-[2rem] hover:bg-black transition-all shadow-2xl">
-                  Commit Changes
+                <button onClick={() => setIsResettingPassword(false)} className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors">
+                  <X className="w-4 h-4" />
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
 
-    </div>
+              <form onSubmit={handlePasswordReset} className="p-6 space-y-5">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-slate-700">Current Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="password"
+                      required
+                      value={passwords.current}
+                      onChange={e => setPasswords({ ...passwords, current: e.target.value })}
+                      className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 outline-none transition-all"
+                      placeholder="Enter current password"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-slate-700">New Password</label>
+                    <input
+                      type="password"
+                      required
+                      value={passwords.new}
+                      onChange={e => setPasswords({ ...passwords, new: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 outline-none transition-all"
+                      placeholder="New password"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-slate-700">Confirm Password</label>
+                    <input
+                      type="password"
+                      required
+                      value={passwords.confirm}
+                      onChange={e => setPasswords({ ...passwords, confirm: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 outline-none transition-all"
+                      placeholder="Confirm new password"
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-amber-50 p-4 rounded-lg border border-amber-100 flex items-start gap-3">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-amber-700 leading-relaxed">
+                    Changing your password will sign you out of all other devices.
+                  </p>
+                </div>
+
+                <button type="submit" className="w-full py-2.5 bg-slate-900 text-white rounded-lg font-semibold text-sm hover:bg-slate-800 transition-colors shadow-sm flex items-center justify-center gap-2">
+                  Update Password
+                </button>
+              </form>
+            </div>
+          </div>
+        )
+      }
+
+      {/* EDIT MODAL (REUSED FOR AGENT) */}
+      {
+        isEditingPersonal && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-8 bg-[#0b0f1a]/60 backdrop-blur-md animate-in fade-in duration-300">
+            <div className="w-full max-w-lg bg-white rounded-xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white">
+                <h3 className="text-lg font-bold text-slate-900">Edit Profile Details</h3>
+                <button onClick={() => setIsEditingPersonal(false)} className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-all">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <form onSubmit={handlePersonalSubmit} className="p-6 space-y-5">
+                <div className="space-y-5">
+
+                  {/* Profile Photo Upload */}
+                  <div className="flex flex-col items-center justify-center space-y-3 pb-4 border-b border-slate-100">
+                    <div className="relative w-24 h-24">
+                      <div className="w-24 h-24 rounded-full overflow-hidden bg-slate-100 border-2 border-slate-200">
+                        {previewImage ? (
+                          <img src={previewImage} alt="Profile Preview" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-slate-400">
+                            <User className="w-10 h-10" />
+                          </div>
+                        )}
+                      </div>
+                      <label
+                        htmlFor="profile-upload"
+                        className="absolute bottom-0 right-0 p-1.5 bg-slate-900 rounded-full text-white cursor-pointer hover:bg-slate-800 transition-colors shadow-sm"
+                        title="Upload Photo"
+                      >
+                        <Camera className="w-4 h-4" />
+                        <input
+                          id="profile-upload"
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleImageChange}
+                        />
+                      </label>
+                    </div>
+                    <p className="text-xs text-slate-500 font-medium">Tap icon to change photo</p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-slate-700">Contact Email</label>
+                    <input
+                      type="email"
+                      value={profileData.email}
+                      onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 outline-none transition-all"
+                      placeholder="Enter contact email"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-slate-700">Phone Number</label>
+                    <input
+                      type="tel"
+                      value={profileData.phone}
+                      onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 outline-none transition-all"
+                      placeholder="Enter phone number"
+                    />
+                  </div>
+                </div>
+                <div className="pt-2">
+                  <button type="submit" className="w-full py-2.5 bg-slate-900 text-white font-semibold text-sm rounded-lg hover:bg-slate-800 transition-colors shadow-sm">
+                    Save Changes
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )
+      }
+
+    </div >
   );
 };
 

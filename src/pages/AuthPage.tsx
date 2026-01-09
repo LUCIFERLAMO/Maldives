@@ -143,7 +143,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login' }) => {
                           <MessageCircle className="w-3.5 h-3.5" /> Next Steps
                         </p>
                         <p className="text-sm font-bold text-white leading-tight">Contact the admin for further process:</p>
-                        <p className="text-base font-black text-white mt-1 underline decoration-maldives-400">admin@maldivescareer.com</p>
+                        <a href="mailto:admin@maldivescareer.com" className="text-base font-bold text-teal-50 hover:text-white mt-1 block hover:underline decoration-maldives-400 underline-offset-4 transition-colors">admin@maldivescareer.com</a>
                       </div>
                     )}
                   </div>

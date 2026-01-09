@@ -67,10 +67,12 @@ const Navbar: React.FC = () => {
 
         {/* RIGHT: PORTALS & AUTH */}
         <div className="flex items-center gap-4 lg:gap-6">
-          <div className="hidden xl:flex items-center gap-6 border-r border-slate-100 pr-6 mr-2">
-            <Link to="/login" state={{ from: 'agent' }} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors">Agent Portal</Link>
-            <Link to="/login" state={{ from: 'admin' }} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors">Admin Portal</Link>
-          </div>
+          {!isAuthenticated && (
+            <div className="hidden xl:flex items-center gap-6 border-r border-slate-100 pr-6 mr-2">
+              <Link to="/login" state={{ from: 'agent' }} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors">Agent Portal</Link>
+              <Link to="/login" state={{ from: 'admin' }} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors">Admin Portal</Link>
+            </div>
+          )}
 
           {isAuthenticated ? (
             <div className="relative">
@@ -92,16 +94,9 @@ const Navbar: React.FC = () => {
                   <Link to="/profile" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 px-6 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors">
                     <User className="w-4 h-4 text-slate-400" /> My Profile
                   </Link>
-                  <Link
-                    to={user?.role === 'employer' ? "/recruiter" : "/dashboard"}
-                    onClick={() => setIsMenuOpen(false)}
-                    className="flex items-center gap-3 px-6 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
-                  >
-                    <Briefcase className="w-4 h-4 text-slate-400" /> Dashboard
-                  </Link>
                   <div className="h-px bg-slate-50 my-2"></div>
                   <button
-                    onClick={() => { logout(); setIsMenuOpen(false); }}
+                    onClick={() => { logout(); setIsMenuOpen(false); navigate('/'); }}
                     className="w-full text-left flex items-center gap-3 px-6 py-3 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors"
                   >
                     <LogOut className="w-4 h-4" /> Sign Out
@@ -172,13 +167,15 @@ const Navbar: React.FC = () => {
               <Link to="/support" onClick={() => setIsMobileMenuOpen(false)} className="block py-3 text-sm font-black text-slate-900 uppercase tracking-widest">Contact Us</Link>
             </div>
 
-            <div className="mt-auto pt-8 border-t border-slate-50">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Portals</p>
-              <div className="flex flex-col gap-3">
-                <Link to="/login" state={{ from: 'agent' }} onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 text-xs font-bold text-slate-600">Agent Portal</Link>
-                <Link to="/login" state={{ from: 'admin' }} onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 text-xs font-bold text-slate-600">Admin Portal</Link>
+            {!isAuthenticated && (
+              <div className="mt-auto pt-8 border-t border-slate-50">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Portals</p>
+                <div className="flex flex-col gap-3">
+                  <Link to="/login" state={{ from: 'agent' }} onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 text-xs font-bold text-slate-600">Agent Portal</Link>
+                  <Link to="/login" state={{ from: 'admin' }} onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 text-xs font-bold text-slate-600">Admin Portal</Link>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}
