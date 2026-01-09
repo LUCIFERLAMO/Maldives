@@ -1,43 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MaldivesCareer Connect</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-            },
-            colors: {
-              maldives: {
-                50: '#f0fdfa',
-                100: '#ccfbf1',
-                200: '#99f6e4',
-                300: '#5eead4',
-                400: '#2dd4bf',
-                500: '#14b8a6',
-                600: '#0d9488',
-                700: '#0f766e',
-                800: '#115e59',
-                900: '#134e4a',
-              }
-            }
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MaldivesCareer Connect</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
           },
+          colors: {
+            maldives: {
+              50: '#f0fdfa',
+              100: '#ccfbf1',
+              200: '#99f6e4',
+              300: '#5eead4',
+              400: '#2dd4bf',
+              500: '#14b8a6',
+              600: '#0d9488',
+              700: '#0f766e',
+              800: '#115e59',
+              900: '#134e4a',
+            }
+          }
         },
-      }
-    </script>
-    <!-- NO IMPORTMAP HERE - REMOVED COMPLETELY -->
-    <!-- Import map removed to fix React conflict -->
-<link rel="stylesheet" href="/index.css">
+      },
+    }
+  </script>
+  <!-- NO IMPORTMAP HERE - REMOVED COMPLETELY -->
+  <!-- Import map removed to fix React conflict -->
 </head>
-  <body class="bg-slate-50 text-slate-900">
-    <div id="root"></div>
-    <!-- Vite will inject the script tags automatically -->
-  <script type="module" src="/index.tsx"></script>
+
+<body class="bg-slate-50 text-slate-900">
+  <div id="root"></div>
+  <!-- Vite will inject the script tags automatically -->
+  <script type="module" src="/src/index.tsx"></script>
 </body>
+
 </html>
