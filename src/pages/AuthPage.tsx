@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import {//this is authorpage - HI
+import {
   Mail,
   Lock,
   User,
@@ -9,10 +9,10 @@ import {//this is authorpage - HI
   Globe,
   ShieldCheck,
   Zap,
-  Shield,
-  Key,
+  Phone,
+  ArrowLeft,
+  CheckCircle2,
   Terminal,
-  ArrowRightCircle,
   MessageCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -31,13 +31,17 @@ const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login' }) => {
   const isAdminLogin = from === 'admin';
 
   const [mode, setMode] = useState<'login' | 'register'>(initialMode);
-  const [userType, setUserType] = useState<'candidate' | 'employer'>(isAgentLogin ? 'employer' : 'candidate');
   const [showAgentContact, setShowAgentContact] = useState(false);
+
+  // Registration States
+  const [signupStep, setSignupStep] = useState<1 | 2>(1);
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
 
   const [formData, setFormData] = useState({
     name: 'Demo User',
     email: isAgentLogin ? 'agent@globaltalent.com' : isAdminLogin ? 'super.admin@maldivescareer.com' : 'candidate@example.com',
-    password: 'password123'
+    password: 'password123',
+    phone: '9609999999'
   });
 
   useEffect(() => {
@@ -49,40 +53,72 @@ const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login' }) => {
     }
   }, [initialMode, isAgentLogin, isAdminLogin]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (mode === 'login') {
-      if (isAgentLogin) {
-        login({
-          name: 'Global Talent Ltd',
-          email: formData.email,
-          role: 'employer',
-          avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=100&h=100'
-        });
-        navigate('/recruiter');
-      } else if (isAdminLogin) {
-        login({
-          name: 'Platform Administrator',
-          email: formData.email,
-          role: 'employer'
-        });
-        navigate('/admin');
-      } else {
-        login({
-          name: 'Rahul Sharma',
-          email: formData.email,
-          role: 'candidate'
-        });
-        navigate('/');
-      }
+    if (isAgentLogin) {
+      login({
+        name: 'Global Talent Ltd',
+        email: formData.email,
+        role: 'employer',
+        avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=100&h=100'
+      });
+      navigate('/recruiter');
+    } else if (isAdminLogin) {
+      login({
+        name: 'Platform Administrator',
+        email: formData.email,
+        role: 'employer'
+      });
+      navigate('/admin');
     } else {
+      login({
+        name: 'Rahul Sharma',
+        email: formData.email,
+        role: 'candidate'
+      });
+      navigate('/');
+    }
+  };
+
+  const handleSignupStep1 = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Simulate sending OTP
+    setSignupStep(2);
+  };
+
+  const handleSignupVerification = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Mock OTP verification - allow any 6 digit code
+    if (otp.join('').length === 6) {
       login({
         name: formData.name,
         email: formData.email,
-        role: userType
+        role: 'candidate'
       });
-      navigate(userType === 'employer' ? '/recruiter' : '/');
+      navigate('/');
+    } else {
+      alert('Please enter the 6-digit code sent to your mobile.');
+    }
+  };
+
+  const handleOtpChange = (index: number, value: string) => {
+    if (value.length > 1) return;
+    const newOtp = [...otp];
+    newOtp[index] = value;
+    setOtp(newOtp);
+
+    // Auto-advance
+    if (value && index < 5) {
+      const nextInput = document.getElementById(`otp-${index + 1}`);
+      nextInput?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      const prevInput = document.getElementById(`otp-${index - 1}`);
+      prevInput?.focus();
     }
   };
 
@@ -98,7 +134,6 @@ const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login' }) => {
         setPassword={(password) => setFormData(prev => ({ ...prev, password }))}
         onLogin={(e) => {
           e.preventDefault();
-          // Since we are inside the component that had the logic, we can just call login here directly after success
           login({
             name: 'Platform Administrator',
             email: formData.email,
@@ -111,104 +146,202 @@ const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login' }) => {
     );
   }
 
-  // --- CANDIDATE / AGENT LOGIN/REGISTER VIEW ---
+  // --- UNIFIED SPLIT LAYOUT FOR BOTH LOGIN & SIGNUP ---
   return (
     <div className="min-h-[calc(100vh-64px)] bg-[#fdfbf7] flex items-center justify-center p-4">
       <div className="w-full max-w-5xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[600px] border border-slate-100">
-        {isLogin ? (
-          <>
-            <div className="w-full md:w-5/12 bg-teal-800 text-white p-12 flex flex-col justify-between relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-64 h-full bg-white opacity-5 transform skew-x-12 translate-x-20"></div>
-              <div className="relative z-10">
-                <div className="w-12 h-12 border border-white/30 rounded-xl flex items-center justify-center mb-8 backdrop-blur-sm">
-                  <User className="w-6 h-6 text-white" />
-                </div>
+
+        {/* LEFT PANEL - BRANDING */}
+        <div className="w-full md:w-5/12 bg-teal-800 text-white p-12 flex flex-col justify-between relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-full bg-white opacity-5 transform skew-x-12 translate-x-20"></div>
+
+          <div className="relative z-10">
+            <div className="w-12 h-12 border border-white/30 rounded-xl flex items-center justify-center mb-8 backdrop-blur-sm">
+              <User className="w-6 h-6 text-white" />
+            </div>
+
+            {isLogin ? (
+              <>
                 <h1 className="text-4xl md:text-5xl font-black leading-tight mb-4 tracking-tighter">Island Jobs <br /><span className="text-maldives-300">Simplified.</span></h1>
                 <p className="text-teal-100 font-medium text-lg opacity-90">{isAgentLogin ? 'Broker & Partner Gateway.' : 'Access all verified Maldivian vacancies.'}</p>
-              </div>
+              </>
+            ) : (
+              <>
+                <h1 className="text-4xl md:text-5xl font-black leading-tight mb-4 tracking-tighter">Start Your <br /><span className="text-maldives-300">Journey.</span></h1>
+                <p className="text-teal-100 font-medium text-lg opacity-90">Join thousands of professionals finding their dream careers in the Maldives.</p>
+              </>
+            )}
+          </div>
 
-              <div className="relative z-10">
-                {isAgentLogin ? (
-                  <div className="space-y-3">
-                    {!showAgentContact ? (
-                      <button
-                        onClick={() => setShowAgentContact(true)}
-                        className="flex items-center gap-2 font-black transition-all text-white group uppercase text-[11px] tracking-widest hover:text-maldives-300"
-                      >
-                        New Arrival? <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                      </button>
-                    ) : (
-                      <div className="bg-white/10 border border-white/20 p-5 rounded-2xl backdrop-blur-sm animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        <p className="text-[10px] font-black uppercase text-maldives-300 mb-2 tracking-widest flex items-center gap-2">
-                          <MessageCircle className="w-3.5 h-3.5" /> Next Steps
-                        </p>
-                        <p className="text-sm font-bold text-white leading-tight">Contact the admin for further process:</p>
-                        <p className="text-base font-black text-white mt-1 underline decoration-maldives-400">admin@maldivescareer.com</p>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-xs font-black uppercase tracking-widest opacity-60 mb-3">New Arrival?</p>
-                    <button onClick={() => setMode('register')} className="flex items-center gap-2 font-black transition-all text-white group uppercase text-[10px] tracking-widest">
-                      Create Profile <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          <div className="relative z-10">
+            {isLogin ? (
+              isAgentLogin ? (
+                <div className="space-y-3">
+                  {!showAgentContact ? (
+                    <button
+                      onClick={() => setShowAgentContact(true)}
+                      className="flex items-center gap-2 font-black transition-all text-white group uppercase text-[11px] tracking-widest hover:text-maldives-300"
+                    >
+                      New Arrival? <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </button>
-                  </>
-                )}
-              </div>
-            </div>
-            <div className="w-full md:w-7/12 p-8 md:p-20 flex flex-col justify-center bg-white">
-              <div className="max-w-sm mx-auto w-full">
-                <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Login</h2>
-                <p className="text-slate-500 mb-12 font-medium">Please enter your details to continue.</p>
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  <div className="relative group">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
-                    <input type="email" required placeholder="Email Address" className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-500 outline-none transition-all font-bold text-slate-700" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
-                  </div>
-                  <div className="relative group">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
-                    <input type="password" required placeholder="Password" className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-500 outline-none transition-all font-bold text-slate-700" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
-                  </div>
-                  <button type="submit" className="w-full bg-slate-900 text-white py-5 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 flex items-center justify-center gap-2 mt-4">
-                    Log In <ArrowRight className="w-5 h-5" />
+                  ) : (
+                    <div className="bg-white/10 border border-white/20 p-5 rounded-2xl backdrop-blur-sm animate-in fade-in slide-in-from-bottom-2 duration-300">
+                      {/* Agent Contact Info - Keep as is */}
+                      <p className="text-[10px] font-black uppercase text-maldives-300 mb-2 tracking-widest flex items-center gap-2">
+                        <MessageCircle className="w-3.5 h-3.5" /> Next Steps
+                      </p>
+                      <p className="text-sm font-bold text-white leading-tight">Contact the admin for further process:</p>
+                      <a href="mailto:admin@maldivescareer.com" className="text-base font-bold text-teal-50 hover:text-white mt-1 block hover:underline decoration-maldives-400 underline-offset-4 transition-colors">admin@maldivescareer.com</a>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <p className="text-xs font-black uppercase tracking-widest opacity-60 mb-3">New Arrival?</p>
+                  <button onClick={() => setMode('register')} className="flex items-center gap-2 font-black transition-all text-white group uppercase text-[10px] tracking-widest hover:text-maldives-300">
+                    Create Profile <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </button>
-                </form>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="w-full p-8 md:p-20 flex flex-col justify-center bg-white">
-            <div className="max-w-lg mx-auto w-full text-center">
-              <h2 className="text-4xl font-black text-slate-900 mb-2 tracking-tighter">Sign Up</h2>
-              <p className="text-slate-500 mb-10 font-medium">Join the professional Maldivian workforce.</p>
-              <div className="flex bg-slate-100 p-1.5 rounded-2xl mb-10 w-full border border-slate-200/50 max-w-xs mx-auto">
-                <button onClick={() => setUserType('candidate')} className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${userType === 'candidate' ? 'bg-teal-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-700'}`}>Candidate</button>
-                <button onClick={() => setUserType('employer')} className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${userType === 'employer' ? 'bg-teal-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-700'}`}>Agent</button>
-              </div>
-              <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
-                <div className="md:col-span-2">
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-2 block">Full Name</label>
-                  <input type="text" required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+                </>
+              )
+            ) : (
+              <>
+                <p className="text-xs font-black uppercase tracking-widest opacity-60 mb-3">Already a Member?</p>
+                <button onClick={() => setMode('login')} className="flex items-center gap-2 font-black transition-all text-white group uppercase text-[10px] tracking-widest hover:text-maldives-300">
+                  Log In Now <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* RIGHT PANEL - FORMS */}
+        <div className="w-full md:w-7/12 p-8 md:p-20 flex flex-col justify-center bg-white relative">
+
+          {/* LOGIN FORM */}
+          {isLogin && (
+            <div className="max-w-sm mx-auto w-full animate-in fade-in slide-in-from-right-4 duration-500">
+              <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Login</h2>
+              <p className="text-slate-500 mb-12 font-medium">Please enter your details to continue.</p>
+              <form onSubmit={handleLoginSubmit} className="space-y-5">
+                <div className="relative group">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
+                  <input type="email" required placeholder="Email Address" className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-500 outline-none transition-all font-bold text-slate-700" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
                 </div>
-                <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-2 block">Email</label>
-                  <input type="email" required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                <div className="relative group">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
+                  <input type="password" required placeholder="Password" className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-500 outline-none transition-all font-bold text-slate-700" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
                 </div>
-                <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-2 block">WhatsApp</label>
-                  <input type="tel" required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700" value={formData.name} />
-                </div>
-                <button type="submit" className="md:col-span-2 w-full bg-teal-600 text-white py-5 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-teal-700 transition-all shadow-xl shadow-teal-600/20 mt-6 flex items-center justify-center gap-3">
-                  Join Now <Zap className="w-4 h-4" />
+                <button type="submit" className="w-full bg-slate-900 text-white py-5 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 flex items-center justify-center gap-2 mt-4">
+                  Log In <ArrowRight className="w-5 h-5" />
                 </button>
               </form>
-              <p className="mt-8 text-sm font-medium text-slate-500">
-                Already have an account? <button onClick={() => setMode('login')} className="text-teal-600 font-black hover:underline">Log in</button>
-              </p>
             </div>
-          </div>
-        )}
+          )}
+
+          {/* SIGNUP FORM */}
+          {!isLogin && (
+            <div className="max-w-[400px] mx-auto w-full animate-in fade-in slide-in-from-right-4 duration-500">
+
+              {/* Progress Indicator */}
+              <div className="flex items-center gap-2 mb-8">
+                <div className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${signupStep >= 1 ? 'bg-teal-600' : 'bg-slate-100'}`}></div>
+                <div className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${signupStep >= 2 ? 'bg-teal-600' : 'bg-slate-100'}`}></div>
+              </div>
+
+              <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">
+                {signupStep === 1 ? 'Create Account' : 'Verify Mobile'}
+              </h2>
+              <p className="text-slate-500 mb-8 font-medium">
+                {signupStep === 1 ? 'Join the professional Maldivian workforce.' : `Enter the code sent to ${formData.phone}`}
+              </p>
+
+              {/* STEP 1: DETAILS */}
+              {signupStep === 1 && (
+                <form onSubmit={handleSignupStep1} className="space-y-4">
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-2 block">Full Name</label>
+                    <div className="relative group">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
+                      <input
+                        type="text"
+                        required
+                        className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all"
+                        value={formData.name}
+                        onChange={e => setFormData({ ...formData, name: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-2 block">Email Address</label>
+                    <div className="relative group">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
+                      <input
+                        type="email"
+                        required
+                        className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all"
+                        value={formData.email}
+                        onChange={e => setFormData({ ...formData, email: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-2 block">Mobile Number</label>
+                    <div className="relative group">
+                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
+                      <input
+                        type="tel"
+                        required
+                        className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all"
+                        placeholder="7779999"
+                        value={formData.phone}
+                        onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <button type="submit" className="w-full bg-teal-600 text-white py-5 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-teal-700 transition-all shadow-xl shadow-teal-600/20 mt-6 flex items-center justify-center gap-3">
+                    Verify Mobile <ArrowRight className="w-4 h-4" />
+                  </button>
+                </form>
+              )}
+
+              {/* STEP 2: OTP */}
+              {signupStep === 2 && (
+                <form onSubmit={handleSignupVerification} className="space-y-6">
+                  <div className="flex gap-2 justify-center my-8">
+                    {otp.map((digit, idx) => (
+                      <input
+                        key={idx}
+                        id={`otp-${idx}`}
+                        type="text"
+                        maxLength={1}
+                        value={digit}
+                        onChange={(e) => handleOtpChange(idx, e.target.value)}
+                        onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                        className="w-12 h-14 text-center text-xl font-black bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all"
+                      />
+                    ))}
+                  </div>
+
+                  <button type="submit" className="w-full bg-slate-900 text-white py-5 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 flex items-center justify-center gap-3">
+                    Verify & Create Account <CheckCircle2 className="w-4 h-4" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSignupStep(1)}
+                    className="w-full text-slate-400 font-bold text-xs hover:text-slate-600 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <ArrowLeft className="w-3 h-3" /> Change Number
+                  </button>
+                </form>
+              )}
+            </div>
+          )}
+
+        </div>
       </div>
     </div>
   );

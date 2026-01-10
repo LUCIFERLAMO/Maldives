@@ -22,7 +22,7 @@ const HomePage: React.FC = () => {
       <div className="min-h-screen bg-white font-sans text-slate-900 overflow-x-hidden">
 
          {/* 1. HERO SECTION */}
-         <section className="relative bg-white min-h-[90vh] lg:min-h-[85vh] flex items-center pt-10 pb-16 lg:pt-20 lg:pb-20 overflow-hidden">
+         <section className="relative bg-white min-h-[600px] lg:min-h-[700px] flex items-center pt-10 pb-16 lg:pt-16 lg:pb-16 overflow-hidden">
             {/* Background Decoration */}
             <div className="absolute top-0 right-0 w-[50%] h-full bg-slate-50/50 -z-10 rounded-bl-[100px] hidden lg:block"></div>
             {/* Mobile Background Decoration */}
@@ -37,7 +37,7 @@ const HomePage: React.FC = () => {
                   </div>
 
                   {/* Headline */}
-                  <h1 className="text-[2.75rem] leading-[1.15] md:text-6xl lg:text-[5.5rem] font-black text-slate-900 lg:leading-[1.1] tracking-tight mb-6 lg:mb-8">
+                  <h1 className="text-4xl md:text-5xl lg:text-7xl font-black text-slate-900 leading-[1.1] tracking-tight mb-6 lg:mb-8">
                      Find Your <span className="text-teal-600">Dream Job</span> <br className="hidden md:block" />
                      With Your Interests <br className="hidden md:block" />
                      And <span className="text-teal-600">Skills.</span>
@@ -76,13 +76,13 @@ const HomePage: React.FC = () => {
 
                {/* Hero Image Group */}
                <div className="relative hidden lg:block">
-                  <div className="relative z-10 w-full max-w-[600px] ml-auto">
+                  <div className="relative z-10 w-full max-w-[480px] ml-auto">
                      <div className="relative rounded-[3rem] overflow-visible">
                         {/* Main Image */}
                         <img
                            src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=1576&auto=format&fit=crop"
                            alt="Professional"
-                           className="rounded-[3rem] shadow-2xl w-full h-[700px] object-cover object-center"
+                           className="rounded-[3rem] shadow-2xl w-full h-[550px] object-cover object-center"
                         />
 
                         {/* Floating Badge 1 */}

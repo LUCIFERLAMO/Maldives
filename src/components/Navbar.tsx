@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Briefcase, LogOut, User, ChevronDown, Menu, X } from 'lucide-react';
+import { Briefcase, LogOut, User, ChevronDown, Menu, X, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { INDUSTRIES } from '../constants';
 
@@ -67,10 +67,12 @@ const Navbar: React.FC = () => {
 
         {/* RIGHT: PORTALS & AUTH */}
         <div className="flex items-center gap-4 lg:gap-6">
-          <div className="hidden xl:flex items-center gap-6 border-r border-slate-100 pr-6 mr-2">
-            <Link to="/login" state={{ from: 'agent' }} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors">Agent Portal</Link>
-            <Link to="/login" state={{ from: 'admin' }} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors">Admin Portal</Link>
-          </div>
+          {!isAuthenticated && (
+            <div className="hidden xl:flex items-center gap-6 border-r border-slate-100 pr-6 mr-2">
+              <Link to="/login" state={{ from: 'agent' }} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors">Agent Portal</Link>
+              <Link to="/login" state={{ from: 'admin' }} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors">Admin Portal</Link>
+            </div>
+          )}
 
           {isAuthenticated ? (
             <div className="relative">
@@ -89,19 +91,15 @@ const Navbar: React.FC = () => {
 
               {isMenuOpen && (
                 <div className="absolute right-0 mt-4 w-60 bg-white rounded-2xl shadow-2xl border border-slate-100 py-3 overflow-hidden animate-in fade-in zoom-in-95 duration-200 ring-1 ring-slate-900/5 z-[120]">
+                  <Link to={user?.role === 'candidate' ? '/dashboard' : (user?.name === 'Platform Administrator' ? '/admin' : '/recruiter')} onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 px-6 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors">
+                    <LayoutDashboard className="w-4 h-4 text-slate-400" /> Dashboard
+                  </Link>
                   <Link to="/profile" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 px-6 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors">
                     <User className="w-4 h-4 text-slate-400" /> My Profile
                   </Link>
-                  <Link
-                    to={user?.role === 'employer' ? "/recruiter" : "/dashboard"}
-                    onClick={() => setIsMenuOpen(false)}
-                    className="flex items-center gap-3 px-6 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
-                  >
-                    <Briefcase className="w-4 h-4 text-slate-400" /> Dashboard
-                  </Link>
                   <div className="h-px bg-slate-50 my-2"></div>
                   <button
-                    onClick={() => { logout(); setIsMenuOpen(false); }}
+                    onClick={() => { logout(); setIsMenuOpen(false); navigate('/'); }}
                     className="w-full text-left flex items-center gap-3 px-6 py-3 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors"
                   >
                     <LogOut className="w-4 h-4" /> Sign Out
@@ -172,13 +170,15 @@ const Navbar: React.FC = () => {
               <Link to="/support" onClick={() => setIsMobileMenuOpen(false)} className="block py-3 text-sm font-black text-slate-900 uppercase tracking-widest">Contact Us</Link>
             </div>
 
-            <div className="mt-auto pt-8 border-t border-slate-50">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Portals</p>
-              <div className="flex flex-col gap-3">
-                <Link to="/login" state={{ from: 'agent' }} onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 text-xs font-bold text-slate-600">Agent Portal</Link>
-                <Link to="/login" state={{ from: 'admin' }} onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 text-xs font-bold text-slate-600">Admin Portal</Link>
+            {!isAuthenticated && (
+              <div className="mt-auto pt-8 border-t border-slate-50">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Portals</p>
+                <div className="flex flex-col gap-3">
+                  <Link to="/login" state={{ from: 'agent' }} onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 text-xs font-bold text-slate-600">Agent Portal</Link>
+                  <Link to="/login" state={{ from: 'admin' }} onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 text-xs font-bold text-slate-600">Admin Portal</Link>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}
