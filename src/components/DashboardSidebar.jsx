@@ -1,19 +1,12 @@
 import React from 'react';
-import { LayoutDashboard, Briefcase, UserCheck, Globe2, UserPlus, LogOut, X } from 'lucide-react';
+import { LayoutDashboard, Briefcase, UserCheck, Globe2, UserPlus, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-interface DashboardSidebarProps {
-    activeTab: string;
-    setActiveTab: (tab: string) => void;
-    isOpen?: boolean;
-    onClose?: () => void;
-}
-
-export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ activeTab, setActiveTab, isOpen = false, onClose }) => {
+export const DashboardSidebar = ({ activeTab, setActiveTab, isOpen = false, onClose }) => {
     const { logout } = useAuth();
 
     // Auto-close on mobile when selecting an item
-    const handleTabClick = (id: string) => {
+    const handleTabClick = (id) => {
         setActiveTab(id);
         if (window.innerWidth < 1024 && onClose) {
             onClose();
@@ -61,8 +54,8 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ activeTab, s
                         { id: 'audit', label: 'AUDIT QUEUE', icon: UserCheck },
                         { id: 'vacancies', label: 'VACANCY\nMANAGEMENT', icon: Briefcase },
                         { id: 'agents', label: 'AGENT ECOSYSTEM', icon: Globe2 },
-                        { id: 'intelligence', label: 'INTELLIGENCE', icon: ({ className }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg> },
-                        { id: 'security', label: 'SECURITY LOGS', icon: ({ className }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg> },
+                        { id: 'intelligence', label: 'INTELLIGENCE', icon: ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg> },
+                        { id: 'security', label: 'SECURITY LOGS', icon: ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg> },
                     ].map((item) => {
                         const isActive = activeTab === item.id;
                         return (

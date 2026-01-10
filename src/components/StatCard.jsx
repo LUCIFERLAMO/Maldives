@@ -1,14 +1,6 @@
 import React from 'react';
-import { LucideIcon } from 'lucide-react';
 
-interface StatCardProps {
-    label: string;
-    value: string | number;
-    icon: LucideIcon;
-    color: 'teal' | 'amber' | 'red' | 'slate';
-}
-
-export const StatCard: React.FC<StatCardProps> = ({ label, value, icon: Icon, color }) => {
+export const StatCard = ({ label, value, icon: Icon, color }) => {
     const colorMap = {
         teal: 'text-teal-600',
         amber: 'text-amber-600',

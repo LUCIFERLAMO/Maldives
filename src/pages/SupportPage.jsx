@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, MessageSquare, Phone, ChevronDown, ChevronUp, Send, HelpCircle, CheckCircle, ArrowLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom'; //this is a example hope jit rrachest u 
+import { useNavigate } from 'react-router-dom';
+
 const FAQS = [
     {
         question: "Is there a fee for candidates to apply?",
@@ -20,13 +21,13 @@ const FAQS = [
     }
 ];
 
-const SupportPage: React.FC = () => {
+const SupportPage = () => {
     const navigate = useNavigate();
-    const [openFaq, setOpenFaq] = useState<number | null>(0);
+    const [openFaq, setOpenFaq] = useState(0);
     const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
     const [isSubmitted, setIsSubmitted] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = (e) => {
         e.preventDefault();
         // Simulate API call
         setTimeout(() => {

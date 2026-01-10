@@ -1,15 +1,7 @@
 import React from 'react';
-import { Search, Bell, Settings, Menu } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-interface DashboardHeaderProps {
-    onMenuClick?: () => void;
-    searchQuery?: string;
-    onSearchChange?: (query: string) => void;
-    title: string;
-}
-
-export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onMenuClick, searchQuery, onSearchChange, title }) => {
+export const DashboardHeader = ({ onMenuClick, searchQuery, onSearchChange, title }) => {
     const { user } = useAuth();
     return (
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 z-10 sticky top-0 shadow-sm">
