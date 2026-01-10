@@ -37,7 +37,7 @@ const SupportPage: React.FC = () => {
     return (
         <div className="min-h-screen bg-slate-50 pb-20 font-sans">
             {/* Header */}
-            <div className="bg-slate-900 text-white py-16 px-4 relative">
+            <div className="bg-slate-900 text-white py-20 px-4 relative">
                 <button
                     onClick={() => navigate(-1)}
                     className="absolute top-8 left-8 flex items-center gap-2 text-slate-400 hover:text-white transition-colors font-bold uppercase text-xs tracking-widest hover:-translate-x-1 duration-300"
@@ -58,7 +58,7 @@ const SupportPage: React.FC = () => {
                 </div>
             </div>
 
-            <div className="container mx-auto max-w-6xl px-4 -mt-10">
+            <div className="container mx-auto max-w-6xl px-4 mt-8">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
                     {/* Left Column: Contact Form */}
