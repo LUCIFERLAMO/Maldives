@@ -37,7 +37,7 @@ const SupportPage: React.FC = () => {
     return (
         <div className="min-h-screen bg-slate-50 pb-20 font-sans">
             {/* Header */}
-            <div className="bg-slate-900 text-white py-20 px-4 relative">
+            <div className="bg-slate-900 text-white py-12 px-4 relative">
                 <button
                     onClick={() => navigate(-1)}
                     className="absolute top-8 left-8 flex items-center gap-2 text-slate-400 hover:text-white transition-colors font-bold uppercase text-xs tracking-widest hover:-translate-x-1 duration-300"
@@ -47,24 +47,24 @@ const SupportPage: React.FC = () => {
                 <div className="container mx-auto max-w-4xl">
 
                     <div className="text-center">
-                        <div className="w-16 h-16 bg-maldives-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-maldives-900/50">
-                            <HelpCircle className="w-8 h-8 text-white" />
+                        <div className="w-12 h-12 bg-maldives-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-maldives-900/50">
+                            <HelpCircle className="w-6 h-6 text-white" />
                         </div>
-                        <h1 className="text-3xl md:text-4xl font-bold mb-4">How can we help you?</h1>
-                        <p className="text-slate-400 text-lg max-w-2xl mx-auto">
+                        <h1 className="text-2xl md:text-3xl font-bold mb-4">How can we help you?</h1>
+                        <p className="text-slate-400 text-base md:text-lg max-w-2xl mx-auto">
                             Find answers to common questions about international recruitment to the Maldives or get in touch with our support team.
                         </p>
                     </div>
                 </div>
             </div>
 
-            <div className="container mx-auto max-w-6xl px-4 mt-8">
+            <div className="container mx-auto max-w-5xl px-4 mt-8">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
                     {/* Left Column: Contact Form */}
                     <div className="lg:col-span-2">
                         <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-                            <div className="p-8 border-b border-slate-100">
+                            <div className="p-6 border-b border-slate-100">
                                 <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                                     <MessageSquare className="w-5 h-5 text-maldives-600" />
                                     Send us a message
@@ -89,14 +89,14 @@ const SupportPage: React.FC = () => {
                                     </button>
                                 </div>
                             ) : (
-                                <form onSubmit={handleSubmit} className="p-8 space-y-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <form onSubmit={handleSubmit} className="p-6 space-y-5">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                         <div>
                                             <label className="block text-sm font-bold text-slate-700 mb-2">Your Name</label>
                                             <input
                                                 type="text"
                                                 required
-                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-maldives-500 transition-all"
+                                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-maldives-500 transition-all text-sm"
                                                 placeholder="John Doe"
                                                 value={formData.name}
                                                 onChange={e => setFormData({ ...formData, name: e.target.value })}
@@ -107,7 +107,7 @@ const SupportPage: React.FC = () => {
                                             <input
                                                 type="email"
                                                 required
-                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-maldives-500 transition-all"
+                                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-maldives-500 transition-all text-sm"
                                                 placeholder="john@example.com"
                                                 value={formData.email}
                                                 onChange={e => setFormData({ ...formData, email: e.target.value })}
@@ -117,7 +117,7 @@ const SupportPage: React.FC = () => {
                                     <div>
                                         <label className="block text-sm font-bold text-slate-700 mb-2">Subject</label>
                                         <select
-                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-maldives-500 transition-all text-slate-600"
+                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-maldives-500 transition-all text-slate-600 text-sm"
                                             value={formData.subject}
                                             onChange={e => setFormData({ ...formData, subject: e.target.value })}
                                         >
@@ -133,7 +133,7 @@ const SupportPage: React.FC = () => {
                                         <textarea
                                             required
                                             rows={5}
-                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-maldives-500 transition-all resize-none"
+                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-maldives-500 transition-all resize-none text-sm"
                                             placeholder="Describe your issue or question in detail..."
                                             value={formData.message}
                                             onChange={e => setFormData({ ...formData, message: e.target.value })}
@@ -141,7 +141,7 @@ const SupportPage: React.FC = () => {
                                     </div>
                                     <button
                                         type="submit"
-                                        className="w-full py-4 bg-maldives-600 text-white font-bold rounded-xl shadow-lg hover:bg-maldives-700 transition-all flex items-center justify-center gap-2"
+                                        className="w-full py-3.5 bg-maldives-600 text-white font-bold rounded-xl shadow-lg hover:bg-maldives-700 transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-widest"
                                     >
                                         <Send className="w-4 h-4" /> Send Message
                                     </button>

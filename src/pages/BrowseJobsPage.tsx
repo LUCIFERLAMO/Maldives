@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'; // this is test msg
+import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
 import {
   Search,
   ArrowRight,
@@ -24,6 +24,9 @@ const BrowseJobsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [viewType, setViewType] = useState<'list' | 'grid'>('list');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<'recent' | 'closed'>('recent');
+  const [isSortOpen, setIsSortOpen] = useState(false);
+  const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
 
   const selectedIndustry = searchParams.get('category') || 'All';
 
@@ -31,14 +34,56 @@ const BrowseJobsPage: React.FC = () => {
     setSearchParams({});
   };
 
+
+
   const filteredJobs = useMemo(() => {
     return MOCK_JOBS.filter(job => {
       const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         job.company.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesIndustry = selectedIndustry === 'All' || job.industry === selectedIndustry;
-      return matchesSearch && matchesIndustry;
-    }).sort((a, b) => (a.status === JobStatus.OPEN ? -1 : 1));
-  }, [searchTerm, selectedIndustry]);
+
+      // Status Filter
+      const matchesStatus = sortBy === 'closed'
+        ? job.status === JobStatus.CLOSED
+        : job.status === JobStatus.OPEN;
+
+      return matchesSearch && matchesIndustry && matchesStatus;
+    }).sort((a, b) => {
+      // Sort by date descending
+      return new Date(b.postedDate).getTime() - new Date(a.postedDate).getTime();
+    });
+  }, [searchTerm, selectedIndustry, sortBy]);
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // 1. Save scroll position before unmounting (or periodically if needed)
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+
+    // Function to save scroll
+    const handleScroll = () => {
+      if (container) {
+        sessionStorage.setItem('browseJobsScroll', container.scrollTop.toString());
+      }
+    }
+
+    // Save on unmount is good, but if we navigate away via link, unmount runs.
+    return () => {
+      if (container) {
+        sessionStorage.setItem('browseJobsScroll', container.scrollTop.toString());
+      }
+    };
+  }, []);
+
+  // 2. Restore scroll position
+  useLayoutEffect(() => {
+    const savedScroll = sessionStorage.getItem('browseJobsScroll');
+    if (savedScroll && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = parseInt(savedScroll, 10);
+    }
+  }, [filteredJobs]); // Re-run if jobs change, ensuring we stay at position if possible
+
+
 
   const handleShare = async (e: React.MouseEvent, job: any) => {
     e.preventDefault();
@@ -212,13 +257,7 @@ const BrowseJobsPage: React.FC = () => {
               )}
             </div>
 
-            <div className="hidden md:flex items-center gap-4 pl-4 border-l border-slate-200">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{filteredJobs.length} Results</span>
-              <div className="flex bg-slate-200/50 p-1 rounded-lg">
-                <button onClick={() => setViewType('list')} className={`p-1.5 rounded-md transition-all ${viewType === 'list' ? 'bg-white shadow text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}><List className="w-4 h-4" /></button>
-                <button onClick={() => setViewType('grid')} className={`p-1.5 rounded-md transition-all ${viewType === 'grid' ? 'bg-white shadow text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}><Briefcase className="w-4 h-4" /></button>
-              </div>
-            </div>
+
           </div>
         </div>
       </div>
@@ -233,7 +272,7 @@ const BrowseJobsPage: React.FC = () => {
           </div>
           <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 overflow-x-auto snap-x snap-mandatory pb-8 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0 no-scrollbar">
             {MOCK_JOBS.filter(j => j.status === JobStatus.OPEN && (selectedIndustry === 'All' || j.industry === selectedIndustry)).slice(0, 3).map((job, idx) => (
-              <div key={idx} className="flex-shrink-0 w-[70%] md:w-auto snap-center [scroll-snap-stop:always] group bg-white rounded-[2rem] p-1 overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500 cursor-pointer">
+              <Link to={`/job/${job.id}`} key={idx} className="flex-shrink-0 w-[70%] md:w-auto snap-center [scroll-snap-stop:always] group bg-white rounded-[2rem] p-1 overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500 cursor-pointer">
                 <div className="bg-slate-50 rounded-[1.8rem] p-4 md:p-8 h-full flex flex-col items-start relative overflow-hidden group-hover:bg-[#0B1A33] transition-colors duration-500">
                   <div className="absolute -right-10 -top-10 w-32 h-32 bg-white/5 rounded-full blur-2xl group-hover:bg-white/10"></div>
 
@@ -252,7 +291,7 @@ const BrowseJobsPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
@@ -265,40 +304,64 @@ const BrowseJobsPage: React.FC = () => {
             <div>
               <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-6">Categories</h3>
               <div className="space-y-1">
-                {['Hospitality', 'Engineering', 'Food & Bev', 'Management', 'Marine'].map(cat => (
-                  <div key={cat} className="flex items-center justify-between group cursor-pointer py-2 text-slate-500 hover:text-teal-600 transition-colors">
+                {['Hospitality', 'Engineering', 'Food & Bev', 'Management', 'Marine', 'IT'].map(cat => (
+                  <div
+                    key={cat}
+                    onClick={() => setSearchParams({ ...Object.fromEntries(searchParams), category: cat })}
+                    className={`flex items-center justify-between group cursor-pointer py-2 transition-colors ${selectedIndustry === cat ? 'text-teal-600 font-bold' : 'text-slate-500 hover:text-teal-600'}`}
+                  >
                     <span className="text-sm font-semibold">{cat}</span>
-                    <span className="text-[10px] font-bold bg-white border border-slate-200 shadow-sm group-hover:bg-teal-50 px-2 py-0.5 rounded-md transition-colors">12</span>
+                    <span className={`text-[10px] font-bold border shadow-sm px-2 py-0.5 rounded-md transition-colors ${selectedIndustry === cat ? 'bg-teal-50 text-teal-700 border-teal-100' : 'bg-white text-slate-400 border-slate-200 group-hover:bg-teal-50 group-hover:text-teal-600'}`}>
+                      {MOCK_JOBS.filter(j => (j.industry === cat) && (sortBy === 'closed' ? j.status === JobStatus.CLOSED : j.status === JobStatus.OPEN)).length}
+                    </span>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="p-6 bg-[#0B1A33] rounded-3xl text-center text-white relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/20 rounded-full blur-[40px] -translate-y-1/2 translate-x-1/3 group-hover:bg-teal-500/30 transition-colors duration-500"></div>
 
-              <div className="relative z-10">
-                <Zap className="w-8 h-8 text-yellow-400 mx-auto mb-4 drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]" />
-                <h4 className="font-bold text-lg mb-2">Upgrade Profile</h4>
-                <p className="text-xs text-slate-400 mb-6 leading-relaxed">Get 3x more visibility to top recruiters.</p>
-                <button className="w-full py-3 bg-white text-[#0B1A33] rounded-xl text-xs font-black uppercase tracking-widest hover:bg-teal-50 hover:scale-105 transition-all duration-300 shadow-lg shadow-black/20">Boost Now</button>
-              </div>
-            </div>
           </div>
 
           {/* Job Feed */}
           <div className="flex-1">
             <div className="sticky top-[80px] z-20 bg-slate-100 md:bg-transparent pb-4 pt-2">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Recent Openings</h3>
-                <div className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-xs font-bold text-slate-600 flex items-center gap-2 cursor-pointer hover:border-teal-500 transition-colors shadow-sm">
-                  Sort by: Recent <ChevronDown className="w-3 h-3" />
+                <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">
+                  {sortBy === 'closed' ? 'Closed Roles' : 'Recent Openings'}
+                </h3>
+                <div className="relative">
+                  <button
+                    onClick={() => setIsSortOpen(!isSortOpen)}
+                    className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-xs font-bold text-slate-600 flex items-center gap-2 cursor-pointer hover:border-teal-500 transition-colors shadow-sm"
+                  >
+                    Sort by: {sortBy === 'closed' ? 'Closed' : 'Recent'} <ChevronDown className="w-3 h-3" />
+                  </button>
+
+                  {isSortOpen && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setIsSortOpen(false)}></div>
+                      <div className="absolute right-0 top-full mt-2 w-40 bg-white rounded-xl shadow-xl border border-slate-100 p-1 z-20 animate-in fade-in zoom-in-95 duration-200">
+                        <button
+                          onClick={() => { setSortBy('recent'); setIsSortOpen(false); }}
+                          className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors ${sortBy === 'recent' ? 'bg-teal-50 text-teal-700' : 'text-slate-500 hover:bg-slate-50'}`}
+                        >
+                          Recent (Open)
+                        </button>
+                        <button
+                          onClick={() => { setSortBy('closed'); setIsSortOpen(false); }}
+                          className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors ${sortBy === 'closed' ? 'bg-red-50 text-red-700' : 'text-slate-500 hover:bg-slate-50'}`}
+                        >
+                          Closed
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* SCROLLABLE CONTAINER */}
-            <div className="h-[calc(100vh-250px)] overflow-y-auto pr-2 pb-20 no-scrollbar md:custom-scrollbar">
+            <div ref={scrollContainerRef} className="h-[calc(100vh-250px)] overflow-y-auto pr-2 pb-20 no-scrollbar md:custom-scrollbar">
               <div className={`
                 grid grid-cols-1 gap-4
                 md:grid-cols-1 md:gap-6
@@ -307,48 +370,114 @@ const BrowseJobsPage: React.FC = () => {
                 {filteredJobs.length > 0 ? filteredJobs.map(job => (
                   viewType === 'list' ? (
                     // LIST VIEW CARD
-                    <Link key={job.id} to={`/job/${job.id}`} className="w-full group bg-white md:bg-white/80 md:backdrop-blur-sm rounded-3xl p-4 md:p-6 border border-slate-200 shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-teal-500/30 hover:-translate-y-1 transition-all duration-300 flex flex-col md:flex-row items-start md:items-center gap-6 relative">
-
-                      {/* Share Button (Mobile Absolute, Desktop Inline) */}
-                      <button
-                        onClick={(e) => handleShare(e, job)}
-                        className="md:hidden absolute top-6 right-6 p-2 rounded-full transition-all z-10 text-teal-600 bg-teal-50 opacity-100"
-                        title="Share Job"
+                    job.status === JobStatus.CLOSED ? (
+                      <div
+                        key={job.id}
+                        onClick={() => setExpandedJobId(expandedJobId === job.id ? null : job.id)}
+                        className={`w-full group bg-white md:bg-white/80 md:backdrop-blur-sm rounded-3xl p-4 md:p-6 border-2 border-red-200 shadow-sm hover:shadow-md hover:border-red-300 transition-all duration-300 flex flex-col relative cursor-pointer ${expandedJobId === job.id ? 'bg-red-50/30' : 'bg-red-50/10'}`}
                       >
-                        <Share2 className="w-5 h-5" />
-                      </button>
-
-                      <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-black border border-slate-100 transition-colors bg-teal-600 text-white md:bg-white md:text-slate-900 md:shadow-md md:group-hover:scale-110 md:group-hover:rotate-3 duration-300">
-                        {job.company.charAt(0)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-bold mb-1 truncate transition-colors text-teal-600 md:text-slate-900 md:group-hover:text-teal-600">{job.title}</h3>
-                        <div className="flex flex-wrap items-center gap-y-2 gap-x-4 text-xs font-medium text-slate-500">
-                          <span className="uppercase tracking-wider font-bold text-slate-400">{job.company}</span>
-                          <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md"><MapPin className="w-3 h-3" /> {job.location}</span>
-                          <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md"><Clock className="w-3 h-3" /> 2d ago</span>
-                        </div>
-                      </div>
-
-                      {/* Actions Column */}
-                      <div className="flex flex-col items-end gap-3 pl-4 border-l border-slate-100 min-w-[140px]">
-                        <div className="flex items-center gap-2">
-                          {/* Desktop Share Button Inline */}
+                        <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+                          {/* Share Button (Mobile Absolute, Desktop Inline) */}
                           <button
                             onClick={(e) => handleShare(e, job)}
-                            className="hidden md:flex p-1.5 text-slate-300 hover:text-teal-600 hover:bg-teal-50 rounded-full transition-all"
+                            className="md:hidden absolute top-6 right-6 p-2 rounded-full transition-all z-10 text-teal-600 bg-teal-50 opacity-100"
                             title="Share Job"
                           >
-                            <Share2 className="w-4 h-4" />
+                            <Share2 className="w-5 h-5" />
                           </button>
-                          <span className="text-sm font-black text-slate-900">{job.salaryRange}</span>
+
+                          <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-black border border-slate-100 transition-colors bg-teal-600 text-white md:bg-white md:text-slate-900 md:shadow-md md:group-hover:scale-110 md:group-hover:rotate-3 duration-300">
+                            {job.company.charAt(0)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-lg font-bold mb-1 truncate transition-colors text-teal-600 md:text-slate-900 md:group-hover:text-teal-600">{job.title}</h3>
+                            <div className="flex flex-wrap items-center gap-y-2 gap-x-4 text-xs font-medium text-slate-500">
+                              <span className="uppercase tracking-wider font-bold text-slate-400">{job.company}</span>
+                              <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md"><MapPin className="w-3 h-3" /> {job.location}</span>
+                              <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md"><Clock className="w-3 h-3" /> 2d ago</span>
+                            </div>
+                          </div>
+
+                          {/* Actions Column */}
+                          <div className="flex flex-col items-end gap-3 pl-4 border-l border-slate-100 min-w-[140px]">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-black text-slate-900">{job.salaryRange}</span>
+                            </div>
+                            <span className="inline-flex items-center justify-center w-full px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-600">
+                              {expandedJobId === job.id ? 'Close Details' : 'View Details'}
+                            </span>
+                          </div>
                         </div>
-                        <span className="inline-flex items-center justify-center w-full px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all bg-[#0B1A33] text-white md:bg-white md:border md:border-slate-200 md:text-slate-600 md:group-hover:bg-[#0B1A33] md:group-hover:text-white md:group-hover:border-transparent md:shadow-sm">Apply Now</span>
+
+                        {/* Expanded Content */}
+                        <div className={`grid transition-all duration-300 ease-in-out ${expandedJobId === job.id ? 'grid-rows-[1fr] opacity-100 mt-6 pt-6 border-t border-red-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                          <div className="overflow-hidden">
+                            <div className="grid md:grid-cols-2 gap-8">
+                              <div>
+                                <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Description</h4>
+                                <p className="text-sm text-slate-600 leading-relaxed">{job.description}</p>
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Requirements</h4>
+                                <ul className="text-sm text-slate-600 space-y-2">
+                                  {job.requirements.map((req, i) => (
+                                    <li key={i} className="flex items-start gap-2">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-red-300 mt-1.5 shrink-0" />
+                                      {req}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    </Link>
+                    ) : (
+                      <Link key={job.id} to={`/job/${job.id}`} className="w-full group bg-white md:bg-white/80 md:backdrop-blur-sm rounded-3xl p-4 md:p-6 border border-slate-200 shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-teal-500/30 hover:-translate-y-1 transition-all duration-300 flex flex-col md:flex-row items-start md:items-center gap-6 relative">
+                        {/* Share Button (Mobile Absolute, Desktop Inline) */}
+                        <button
+                          onClick={(e) => handleShare(e, job)}
+                          className="md:hidden absolute top-6 right-6 p-2 rounded-full transition-all z-10 text-teal-600 bg-teal-50 opacity-100"
+                          title="Share Job"
+                        >
+                          <Share2 className="w-5 h-5" />
+                        </button>
+
+                        <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-black border border-slate-100 transition-colors bg-teal-600 text-white md:bg-white md:text-slate-900 md:shadow-md md:group-hover:scale-110 md:group-hover:rotate-3 duration-300">
+                          {job.company.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-lg font-bold mb-1 truncate transition-colors text-teal-600 md:text-slate-900 md:group-hover:text-teal-600">{job.title}</h3>
+                          <div className="flex flex-wrap items-center gap-y-2 gap-x-4 text-xs font-medium text-slate-500">
+                            <span className="uppercase tracking-wider font-bold text-slate-400">{job.company}</span>
+                            <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md"><MapPin className="w-3 h-3" /> {job.location}</span>
+                            <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md"><Clock className="w-3 h-3" /> 2d ago</span>
+                          </div>
+                        </div>
+
+                        {/* Actions Column */}
+                        <div className="flex flex-col items-end gap-3 pl-4 border-l border-slate-100 min-w-[140px]">
+                          <div className="flex items-center gap-2">
+                            {/* Desktop Share Button Inline */}
+                            <button
+                              onClick={(e) => handleShare(e, job)}
+                              className="hidden md:flex p-1.5 text-slate-300 hover:text-teal-600 hover:bg-teal-50 rounded-full transition-all"
+                              title="Share Job"
+                            >
+                              <Share2 className="w-4 h-4" />
+                            </button>
+                            <span className="text-sm font-black text-slate-900">{job.salaryRange}</span>
+                          </div>
+                          <span className="inline-flex items-center justify-center w-full px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all bg-[#0B1A33] text-white md:bg-white md:border md:border-slate-200 md:text-slate-600 md:group-hover:bg-[#0B1A33] md:group-hover:text-white md:group-hover:border-transparent md:shadow-sm">
+                            Apply Now
+                          </span>
+                        </div>
+                      </Link>
+                    )
                   ) : (
                     // GRID VIEW CARD
-                    <Link key={job.id} to={`/job/${job.id}`} className="w-full group bg-white md:bg-white/80 md:backdrop-blur-sm rounded-[2.5rem] p-4 md:p-8 border border-slate-200 shadow-sm hover:shadow-[0_20px_40px_-5px_rgba(0,0,0,0.06)] hover:border-teal-500/30 hover:-translate-y-2 transition-all duration-300 flex flex-col relative overflow-hidden">
+                    // GRID VIEW CARD
+                    <Link key={job.id} to={job.status === JobStatus.CLOSED ? '#' : `/job/${job.id}`} className={`w-full group bg-white md:bg-white/80 md:backdrop-blur-sm rounded-[2.5rem] p-4 md:p-8 border shadow-sm hover:shadow-[0_20px_40px_-5px_rgba(0,0,0,0.06)] hover:-translate-y-2 transition-all duration-300 flex flex-col relative overflow-hidden ${job.status === JobStatus.CLOSED ? 'border-red-200 bg-red-50/10 hover:border-red-300' : 'border-slate-200 hover:border-teal-500/30'}`}>
                       <div className="absolute -right-20 -top-20 w-40 h-40 bg-teal-500/5 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
 
                       <div className="flex items-start justify-between mb-6 relative z-10">
@@ -374,9 +503,15 @@ const BrowseJobsPage: React.FC = () => {
 
                       <div className="mt-auto pt-6 border-t border-slate-100 flex items-center justify-between relative z-10">
                         <span className="text-sm font-black text-slate-900 bg-slate-50 px-3 py-1.5 rounded-lg group-hover:bg-white group-hover:shadow-sm transition-all">{job.salaryRange}</span>
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center transition-all bg-[#0B1A33] text-white md:bg-slate-50 md:text-slate-400 md:group-hover:bg-[#0B1A33] md:group-hover:text-white md:group-hover:shadow-lg md:group-hover:scale-110">
-                          <ArrowRight className="w-4 h-4" />
-                        </div>
+                        {job.status === JobStatus.CLOSED ? (
+                          <div className="px-3 py-1.5 rounded-lg bg-red-100 text-red-600 text-[10px] font-black uppercase tracking-widest">
+                            Closed
+                          </div>
+                        ) : (
+                          <div className="w-10 h-10 rounded-full flex items-center justify-center transition-all bg-[#0B1A33] text-white md:bg-slate-50 md:text-slate-400 md:group-hover:bg-[#0B1A33] md:group-hover:text-white md:group-hover:shadow-lg md:group-hover:scale-110">
+                            <ArrowRight className="w-4 h-4" />
+                          </div>
+                        )}
                       </div>
                     </Link>
                   )

@@ -97,7 +97,7 @@ const JobDetailPage: React.FC = () => {
   return (
     <div className="container mx-auto max-w-5xl px-4 py-4 sm:py-6">
       <button
-        onClick={() => navigate('/')}
+        onClick={() => navigate('/jobs')}
         className="flex items-center text-slate-500 hover:text-maldives-600 mb-4 transition-colors"
       >
         <ArrowLeft className="w-4 h-4 mr-2" /> Back to Jobs

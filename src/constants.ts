@@ -90,6 +90,34 @@ export const MOCK_JOBS: Job[] = [
     status: JobStatus.OPEN,
     description: 'Manage large-scale resort development projects.',
     requirements: ['Civil Engineering Degree', 'Project Management Experience']
+  },
+  {
+    id: '7',
+    title: 'Marine Biologist',
+    company: 'Coral Reef Conservation',
+    location: 'Ari Atoll',
+    type: 'Full-time',
+    salaryRange: '$2000 - $2500 USD',
+    experience: '3 Years',
+    industry: 'Marine',
+    postedDate: '2023-09-15',
+    status: JobStatus.CLOSED,
+    description: 'Research and rehabilitation of coral reefs.',
+    requirements: ['Marine Biology Degree', 'Diving License']
+  },
+  {
+    id: '8',
+    title: 'Resort General Manager',
+    company: 'Sunset Paradise',
+    location: 'North Male Atoll',
+    type: 'Full-time',
+    salaryRange: '$5000 - $7000 USD',
+    experience: '10+ Years',
+    industry: 'Hospitality',
+    postedDate: '2023-08-01',
+    status: JobStatus.CLOSED,
+    description: 'Oversee all resort operations.',
+    requirements: ['MBA', 'Luxury Resort Experience']
   }
 ];
 
@@ -148,10 +176,10 @@ export const MOCK_APPLICATIONS: CandidateApplication[] = [
 ];
 
 export const INDUSTRIES = [
-  'Hospitality', 
-  'Healthcare', 
-  'IT', 
-  'Finance', 
-  'Construction', 
+  'Hospitality',
+  'Healthcare',
+  'IT',
+  'Finance',
+  'Construction',
   'Transportation'
 ];
