@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, MessageSquare, Phone, ChevronDown, ChevronUp, Send, HelpCircle, CheckCircle } from 'lucide-react';
+import { Mail, MessageSquare, Phone, ChevronDown, ChevronUp, Send, HelpCircle, CheckCircle, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom'; //this is a example hope jit rrachest u 
 const FAQS = [
     {
@@ -37,15 +37,24 @@ const SupportPage: React.FC = () => {
     return (
         <div className="min-h-screen bg-slate-50 pb-20 font-sans">
             {/* Header */}
-            <div className="bg-slate-900 text-white py-16 px-4">
-                <div className="container mx-auto max-w-4xl text-center">
-                    <div className="w-16 h-16 bg-maldives-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-maldives-900/50">
-                        <HelpCircle className="w-8 h-8 text-white" />
+            <div className="bg-slate-900 text-white py-16 px-4 relative">
+                <button
+                    onClick={() => navigate(-1)}
+                    className="absolute top-8 left-8 flex items-center gap-2 text-slate-400 hover:text-white transition-colors font-bold uppercase text-xs tracking-widest hover:-translate-x-1 duration-300"
+                >
+                    <ArrowLeft className="w-4 h-4" /> Back
+                </button>
+                <div className="container mx-auto max-w-4xl">
+
+                    <div className="text-center">
+                        <div className="w-16 h-16 bg-maldives-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-maldives-900/50">
+                            <HelpCircle className="w-8 h-8 text-white" />
+                        </div>
+                        <h1 className="text-3xl md:text-4xl font-bold mb-4">How can we help you?</h1>
+                        <p className="text-slate-400 text-lg max-w-2xl mx-auto">
+                            Find answers to common questions about international recruitment to the Maldives or get in touch with our support team.
+                        </p>
                     </div>
-                    <h1 className="text-3xl md:text-4xl font-bold mb-4">How can we help you?</h1>
-                    <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-                        Find answers to common questions about international recruitment to the Maldives or get in touch with our support team.
-                    </p>
                 </div>
             </div>
 
