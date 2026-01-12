@@ -22,7 +22,7 @@ const FAQS = [
 ];
 
 const SupportPage = () => {
-    const navigate = useNavigate();
+    const navigate = useNavigate(); // this is 
     const [openFaq, setOpenFaq] = useState(0);
     const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
     const [isSubmitted, setIsSubmitted] = useState(false);
@@ -71,7 +71,7 @@ const SupportPage = () => {
                                     Send us a message
                                 </h2>
                                 <p className="text-slate-500 text-sm mt-1">We typically reply within 24 hours.</p>
-                            </div>
+                            </div>    //iiloveyouuuuuuu
 
                             {isSubmitted ? (
                                 <div className="p-12 text-center flex flex-col items-center justify-center min-h-[400px]">
