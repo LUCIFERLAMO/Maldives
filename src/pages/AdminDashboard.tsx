@@ -1314,11 +1314,11 @@ const AdminDashboard: React.FC = () => {
          {/* RESUME DETAILS MODAL */}
          {
             selectedResume && (
-               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+               <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
                   <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto custom-scrollbar">
 
                      {/* Header */}
-                     <div className="sticky top-0 z-10 bg-white border-b border-slate-100 p-8 flex items-start justify-between">
+                     <div className="sticky top-0 z-[110] bg-white border-b border-slate-100 p-8 flex items-start justify-between">
                         <div className="flex items-center gap-6">
                            <div className="w-20 h-20 bg-teal-50 rounded-2xl flex items-center justify-center text-teal-600 font-bold text-3xl">
                               {selectedResume.name.charAt(0)}
