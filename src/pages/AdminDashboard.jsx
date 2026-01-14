@@ -17,7 +17,9 @@ import {
    Eye,
    Loader2,
    AlertTriangle,
-   Plus
+   Plus,
+   Calendar,
+   FileText
 } from 'lucide-react';
 
 const MOCK_AGENT_RESUMES = [
@@ -956,8 +958,9 @@ const AdminDashboard = () => {
                                     <thead>
                                        <tr>
                                           <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Agent Candidate</th>
+                                          <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Job Role</th>
                                           <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Spoke Agency</th>
-                                          <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-center">Vetting State</th>
+                                          <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-center">Status</th>
                                           <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-right">Admin Action</th>
                                        </tr>
                                     </thead>
@@ -971,6 +974,9 @@ const AdminDashboard = () => {
                                                       {resume.email}
                                                    </p>
                                                 </div>
+                                             </td>
+                                             <td className="px-6 py-8 align-middle">
+                                                <span className="font-bold text-slate-700 text-sm">{resume.role}</span>
                                              </td>
                                              <td className="px-6 py-8 align-middle">
                                                 <div className="flex items-center gap-3">
@@ -1041,51 +1047,7 @@ const AdminDashboard = () => {
                                  </table>
                               )}
 
-                              {agentSubTab === 'resumes' && (
-                                 <div className="overflow-x-auto">
-                                    <table className="w-full text-left">
-                                       <thead>
-                                          <tr className="border-b border-slate-100">
-                                             <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Candidate</th>
-                                             <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Role & Agency</th>
-                                             <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Status</th>
-                                             <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-right">Action</th>
-                                          </tr>
-                                       </thead>
-                                       <tbody className="divide-y divide-slate-50">
-                                          {agentResumes.map((resume) => (
-                                             <tr key={resume.id} className="hover:bg-slate-50 transition-colors">
-                                                <td className="px-6 py-4">
-                                                   <div>
-                                                      <p className="text-sm font-bold text-slate-900">{resume.name}</p>
-                                                      <p className="text-xs text-slate-400 font-medium">{resume.nationality}</p>
-                                                   </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                   <div>
-                                                      <p className="text-sm font-bold text-slate-700">{resume.role}</p>
-                                                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{resume.agency}</p>
-                                                   </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                   <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${resume.statusColor}`}>
-                                                      {resume.status}
-                                                   </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                   <button
-                                                      onClick={() => { setSelectedResume(resume); setIsBlacklistReview(false); }}
-                                                      className="text-slate-400 hover:text-teal-600 transition-colors"
-                                                   >
-                                                      <Eye className="w-4 h-4" />
-                                                   </button>
-                                                </td>
-                                             </tr>
-                                          ))}
-                                       </tbody>
-                                    </table>
-                                 </div>
-                              )}
+
                            </div>
                         </div>
                      )}
@@ -1172,7 +1134,7 @@ const AdminDashboard = () => {
 
                      {/* RESUME MODAL */}
                      {selectedResume && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6">
                            <div
                               className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
                               onClick={() => { setSelectedResume(null); setIsBlacklistReview(false); }}
@@ -1325,102 +1287,114 @@ const AdminDashboard = () => {
          {/* VACANCY MODAL */}
          {
             selectedVacancy && (
-               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-                  <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 relative p-8">
-                     {/* Close Button */}
-                     <button
-                        onClick={() => setSelectedVacancy(null)}
-                        className="absolute top-6 right-6 w-8 h-8 bg-slate-50 hover:bg-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
-                     >
-                        <X className="w-4 h-4" />
-                     </button>
+               <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+                  <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto custom-scrollbar">
 
-                     {/* Modal Header */}
-                     <div className="flex items-start gap-5 mb-8">
-                        <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600">
-                           <Briefcase className="w-8 h-8" />
-                        </div>
-                        <div>
-                           <h2 className="text-2xl font-black text-slate-900 mb-2">{selectedVacancy.title}</h2>
-                           <div className="flex items-center gap-3">
-                              <span className="px-3 py-1 bg-slate-900 text-white text-[10px] font-bold uppercase tracking-widest rounded-full">
-                                 Spoke: {selectedVacancy.agency}
-                              </span>
-                              <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
-                                 {selectedVacancy.ref}
-                              </span>
+                     {/* Header */}
+                     <div className="sticky top-0 z-[110] bg-white border-b border-slate-100 p-8 flex items-start justify-between">
+                        <div className="flex items-center gap-6">
+                           <div className="w-20 h-20 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 font-bold text-3xl">
+                              <Briefcase className="w-8 h-8" />
+                           </div>
+                           <div>
+                              <h2 className="text-3xl font-black text-slate-900 mb-2">{selectedVacancy.title}</h2>
+                              <div className="flex items-center gap-3">
+                                 <span className="px-3 py-1 bg-slate-900 text-white text-[10px] font-bold uppercase tracking-widest rounded-full">
+                                    Spoke: {selectedVacancy.agency}
+                                 </span>
+                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                    {selectedVacancy.ref}
+                                 </span>
+                              </div>
                            </div>
                         </div>
+                        <button
+                           onClick={() => setSelectedVacancy(null)}
+                           className="w-10 h-10 bg-slate-50 hover:bg-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
+                        >
+                           <X className="w-5 h-5" />
+                        </button>
                      </div>
 
-                     {/* Stats Grid */}
-                     <div className="grid grid-cols-3 gap-4 mb-8">
-                        <div className="p-4 bg-slate-50 rounded-xl">
-                           <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1 flex items-center gap-1">
-                              <MapPin className="w-3 h-3" /> Region
-                           </p>
-                           <p className="font-bold text-slate-900">{selectedVacancy.region}</p>
-                        </div>
-                        <div className="p-4 bg-slate-50 rounded-xl">
-                           <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1 flex items-center gap-1">
-                              <Briefcase className="w-3 h-3" /> Sector
-                           </p>
-                           <p className="font-bold text-slate-900">{selectedVacancy.sector}</p>
-                        </div>
-                        <div className="p-4 bg-slate-50 rounded-xl">
-                           <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1 flex items-center gap-1">
-                              <Users className="w-3 h-3" /> Headcount
-                           </p>
-                           <p className="font-bold text-slate-900">{selectedVacancy.openings} Positions</p>
-                        </div>
-                     </div>
+                     <div className="p-8 space-y-10">
+                        {/* 1. Vacancy Details */}
+                        <section>
+                           <h3 className="text-xs font-black text-indigo-600 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                              <Briefcase className="w-4 h-4" /> 1. Vacancy Details
+                           </h3>
+                           <div className="grid grid-cols-2 gap-6">
+                              <div>
+                                 <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Region</label>
+                                 <div className="p-4 bg-slate-50 rounded-xl font-bold text-slate-700 flex items-center gap-2">
+                                    <MapPin className="w-4 h-4 text-slate-400" /> {selectedVacancy.region}
+                                 </div>
+                              </div>
+                              <div>
+                                 <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Sector</label>
+                                 <div className="p-4 bg-slate-50 rounded-xl font-bold text-slate-700 flex items-center gap-2">
+                                    <Briefcase className="w-4 h-4 text-slate-400" /> {selectedVacancy.sector}
+                                 </div>
+                              </div>
+                              <div>
+                                 <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Headcount</label>
+                                 <div className="p-4 bg-slate-50 rounded-xl font-bold text-slate-700 flex items-center gap-2">
+                                    <Users className="w-4 h-4 text-slate-400" /> {selectedVacancy.openings} Positions
+                                 </div>
+                              </div>
+                              <div>
+                                 <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Date Posted</label>
+                                 <div className="p-4 bg-slate-50 rounded-xl font-bold text-slate-700 flex items-center gap-2">
+                                    <Calendar className="w-4 h-4 text-slate-400" /> {selectedVacancy.date}
+                                 </div>
+                              </div>
+                           </div>
+                        </section>
 
-                     {/* Role Scope */}
-                     <div className="mb-8">
-                        <h3 className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-3 flex items-center gap-2">
-                           <Briefcase className="w-3 h-3" /> Role Scope & Description
-                        </h3>
-                        <div className="p-6 border border-slate-100 rounded-2xl text-slate-600 text-sm font-medium leading-relaxed">
-                           {selectedVacancy.description}
-                        </div>
-                     </div>
+                        {/* 2. Role Scope */}
+                        <section>
+                           <h3 className="text-xs font-black text-indigo-600 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                              <FileText className="w-4 h-4" /> 2. Role Scope & Description
+                           </h3>
+                           <div className="p-6 border border-slate-100 rounded-2xl text-slate-600 text-sm font-medium leading-relaxed bg-slate-50/50">
+                              {selectedVacancy.description}
+                           </div>
+                        </section>
 
-                     {/* Mandatory Requirements */}
-                     <div className="mb-10">
-                        <h3 className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-3 flex items-center gap-2">
-                           <ShieldCheck className="w-3 h-3" /> Mandatory Requirements
-                        </h3>
-                        <div className="flex flex-wrap gap-3">
-                           {selectedVacancy.requirements.map((req, i) => (
-                              <span key={i} className="px-4 py-3 border border-slate-200 rounded-xl text-[10px] font-black text-slate-600 uppercase tracking-widest">
-                                 {req}
-                              </span>
-                           ))}
-                        </div>
+                        {/* 3. Mandatory Requirements */}
+                        <section>
+                           <h3 className="text-xs font-black text-indigo-600 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                              <ShieldCheck className="w-4 h-4" /> 3. Mandatory Requirements
+                           </h3>
+                           <div className="flex flex-wrap gap-3">
+                              {selectedVacancy.requirements.map((req, i) => (
+                                 <span key={i} className="px-4 py-3 bg-white border border-slate-200 rounded-xl text-[10px] font-black text-slate-600 uppercase tracking-widest shadow-sm">
+                                    {req}
+                                 </span>
+                              ))}
+                           </div>
+                        </section>
                      </div>
 
                      {/* Footer Actions */}
-                     <div className="flex items-center justify-between gap-4 pt-6 border-t border-slate-50">
+                     <div className="p-8 bg-slate-50/50 border-t border-slate-100 flex items-center justify-end gap-4">
                         <button
                            onClick={() => handleVacancyStateChange('HIDDEN')}
-                           className="px-6 py-3 bg-red-50 text-red-500 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-red-100 transition-colors"
+                           className="px-8 py-4 rounded-xl bg-red-50 text-red-600 text-[10px] font-black uppercase tracking-widest hover:bg-red-100 transition-colors"
                         >
                            Decline Post
                         </button>
-                        <div className="flex items-center gap-3">
-                           <button
-                              onClick={() => handleVacancyStateChange('STILL IN HOLD')}
-                              className="px-6 py-3 bg-amber-50 text-amber-600 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-amber-100 transition-colors"
-                           >
-                              Keep on Hold
-                           </button>
-                           <button
-                              onClick={() => handleVacancyStateChange('LIVE TO PUBLIC')}
-                              className="px-6 py-3 bg-teal-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-all shadow-lg shadow-teal-600/20 flex items-center gap-2"
-                           >
-                              Approve & List Live <Globe2 className="w-3 h-3" />
-                           </button>
-                        </div>
+                        <button
+                           onClick={() => handleVacancyStateChange('STILL IN HOLD')}
+                           className="px-8 py-4 rounded-xl bg-amber-50 text-amber-600 text-[10px] font-black uppercase tracking-widest hover:bg-amber-100 transition-colors"
+                        >
+                           Keep on Hold
+                        </button>
+                        <button
+                           onClick={() => handleVacancyStateChange('LIVE TO PUBLIC')}
+                           className="px-8 py-4 rounded-xl bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-500/20 flex items-center gap-2"
+                        >
+                           Approve & List Live <Globe2 className="w-4 h-4" />
+                        </button>
                      </div>
                   </div>
                </div>
