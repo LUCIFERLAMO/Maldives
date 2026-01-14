@@ -15,11 +15,12 @@ import {
     MessageCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 
 const AuthPage = ({ initialMode = 'login' }) => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { login } = useAuth();
+    const { login, signup } = useAuth();
 
     const from = location.state?.from;
     const isAgentLogin = from === 'agent' || from === 'recruiter';
@@ -28,72 +29,120 @@ const AuthPage = ({ initialMode = 'login' }) => {
     const [mode, setMode] = useState(initialMode);
     const [showAgentContact, setShowAgentContact] = useState(false);
 
-    // Registration States
+
     const [signupStep, setSignupStep] = useState(1);
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
 
     const [formData, setFormData] = useState({
-        name: 'Demo User',
-        email: isAgentLogin ? 'agent@globaltalent.com' : isAdminLogin ? 'super.admin@maldivescareer.com' : 'candidate@example.com',
-        password: 'password123',
-        phone: '9609999999'
+        name: '',
+        email: '',
+        password: '',
+        phone: ''
     });
 
     useEffect(() => {
         setMode(initialMode);
-        if (isAgentLogin) {
-            setFormData(prev => ({ ...prev, email: 'agent@globaltalent.com' }));
-        } else if (isAdminLogin) {
-            setFormData(prev => ({ ...prev, email: 'super.admin@maldivescareer.com' }));
-        }
-    }, [initialMode, isAgentLogin, isAdminLogin]);
+    }, [initialMode]);
 
-    const handleLoginSubmit = (e) => {
+    const handleLoginSubmit = async (e) => {
         e.preventDefault();
 
-        if (isAgentLogin) {
-            login({
-                name: 'Global Talent Ltd',
-                email: formData.email,
-                role: 'employer',
-                avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=100&h=100'
-            });
-            navigate('/recruiter');
-        } else if (isAdminLogin) {
-            login({
-                name: 'Platform Administrator',
-                email: formData.email,
-                role: 'employer'
-            });
-            navigate('/admin');
+        if (isAgentLogin || isAdminLogin) {
+            alert('Agent/Admin login coming soon!');
+            return;
+        }
+
+        const { error } = await login(formData.email, formData.password);
+
+        if (error) {
+            alert(`Login failed: ${error}`);
         } else {
-            login({
-                name: 'Rahul Sharma',
-                email: formData.email,
-                role: 'candidate'
-            });
-            navigate('/');
+            navigate('/dashboard');
         }
     };
 
-    const handleSignupStep1 = (e) => {
+    const handleSignupStep1 = async (e) => {
         e.preventDefault();
-        // Simulate sending OTP
-        setSignupStep(2);
+
+        // Validate phone number
+        if (!formData.phone || formData.phone.length < 10) {
+            alert('Please enter a valid phone number');
+            return;
+        }
+
+        try {
+            // Initiate OTP Login (Passwordless Signup)
+            const { error } = await supabase.auth.signInWithOtp({
+                email: formData.email,
+                options: {
+                    // This optional data will be used if a new user is created
+                    data: {
+                        name: formData.name,
+                        phone: formData.phone,
+                        role: 'candidate'
+                    }
+                }
+            });
+
+            if (error) throw error;
+
+            // Move to OTP step
+            setSignupStep(2);
+        } catch (error) {
+            console.error('Error sending OTP:', error);
+            alert(`Failed to send verification code: ${error.message}`);
+        }
     };
 
-    const handleSignupVerification = (e) => {
+    const handleSignupVerification = async (e) => {
         e.preventDefault();
-        // Mock OTP verification - allow any 6 digit code
-        if (otp.join('').length === 6) {
-            login({
-                name: formData.name,
+
+        const otpCode = otp.join('');
+
+        if (otpCode.length !== 6) {
+            alert('Please enter the 6-digit code sent to your email.');
+            return;
+        }
+
+        try {
+            // Verify OTP
+            const { data: { session, user }, error: verifyError } = await supabase.auth.verifyOtp({
                 email: formData.email,
-                role: 'candidate'
+                token: otpCode,
+                type: 'email'
             });
-            navigate('/');
-        } else {
-            alert('Please enter the 6-digit code sent to your mobile.');
+
+            if (verifyError) throw verifyError;
+
+            if (user) {
+                // Ensure profile is created matching our schema
+                // Note: AuthContext might also try to create/load this, but we ensure it here.
+                const { error: profileError } = await supabase
+                    .from('profiles')
+                    .upsert([
+                        {
+                            id: user.id,
+                            name: formData.name,
+                            email: formData.email,
+                            phone: formData.phone,
+                            role: 'candidate'
+                        }
+                    ]);
+
+                if (profileError) {
+                    console.error('Profile creation error:', profileError);
+                    // Continue anyway as auth succeeded
+                }
+
+                // Refresh auth context
+                if (session) {
+                    // Force reload of user profile or just navigate
+                    navigate('/dashboard');
+                }
+            }
+        } catch (err) {
+            console.error('Signup error:', err);
+            alert(`Verification failed: ${err.message}. Please try again.`);
         }
     };
 
@@ -103,7 +152,7 @@ const AuthPage = ({ initialMode = 'login' }) => {
         newOtp[index] = value;
         setOtp(newOtp);
 
-        // Auto-advance
+
         if (value && index < 5) {
             const nextInput = document.getElementById(`otp-${index + 1}`);
             nextInput?.focus();
@@ -119,7 +168,7 @@ const AuthPage = ({ initialMode = 'login' }) => {
 
     const isLogin = mode === 'login';
 
-    // --- ADMIN LOGIN VIEW ---
+
     if (isAdminLogin && isLogin) {
         return (
             <AdminLoginFlow
@@ -141,7 +190,7 @@ const AuthPage = ({ initialMode = 'login' }) => {
         );
     }
 
-    // --- UNIFIED SPLIT LAYOUT FOR BOTH LOGIN & SIGNUP ---
+
     return (
         <div className="min-h-[calc(100vh-64px)] bg-[#fdfbf7] flex items-center justify-center p-4">
             <div className="w-full max-w-5xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[600px] border border-slate-100">
@@ -151,6 +200,10 @@ const AuthPage = ({ initialMode = 'login' }) => {
                     <div className="absolute top-0 right-0 w-64 h-full bg-white opacity-5 transform skew-x-12 translate-x-20"></div>
 
                     <div className="relative z-10">
+                        <Link to="/" className="inline-flex items-center text-teal-200 hover:text-white mb-6 text-xs font-bold uppercase tracking-widest transition-colors group">
+                            <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> Back to Home
+                        </Link>
+
                         <div className="w-12 h-12 border border-white/30 rounded-xl flex items-center justify-center mb-8 backdrop-blur-sm">
                             <User className="w-6 h-6 text-white" />
                         </div>
@@ -353,7 +406,7 @@ const AdminLoginFlow = ({ email, setEmail, password, setPassword, onLogin, onSwi
 
     const handle2FASubmit = (e) => {
         e.preventDefault();
-        // Simulate verification
+
         if (twoFACode.join('').length === 6) {
             onLogin(e);
         } else {
@@ -362,12 +415,12 @@ const AdminLoginFlow = ({ email, setEmail, password, setPassword, onLogin, onSwi
     };
 
     const handleCodeChange = (index, value) => {
-        if (value.length > 1) return; // Prevent multiple chars
+        if (value.length > 1) return;
         const newCode = [...twoFACode];
         newCode[index] = value;
         setTwoFACode(newCode);
 
-        // Auto-focus next input
+
         if (value && index < 5) {
             const nextInput = document.getElementById(`code-${index + 1}`);
             nextInput?.focus();
@@ -441,6 +494,9 @@ const AdminLoginFlow = ({ email, setEmail, password, setPassword, onLogin, onSwi
                 {/* Left Panel - Dark */}
                 <div className="w-full md:w-[42%] bg-[#0b0f1a] p-6 md:p-16 text-white flex flex-col justify-between relative shrink-0">
                     <div className="relative z-10">
+                        <Link to="/" className="inline-flex items-center text-slate-400 hover:text-white mb-8 text-[10px] font-bold uppercase tracking-widest transition-colors group">
+                            <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> Back to Home
+                        </Link>
                         <div className="w-10 h-10 md:w-12 md:h-12 bg-[#121b2d] rounded-xl flex items-center justify-center mb-4 md:mb-12 border border-slate-800">
                             <Terminal className="w-5 h-5 md:w-6 md:h-6 text-teal-500" />
                         </div>

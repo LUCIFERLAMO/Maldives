@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import {
     User,
@@ -21,7 +22,7 @@ import {
     AlertTriangle
 } from 'lucide-react';
 
-// Mock Document Structure for Candidates
+
 const CANDIDATE_DOCS = [
     { id: 'resume', label: 'Resume / CV', type: 'PDF', required: true, status: 'missing' },
     { id: 'passport', label: 'Passport Front', type: 'IMG', required: true, status: 'missing' },
@@ -30,7 +31,7 @@ const CANDIDATE_DOCS = [
     { id: 'photo', label: 'Passport Photo', type: 'IMG', required: true, status: 'uploaded', date: '2024-02-01' },
 ];
 
-// Mock Document Structure for Agents
+
 const AGENT_DOCS = [
     { id: 'license', label: 'Operating License', type: 'PDF', required: true, status: 'uploaded', date: '2023-11-10' },
     { id: 'tax', label: 'Tax Compliance (TRC)', type: 'PDF', required: true, status: 'missing' },
@@ -38,7 +39,7 @@ const AGENT_DOCS = [
     { id: 'identity', label: 'Director ID Proof', type: 'IMG', required: true, status: 'uploaded', date: '2023-12-05' },
 ];
 
-// --- 1. COMPONENT: CANDIDATE PROFILE (Maldives Theme) ---
+
 const CandidateProfile = ({ user, profileData, docs, handleDocAction, handleDeleteItem, setIsResettingPassword, setIsEditingPersonal, previewImage, isAddingDoc, setIsAddingDoc, newDocName, setNewDocName, handleAddDoc }) => {
     return (
         <>
@@ -153,8 +154,7 @@ const CandidateProfile = ({ user, profileData, docs, handleDocAction, handleDele
     );
 };
 
-// --- 2. COMPONENT: AGENT PROFILE (Corporate Theme) ---
-// Strictly separate design. No Maldives gradients. Professional Slate/Gray/White.
+
 const AgentProfile = ({ user, profileData, docs, handleDocAction, setIsResettingPassword, setIsEditingPersonal, previewImage }) => {
     return (
         <>
@@ -263,15 +263,15 @@ const AgentProfile = ({ user, profileData, docs, handleDocAction, setIsResetting
     );
 };
 
-// --- MAIN PROFILE PAGE CONTAINER ---
+
 const ProfilePage = () => {
     const { user } = useAuth();
-    const isAgent = user?.role === 'employer'; // or user?.role === 'agent' depending on your types
+    const isAgent = user?.role === 'employer';
 
     const [isEditingPersonal, setIsEditingPersonal] = useState(false);
     const [isResettingPassword, setIsResettingPassword] = useState(false);
 
-    // --- STATE MANAGEMENT ---
+
     const [profileData, setProfileData] = useState({
         name: '',
         title: isAgent ? 'Global Talent Ltd' : 'Senior Guest Relations Officer',
@@ -295,19 +295,71 @@ const ProfilePage = () => {
 
     useEffect(() => {
         if (user) {
+            // Load initial profile data from AuthContext user object (which comes from 'profiles' table)
             setProfileData(prev => ({
                 ...prev,
-                name: user.name,
-                email: user.email
+                name: user.name || '',
+                email: user.email || '',
+                phone: user.phone || '',
+                role: user.role || ''
             }));
-            setDocs(isAgent ? AGENT_DOCS : CANDIDATE_DOCS);
+
             setPreviewImage(user.avatar || null);
+
+            // Fetch Documents
+            async function fetchDocuments() {
+                try {
+                    const { data, error } = await supabase
+                        .from('documents')
+                        .select('*')
+                        .eq('user_id', user.id);
+
+                    if (error) throw error;
+
+                    const userDocs = (data || []).map(d => ({
+                        id: d.id,
+                        label: d.document_type.toUpperCase(), // Using type as label for now, or fetch map
+                        type: d.mime_type?.includes('pdf') ? 'PDF' : 'IMG',
+                        required: false,
+                        status: 'uploaded',
+                        date: new Date(d.created_at).toISOString().split('T')[0],
+                        filePath: d.file_path
+                    }));
+
+                    // Merge with required docs structure if needed, or just list them
+                    // For now, let's append them or handle merging logic if strict requirements exist
+                    // Simple approach: Show fetched docs + missing required ones
+
+                    // (Simplified for this step: just using what's fetched + default missing set)
+                    // In a real app, we'd merge with CANDIDATE_DOCS based on type.
+                } catch (err) {
+                    console.error('Error fetching documents:', err);
+                }
+            }
+            fetchDocuments();
+            setDocs(isAgent ? AGENT_DOCS : CANDIDATE_DOCS); // Keep defaults for now to show UI structure
         }
     }, [user, isAgent]);
 
-    const handlePersonalSubmit = (e) => {
+    const handlePersonalSubmit = async (e) => {
         e.preventDefault();
-        setIsEditingPersonal(false);
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update({
+                    name: profileData.name,
+                    phone: profileData.phone,
+                    // location, title etc if added to schema
+                })
+                .eq('id', user.id);
+
+            if (error) throw error;
+            alert('Profile updated successfully');
+            setIsEditingPersonal(false);
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            alert('Failed to update profile');
+        }
     };
 
     const handlePasswordReset = (e) => {

@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import {
    ArrowRight,
    Briefcase,
@@ -13,6 +14,34 @@ import { Link, useNavigate } from 'react-router-dom';
 
 const HomePage = () => {
    const navigate = useNavigate();
+   const [jobStats, setJobStats] = useState({
+      totalJobs: 0,
+      activeJobs: 0
+   });
+
+   useEffect(() => {
+      async function fetchJobStats() {
+         try {
+            const { count: totalCount } = await supabase
+               .from('jobs')
+               .select('*', { count: 'exact', head: true });
+
+            const { count: activeCount } = await supabase
+               .from('jobs')
+               .select('*', { count: 'exact', head: true })
+               .eq('status', 'Current Opening');
+
+            setJobStats({
+               totalJobs: totalCount || 0,
+               activeJobs: activeCount || 0
+            });
+         } catch (error) {
+            console.error('Error fetching stats:', error);
+         }
+      }
+
+      fetchJobStats();
+   }, []);
 
    const handleGetStarted = () => {
       navigate('/register');
@@ -67,7 +96,9 @@ const HomePage = () => {
                            ))}
                         </div>
                         <div className="text-left">
-                           <div className="text-sm lg:text-base font-black text-slate-900 leading-none">20k+</div>
+                           <div className="text-sm lg:text-base font-black text-slate-900 leading-none">
+                              {jobStats.totalJobs > 0 ? `${jobStats.totalJobs}+` : '20k+'}
+                           </div>
                            <div className="text-[9px] lg:text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5 lg:mt-1">Active Talent</div>
                         </div>
                      </div>
@@ -143,7 +174,9 @@ const HomePage = () => {
 
                   <div className="grid grid-cols-3 gap-6 lg:gap-12 mb-10 lg:mb-14 border-y lg:border-none border-slate-100 py-8 lg:py-0">
                      <div>
-                        <div className="text-2xl lg:text-4xl font-black text-teal-600 mb-1 lg:mb-2">86k+</div>
+                        <div className="text-2xl lg:text-4xl font-black text-teal-600 mb-1 lg:mb-2">
+                           {jobStats.totalJobs > 0 ? `${jobStats.totalJobs}+` : '86k+'}
+                        </div>
                         <div className="text-[9px] lg:text-[10px] text-slate-400 font-bold uppercase tracking-widest">Total Jobs</div>
                      </div>
                      <div>
@@ -166,129 +199,11 @@ const HomePage = () => {
             </div>
          </section>
 
-         {/* 3. ARTICLES SECTION */}
-         <section className="py-20 lg:py-32 bg-[#f8fafc]">
-            <div className="container mx-auto px-5 lg:px-6">
 
-               <div className="text-center max-w-3xl mx-auto mb-12 lg:mb-20">
-                  <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight">
-                     Read Our Articles That Will Help <br className="hidden md:block" />
-                     You To Secure A Great Job
-                  </h2>
-               </div>
 
-               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-10">
-                  {[
-                     { title: "How to pass your resort interview with zero prior experience", date: "OCT 24, 2024", img: "https://images.unsplash.com/photo-1551836022-d5d88e9218df?q=80&w=800" },
-                     { title: "The ultimate guide to work permits in the Maldives", date: "OCT 20, 2024", img: "https://images.unsplash.com/photo-1544717297-fa95b6ee9643?q=80&w=800" },
-                     { title: "Top 10 skills luxury resorts are looking for right now", date: "OCT 15, 2024", img: "https://images.unsplash.com/photo-1573164713988-8665fc963095?q=80&w=800" }
-                  ].map((article, i) => (
-                     <Link to="/support" key={i} className="group bg-white rounded-[2rem] lg:rounded-[2.5rem] overflow-hidden border border-slate-100 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
-                        <div className="h-56 lg:h-64 overflow-hidden relative">
-                           <img
-                              src={article.img}
-                              alt="Layout"
-                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                           />
-                           <div className="absolute top-5 left-5 lg:top-6 lg:left-6 px-3 py-1.5 lg:px-4 lg:py-2 bg-white/95 backdrop-blur-md rounded-xl shadow-lg">
-                              <div className="flex items-center gap-2 text-[9px] lg:text-[10px] font-black uppercase tracking-widest text-teal-700">
-                                 <Calendar className="w-3 h-3" /> {article.date}
-                              </div>
-                           </div>
-                        </div>
-                        <div className="p-8 lg:p-10">
-                           <h3 className="text-lg lg:text-xl font-black text-slate-900 leading-snug mb-6 lg:mb-8 group-hover:text-teal-600 transition-colors">
-                              {article.title}
-                           </h3>
 
-                           <div className="flex items-center gap-2 text-[9px] lg:text-[10px] font-black text-teal-600 uppercase tracking-widest group/btn">
-                              Read More <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
-                           </div>
-                        </div>
-                     </Link>
-                  ))}
-               </div>
-            </div>
-         </section>
 
-         {/* 4. PARTNERS SECTION (Admin & Agent) */}
-         <section className="py-20 bg-white border-t border-slate-50">
-            <div className="container mx-auto px-5 lg:px-6">
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
-                  {/* Agent Portal Card */}
-                  <div className="group relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-10 lg:p-12 text-white shadow-2xl">
-                     <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-                     <div className="relative z-10">
-                        <div className="w-12 h-12 bg-teal-500/20 rounded-2xl flex items-center justify-center mb-8 border border-teal-500/20">
-                           <Users className="w-6 h-6 text-teal-400" />
-                        </div>
-                        <h3 className="text-2xl lg:text-3xl font-black mb-4 tracking-tight">Recruiting Agency?</h3>
-                        <p className="text-slate-400 mb-8 leading-relaxed font-medium">
-                           Manage your candidates, track applications, and connect with top resorts.
-                        </p>
-                        <Link
-                           to="/login"
-                           state={{ from: 'agent' }}
-                           className="inline-flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.2em] text-teal-400 hover:text-white transition-colors group/link"
-                        >
-                           Access Agent Portal <ArrowRight className="w-4 h-4 group-hover/link:translate-x-1 transition-transform" />
-                        </Link>
-                     </div>
-                  </div>
 
-                  {/* Admin Portal Card */}
-                  <div className="group relative overflow-hidden rounded-[2.5rem] bg-slate-50 p-10 lg:p-12 text-slate-900 border border-slate-100">
-                     <div className="absolute top-0 right-0 w-64 h-64 bg-slate-200/50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-                     <div className="relative z-10">
-                        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-8 shadow-sm">
-                           <CheckCircle2 className="w-6 h-6 text-slate-900" />
-                        </div>
-                        <h3 className="text-2xl lg:text-3xl font-black mb-4 tracking-tight">Platform Admin</h3>
-                        <p className="text-slate-500 mb-8 leading-relaxed font-medium">
-                           Monitor system health, manage users, and oversee the recruitment ecosystem.
-                        </p>
-                        <Link
-                           to="/login"
-                           state={{ from: 'admin' }}
-                           className="inline-flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.2em] text-slate-900 hover:text-teal-600 transition-colors group/link"
-                        >
-                           Access Admin Portal <ArrowRight className="w-4 h-4 group-hover/link:translate-x-1 transition-transform" />
-                        </Link>
-                     </div>
-                  </div>
-               </div>
-            </div>
-         </section>
-
-         {/* 4. NEWSLETTER (Kept as matching style/theme) */}
-         <section className="container mx-auto px-5 lg:px-6 -mb-20 lg:-mb-24 relative z-20">
-            <div className="bg-[#0b1a33] rounded-[2.5rem] lg:rounded-[3rem] p-10 lg:p-24 text-white flex flex-col xl:flex-row items-center justify-between gap-10 lg:gap-16 shadow-2xl relative overflow-hidden text-center xl:text-left">
-               {/* Effects */}
-               <div className="absolute top-0 right-0 w-[300px] lg:w-[500px] h-[300px] lg:h-[500px] bg-teal-500/20 rounded-full blur-[80px] lg:blur-[120px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
-
-               <div className="max-w-xl relative">
-                  <h3 className="text-2xl lg:text-4xl font-black tracking-tight mb-4 lg:mb-6">
-                     Subscribe Our <span className="text-teal-400">Newsletter</span>
-                  </h3>
-                  <p className="text-slate-400 font-medium text-base lg:text-lg">
-                     Get the latest job alerts and career advice directly in your inbox. No spam, just opportunities.
-                  </p>
-               </div>
-
-               <div className="w-full max-w-lg relative">
-                  <div className="flex flex-col sm:flex-row gap-3 bg-white/5 p-2 rounded-2xl border border-white/10 backdrop-blur-md focus-within:bg-white/10 transition-colors">
-                     <input
-                        type="email"
-                        placeholder="Enter your email..."
-                        className="bg-transparent flex-1 px-6 py-4 text-white placeholder-slate-400 outline-none font-medium text-center sm:text-left text-sm"
-                     />
-                     <button className="bg-teal-600 hover:bg-teal-500 px-8 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg w-full sm:w-auto">
-                        Subscribe
-                     </button>
-                  </div>
-               </div>
-            </div>
-         </section>
 
          {/* Spacer for footer */}
          <div className="h-32 lg:h-40 bg-slate-50"></div>

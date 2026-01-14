@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MOCK_JOBS } from '../constants';
 import { JobStatus } from '../types';
@@ -12,14 +13,14 @@ const JobDetailPage = () => {
     const { user, isAuthenticated } = useAuth();
     const [job, setJob] = useState(undefined);
 
-    // Form State
-    const [formData, setFormData] = useState({//abcdef
+
+    const [formData, setFormData] = useState({
         name: '',
         contact: '',
         email: '',
     });
 
-    // File States (Only stores NEW uploads)
+
     const [files, setFiles] = useState({
         resume: null,
         certs: null,
@@ -31,17 +32,40 @@ const JobDetailPage = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
-        const foundJob = MOCK_JOBS.find(j => j.id === id);
-        setJob(foundJob);
+        async function fetchJob() {
+            try {
+                const { data, error } = await supabase
+                    .from('jobs')
+                    .select('*')
+                    .eq('id', id)
+                    .single();
+
+                if (error) throw error;
+                // Map DB snake_case to camelCase where needed for UI
+                const mappedJob = {
+                    ...data,
+                    salaryRange: data.salary_range,
+                    postedDate: data.posted_date
+                };
+                setJob(mappedJob);
+            } catch (error) {
+                console.error('Error fetching job:', error);
+                setJob(null);
+            }
+        }
+
+        if (id) {
+            fetchJob();
+        }
     }, [id]);
 
-    // Auto-fill profile data on load
+
     useEffect(() => {
         if (isAuthenticated && user) {
             setFormData({
                 name: user.name,
                 email: user.email,
-                contact: '', // Leave blank to force user input or set default
+                contact: '',
             });
         }
     }, [isAuthenticated, user]);
@@ -60,29 +84,100 @@ const JobDetailPage = () => {
         setFiles(prev => ({ ...prev, [key]: file }));
     };
 
-    const handleSubmit = (e) => {
+    const uploadFile = async (file, documentType) => {
+        if (!file || !user) return null;
+
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${documentType}_${Date.now()}.${fileExt}`;
+            const filePath = `${user.id}/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('user-documents')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: urlData } = supabase.storage
+                .from('user-documents')
+                .getPublicUrl(filePath);
+
+            return {
+                filePath,
+                fileName: file.name,
+                url: urlData.publicUrl
+            };
+        } catch (error) {
+            console.error('Upload error:', error);
+            alert('File upload failed. Please try again.');
+            return null;
+        }
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
 
-        // Logic: If user is logged in, they might rely on default docs.
-        // If not logged in, they must upload.
-        const isPassportPresent = isAuthenticated || files.passport;
-        const isResumePresent = isAuthenticated || files.resume;
-
-        if (!isResumePresent || !isPassportPresent) {
-            alert("Please ensure Resume and Passport are provided.");
+        if (!isAuthenticated) {
+            alert('Please login to apply');
             setIsSubmitting(false);
             return;
         }
 
-        // Simulate API call
-        setTimeout(() => {
-            setIsSubmitting(false);
+        try {
+            // Upload files
+            const uploadedFiles = {};
+            for (const [key, file] of Object.entries(files)) {
+                if (file) {
+                    const uploadResult = await uploadFile(file, key);
+                    if (uploadResult) {
+                        uploadedFiles[key] = uploadResult;
+                    }
+                }
+            }
+
+            // Create application
+            const { data: applicationData, error: appError } = await supabase
+                .from('applications')
+                .insert([
+                    {
+                        job_id: job.id,
+                        candidate_id: user.id,
+                        candidate_name: formData.name,
+                        email: formData.email,
+                        contact_number: formData.contact
+                    }
+                ])
+                .select()
+                .single();
+
+            if (appError) throw appError;
+
+            // Save document metadata
+            if (Object.keys(uploadedFiles).length > 0) {
+                const documentRecords = Object.entries(uploadedFiles).map(([type, fileData]) => ({
+                    user_id: user.id,
+                    application_id: applicationData.id,
+                    document_type: type,
+                    file_name: fileData.fileName,
+                    file_path: fileData.filePath,
+                    file_size: files[type].size,
+                    mime_type: files[type].type
+                }));
+
+                await supabase.from('documents').insert(documentRecords);
+            }
+
             navigate('/success');
-        }, 1500);
+        } catch (error) {
+            console.error('Application error:', error);
+            alert('Failed to submit application. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
-    // Helper to generate default file names for UI
+
     const getDefaultFileName = (key) => {
         if (!isAuthenticated || !user) return null;
         switch (key) {
@@ -246,7 +341,7 @@ const JobDetailPage = () => {
                                 </div>
                             </div>
                         ) : (
-                            // Guest Mode for Static Docs
+
                             <div className="mb-5 sm:mb-6">
                                 <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3">2. Identification Documents</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
-import {// jhbjh
+import { supabase } from '../lib/supabase';
+import {
     Search,
     ArrowRight,
     MapPin,
@@ -28,6 +29,10 @@ const BrowseJobsPage = () => {
     const [isSortOpen, setIsSortOpen] = useState(false);
     const [expandedJobId, setExpandedJobId] = useState(null);
 
+    // Supabase State
+    const [jobs, setJobs] = useState([]);
+    const [loading, setLoading] = useState(true);
+
     const selectedIndustry = searchParams.get('category') || 'All';
 
     const clearCategory = () => {
@@ -35,37 +40,33 @@ const BrowseJobsPage = () => {
     };
 
     const filteredJobs = useMemo(() => {
-        return MOCK_JOBS.filter(job => {
+        return jobs.filter(job => {
             const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 job.company.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesIndustry = selectedIndustry === 'All' || job.industry === selectedIndustry;
 
-            // Status Filter
+
             const matchesStatus = sortBy === 'closed'
                 ? job.status === JobStatus.CLOSED
                 : job.status === JobStatus.OPEN;
 
             return matchesSearch && matchesIndustry && matchesStatus;
         }).sort((a, b) => {
-            // Sort by date descending
             return new Date(b.postedDate).getTime() - new Date(a.postedDate).getTime();
         });
     }, [searchTerm, selectedIndustry, sortBy]);
 
     const scrollContainerRef = useRef(null);
 
-    // 1. Save scroll position before unmounting (or periodically if needed)
     useEffect(() => {
         const container = scrollContainerRef.current;
 
-        // Function to save scroll
         const handleScroll = () => {
             if (container) {
                 sessionStorage.setItem('browseJobsScroll', container.scrollTop.toString());
             }
         }
 
-        // Save on unmount is good, but if we navigate away via link, unmount runs.
         return () => {
             if (container) {
                 sessionStorage.setItem('browseJobsScroll', container.scrollTop.toString());
@@ -73,13 +74,44 @@ const BrowseJobsPage = () => {
         };
     }, []);
 
-    // 2. Restore scroll position
     useLayoutEffect(() => {
         const savedScroll = sessionStorage.getItem('browseJobsScroll');
         if (savedScroll && scrollContainerRef.current) {
             scrollContainerRef.current.scrollTop = parseInt(savedScroll, 10);
         }
-    }, [filteredJobs]); // Re-run if jobs change, ensuring we stay at position if possible
+    }, [filteredJobs]);
+
+    // Fetch Jobs from Supabase
+    useEffect(() => {
+        async function fetchJobs() {
+            try {
+                const { data, error } = await supabase
+                    .from('jobs')
+                    .select('*')
+                    .eq('status', 'Current Opening')
+                    .order('posted_date', { ascending: false });
+
+                if (error) throw error;
+
+                // Map database fields to frontend structure if needed
+                // Our DB columns match most frontend expectations, but let's ensure:
+                const mappedJobs = (data || []).map(job => ({
+                    ...job,
+                    postedDate: job.posted_date, // Map snake_case to camelCase
+                    salaryRange: job.salary_range
+                }));
+
+                setJobs(mappedJobs);
+            } catch (error) {
+                console.error('Error fetching jobs:', error);
+                setJobs([]);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        fetchJobs();
+    }, []);
 
 
     const handleShare = async (e, job) => {
@@ -93,32 +125,25 @@ const BrowseJobsPage = () => {
             url: url,
         };
 
-        // 1. Try Native Share (Mobile)
         if (navigator.share) {
             try {
                 await navigator.share(shareData);
-                return; // Success
+                return;
             } catch (error) {
                 console.log('Share cancelled or failed:', error);
                 if (error.name !== 'AbortError') {
-                    // If not aborted by user, maybe try copy?
                 } else {
                     return;
                 }
             }
         }
 
-        // 2. Fallback: Copy to Clipboard (Robust)
         try {
             if (navigator.clipboard && window.isSecureContext) {
-                // Secure context (HTTPS)
                 await navigator.clipboard.writeText(url);
             } else {
-                // Unsecure context (HTTP/Localhost) fallback
                 const textArea = document.createElement("textarea");
                 textArea.value = url;
-
-                // Ensure it's part of DOM but hidden
                 textArea.style.position = "fixed";
                 textArea.style.left = "-9999px";
                 textArea.style.top = "0";
@@ -150,9 +175,18 @@ const BrowseJobsPage = () => {
                         className="w-full h-full object-cover opacity-80"
                         style={{ maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%)', WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%)' }}
                     />
-                    {/* Subtle Blue Tint Overlay for Comfort */}
                     <div className="absolute inset-0 bg-teal-900/10 mix-blend-overlay"></div>
                 </div>
+
+                {/* Loading State */}
+                {loading && (
+                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
+                        <div className="text-center">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto mb-4"></div>
+                            <p className="text-slate-600 font-bold">Finding best opportunities...</p>
+                        </div>
+                    </div>
+                )}
 
                 {/* Abstract Background Decoration - Softer */}
                 <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-teal-200/40 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/3 pointer-events-none z-0"></div>
@@ -268,7 +302,7 @@ const BrowseJobsPage = () => {
                         <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Editor's Choice</h2>
                     </div>
                     <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 overflow-x-auto snap-x snap-mandatory pb-8 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0 no-scrollbar">
-                        {MOCK_JOBS.filter(j => j.status === JobStatus.OPEN && (selectedIndustry === 'All' || j.industry === selectedIndustry)).slice(0, 3).map((job, idx) => (
+                        {jobs.filter(j => j.status === 'Current Opening' && (selectedIndustry === 'All' || j.industry === selectedIndustry)).slice(0, 3).map((job, idx) => (
                             <Link to={`/job/${job.id}`} key={idx} className="flex-shrink-0 w-[70%] md:w-auto snap-center [scroll-snap-stop:always] group bg-white rounded-[2rem] p-1 overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500 cursor-pointer">
                                 <div className="bg-slate-50 rounded-[1.8rem] p-4 md:p-8 h-full flex flex-col items-start relative overflow-hidden group-hover:bg-[#0B1A33] transition-colors duration-500">
                                     <div className="absolute -right-10 -top-10 w-32 h-32 bg-white/5 rounded-full blur-2xl group-hover:bg-white/10"></div>
@@ -309,7 +343,7 @@ const BrowseJobsPage = () => {
                                     >
                                         <span className="text-sm font-semibold">{cat}</span>
                                         <span className={`text-[10px] font-bold border shadow-sm px-2 py-0.5 rounded-md transition-colors ${selectedIndustry === cat ? 'bg-teal-50 text-teal-700 border-teal-100' : 'bg-white text-slate-400 border-slate-200 group-hover:bg-teal-50 group-hover:text-teal-600'}`}>
-                                            {MOCK_JOBS.filter(j => (j.industry === cat) && (sortBy === 'closed' ? j.status === JobStatus.CLOSED : j.status === JobStatus.OPEN)).length}
+                                            {jobs.filter(j => (j.industry === cat) && (sortBy === 'closed' ? j.status === JobStatus.CLOSED : j.status === JobStatus.OPEN)).length}
                                         </span>
                                     </div>
                                 ))}
@@ -366,7 +400,6 @@ const BrowseJobsPage = () => {
               `}>
                                 {filteredJobs.length > 0 ? filteredJobs.map(job => (
                                     viewType === 'list' ? (
-                                        // LIST VIEW CARD
                                         job.status === JobStatus.CLOSED ? (
                                             <div
                                                 key={job.id}
@@ -398,7 +431,7 @@ const BrowseJobsPage = () => {
                                                     {/* Actions Column */}
                                                     <div className="flex flex-col items-end gap-3 pl-4 border-l border-slate-100 min-w-[140px]">
                                                         <div className="flex items-center gap-2">
-                                                            <span className="text-sm font-black text-slate-900">{job.salaryRange}</span>
+                                                            <span className="text-sm font-black text-slate-900">{job.salaryRange || job.salary_range}</span>
                                                         </div>
                                                         <span className="inline-flex items-center justify-center w-full px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-600">
                                                             {expandedJobId === job.id ? 'Close Details' : 'View Details'}
@@ -463,7 +496,7 @@ const BrowseJobsPage = () => {
                                                         >
                                                             <Share2 className="w-4 h-4" />
                                                         </button>
-                                                        <span className="text-sm font-black text-slate-900">{job.salaryRange}</span>
+                                                        <span className="text-sm font-black text-slate-900">{job.salaryRange || job.salary_range}</span>
                                                     </div>
                                                     <span className="inline-flex items-center justify-center w-full px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all bg-[#0B1A33] text-white md:bg-white md:border md:border-slate-200 md:text-slate-600 md:group-hover:bg-[#0B1A33] md:group-hover:text-white md:group-hover:border-transparent md:shadow-sm">
                                                         Apply Now
@@ -472,8 +505,6 @@ const BrowseJobsPage = () => {
                                             </Link>
                                         )
                                     ) : (
-                                        // GRID VIEW CARD
-                                        // GRID VIEW CARD
                                         <Link key={job.id} to={job.status === JobStatus.CLOSED ? '#' : `/job/${job.id}`} className={`w-full group bg-white md:bg-white/80 md:backdrop-blur-sm rounded-[2.5rem] p-4 md:p-8 border shadow-sm hover:shadow-[0_20px_40px_-5px_rgba(0,0,0,0.06)] hover:-translate-y-2 transition-all duration-300 flex flex-col relative overflow-hidden ${job.status === JobStatus.CLOSED ? 'border-red-200 bg-red-50/10 hover:border-red-300' : 'border-slate-200 hover:border-teal-500/30'}`}>
                                             <div className="absolute -right-20 -top-20 w-40 h-40 bg-teal-500/5 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
 
@@ -499,7 +530,7 @@ const BrowseJobsPage = () => {
                                             </div>
 
                                             <div className="mt-auto pt-6 border-t border-slate-100 flex items-center justify-between relative z-10">
-                                                <span className="text-sm font-black text-slate-900 bg-slate-50 px-3 py-1.5 rounded-lg group-hover:bg-white group-hover:shadow-sm transition-all">{job.salaryRange}</span>
+                                                <span className="text-sm font-black text-slate-900 bg-slate-50 px-3 py-1.5 rounded-lg group-hover:bg-white group-hover:shadow-sm transition-all">{job.salaryRange || job.salary_range}</span>
                                                 {job.status === JobStatus.CLOSED ? (
                                                     <div className="px-3 py-1.5 rounded-lg bg-red-100 text-red-600 text-[10px] font-black uppercase tracking-widest">
                                                         Closed
