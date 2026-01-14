@@ -101,6 +101,12 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    // Mock Login for Admin/Agent portals (Client-side only bypass)
+    const mockLogin = (userData) => {
+        setUser(userData);
+        setLoading(false);
+    };
+
     const signup = async (email, password, name, phone) => {
         try {
             // Create auth user
@@ -145,6 +151,7 @@ export const AuthProvider = ({ children }) => {
         <AuthContext.Provider value={{
             user,
             login,
+            mockLogin,
             signup,
             logout,
             isAuthenticated: !!user,
