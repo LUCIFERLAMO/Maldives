@@ -166,50 +166,7 @@ const HomePage = () => {
             </div>
          </section>
 
-         {/* 3. ARTICLES SECTION */}
-         <section className="py-20 lg:py-32 bg-[#f8fafc]">
-            <div className="container mx-auto px-5 lg:px-6">
 
-               <div className="text-center max-w-3xl mx-auto mb-12 lg:mb-20">
-                  <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight">
-                     Read Our Articles That Will Help <br className="hidden md:block" />
-                     You To Secure A Great Job
-                  </h2>
-               </div>
-
-               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-10">
-                  {[
-                     { title: "How to pass your resort interview with zero prior experience", date: "OCT 24, 2024", img: "https://images.unsplash.com/photo-1551836022-d5d88e9218df?q=80&w=800" },
-                     { title: "The ultimate guide to work permits in the Maldives", date: "OCT 20, 2024", img: "https://images.unsplash.com/photo-1544717297-fa95b6ee9643?q=80&w=800" },
-                     { title: "Top 10 skills luxury resorts are looking for right now", date: "OCT 15, 2024", img: "https://images.unsplash.com/photo-1573164713988-8665fc963095?q=80&w=800" }
-                  ].map((article, i) => (
-                     <Link to="/support" key={i} className="group bg-white rounded-[2rem] lg:rounded-[2.5rem] overflow-hidden border border-slate-100 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
-                        <div className="h-56 lg:h-64 overflow-hidden relative">
-                           <img
-                              src={article.img}
-                              alt="Layout"
-                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                           />
-                           <div className="absolute top-5 left-5 lg:top-6 lg:left-6 px-3 py-1.5 lg:px-4 lg:py-2 bg-white/95 backdrop-blur-md rounded-xl shadow-lg">
-                              <div className="flex items-center gap-2 text-[9px] lg:text-[10px] font-black uppercase tracking-widest text-teal-700">
-                                 <Calendar className="w-3 h-3" /> {article.date}
-                              </div>
-                           </div>
-                        </div>
-                        <div className="p-8 lg:p-10">
-                           <h3 className="text-lg lg:text-xl font-black text-slate-900 leading-snug mb-6 lg:mb-8 group-hover:text-teal-600 transition-colors">
-                              {article.title}
-                           </h3>
-
-                           <div className="flex items-center gap-2 text-[9px] lg:text-[10px] font-black text-teal-600 uppercase tracking-widest group/btn">
-                              Read More <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
-                           </div>
-                        </div>
-                     </Link>
-                  ))}
-               </div>
-            </div>
-         </section>
 
          {/* 4. PARTNERS SECTION (Admin & Agent) */}
          <section className="py-20 bg-white border-t border-slate-50">
