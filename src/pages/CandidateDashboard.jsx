@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { MOCK_APPLICATIONS, MOCK_JOBS } from '../constants';
 import { ApplicationStatus } from '../types';
@@ -16,8 +17,53 @@ import { Link } from 'react-router-dom';
 
 const CandidateDashboard = () => {
     const { user } = useAuth();
-    const myApps = MOCK_APPLICATIONS;
-    const actionRequiredCount = myApps.filter(a => a.status === ApplicationStatus.ACTION_REQUIRED).length;
+    const [applications, setApplications] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function fetchDashboardData() {
+            if (!user) return;
+
+            try {
+                const { data, error } = await supabase
+                    .from('applications')
+                    .select(`
+                        *,
+                        jobs (
+                            id,
+                            title,
+                            company,
+                            location
+                        )
+                    `)
+                    .eq('candidate_id', user.id)
+                    .order('applied_date', { ascending: false });
+
+                if (error) throw error;
+
+                const transformedApps = (data || []).map(app => ({
+                    id: app.id,
+                    jobId: app.job_id,
+                    status: app.status,
+                    appliedDate: new Date(app.applied_date).toLocaleDateString(),
+                    adminFeedback: app.admin_feedback,
+                    title: app.jobs?.title,
+                    company: app.jobs?.company
+                }));
+
+                setApplications(transformedApps);
+            } catch (error) {
+                console.error('Error fetching dashboard data:', error);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        fetchDashboardData();
+    }, [user]);
+
+    const activeAppsCount = applications.length;
+    const actionRequiredCount = applications.filter(a => a.status === 'Action Required').length;
 
     const foundJobAlert = {
         id: 'nurse-specialist',
@@ -64,7 +110,7 @@ const CandidateDashboard = () => {
                         <div className="grid grid-cols-2 gap-4">
                             <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                                 <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Active Apps</div>
-                                <div className="text-3xl font-bold text-slate-900">{myApps.length}</div>
+                                <div className="text-3xl font-bold text-slate-900">{activeAppsCount}</div>
                                 <div className="mt-2 text-xs text-green-600 font-medium bg-green-50 inline-block px-2 py-1 rounded-md">
                                     On Track
                                 </div>
@@ -115,7 +161,7 @@ const CandidateDashboard = () => {
                     <div className="lg:col-span-8 space-y-8">
 
                         {/* ACTION ALERTS */}
-                        {myApps.filter(a => a.status === ApplicationStatus.ACTION_REQUIRED).map(app => (
+                        {applications.filter(a => a.status === 'Action Required').map(app => (
                             <div key={app.id} className="bg-white border-l-4 border-amber-500 rounded-r-2xl shadow-sm hover:shadow-md transition-shadow p-6 flex flex-col sm:flex-row gap-6">
                                 <div className="flex-grow">
                                     <h3 className="font-bold text-slate-900 text-lg mb-1 flex items-center gap-2">
@@ -123,7 +169,7 @@ const CandidateDashboard = () => {
                                         Action Required
                                     </h3>
                                     <p className="text-slate-600 text-sm mb-4">
-                                        Update requested for application to <span className="font-semibold text-slate-900">{MOCK_JOBS.find(j => j.id === app.jobId)?.title}</span>.
+                                        Update requested for application to <span className="font-semibold text-slate-900">{app.title}</span>.
                                     </p>
                                     <div className="bg-amber-50 p-4 rounded-xl text-sm italic text-amber-900 border border-amber-100/50 mb-0">
                                         "{app.adminFeedback}"
@@ -147,23 +193,23 @@ const CandidateDashboard = () => {
                             </div>
 
                             <div className="space-y-3">
-                                {myApps.slice(0, 3).map((app) => (
+                                {applications.slice(0, 3).map((app) => (
                                     <div key={app.id} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all group flex items-center justify-between cursor-pointer">
                                         <div className="flex gap-4 items-center">
                                             <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-teal-50 group-hover:text-teal-600 transition-colors">
                                                 <Briefcase className="w-5 h-5" />
                                             </div>
                                             <div>
-                                                <h3 className="font-bold text-slate-900 text-base">{MOCK_JOBS.find(j => j.id === app.jobId)?.title}</h3>
+                                                <h3 className="font-bold text-slate-900 text-base">{app.title}</h3>
                                                 <div className="flex items-center gap-2 text-xs text-slate-500 mt-1 font-medium">
-                                                    <span>{MOCK_JOBS.find(j => j.id === app.jobId)?.company}</span>
+                                                    <span>{app.company}</span>
                                                     <span className="w-1 h-1 rounded-full bg-slate-300"></span>
                                                     <span>{app.appliedDate}</span>
                                                 </div>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-4">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${app.status === ApplicationStatus.ACTION_REQUIRED ? 'bg-amber-100 text-amber-700' :
+                                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${app.status === 'Action Required' ? 'bg-amber-100 text-amber-700' :
                                                 'bg-slate-100 text-slate-600'
                                                 }`}>
                                                 {app.status}

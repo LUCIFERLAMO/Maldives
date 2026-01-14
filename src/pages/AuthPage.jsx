@@ -15,11 +15,12 @@ import {
     MessageCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 
 const AuthPage = ({ initialMode = 'login' }) => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { login } = useAuth();
+    const { login, signup } = useAuth();
 
     const from = location.state?.from;
     const isAgentLogin = from === 'agent' || from === 'recruiter';
@@ -33,67 +34,115 @@ const AuthPage = ({ initialMode = 'login' }) => {
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
 
     const [formData, setFormData] = useState({
-        name: 'Demo User',
-        email: isAgentLogin ? 'agent@globaltalent.com' : isAdminLogin ? 'super.admin@maldivescareer.com' : 'candidate@example.com',
-        password: 'password123',
-        phone: '9609999999'
+        name: '',
+        email: '',
+        password: '',
+        phone: ''
     });
 
     useEffect(() => {
         setMode(initialMode);
-        if (isAgentLogin) {
-            setFormData(prev => ({ ...prev, email: 'agent@globaltalent.com' }));
-        } else if (isAdminLogin) {
-            setFormData(prev => ({ ...prev, email: 'super.admin@maldivescareer.com' }));
-        }
-    }, [initialMode, isAgentLogin, isAdminLogin]);
+    }, [initialMode]);
 
-    const handleLoginSubmit = (e) => {
+    const handleLoginSubmit = async (e) => {
         e.preventDefault();
 
-        if (isAgentLogin) {
-            login({
-                name: 'Global Talent Ltd',
-                email: formData.email,
-                role: 'employer',
-                avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=100&h=100'
-            });
-            navigate('/recruiter');
-        } else if (isAdminLogin) {
-            login({
-                name: 'Platform Administrator',
-                email: formData.email,
-                role: 'employer'
-            });
-            navigate('/admin');
+        if (isAgentLogin || isAdminLogin) {
+            alert('Agent/Admin login coming soon!');
+            return;
+        }
+
+        const { error } = await login(formData.email, formData.password);
+
+        if (error) {
+            alert(`Login failed: ${error}`);
         } else {
-            login({
-                name: 'Rahul Sharma',
-                email: formData.email,
-                role: 'candidate'
-            });
-            navigate('/');
+            navigate('/dashboard');
         }
     };
 
-    const handleSignupStep1 = (e) => {
+    const handleSignupStep1 = async (e) => {
         e.preventDefault();
 
-        setSignupStep(2);
+        // Validate phone number
+        if (!formData.phone || formData.phone.length < 10) {
+            alert('Please enter a valid phone number');
+            return;
+        }
+
+        try {
+            // Initiate OTP Login (Passwordless Signup)
+            const { error } = await supabase.auth.signInWithOtp({
+                email: formData.email,
+                options: {
+                    // This optional data will be used if a new user is created
+                    data: {
+                        name: formData.name,
+                        phone: formData.phone,
+                        role: 'candidate'
+                    }
+                }
+            });
+
+            if (error) throw error;
+
+            // Move to OTP step
+            setSignupStep(2);
+        } catch (error) {
+            console.error('Error sending OTP:', error);
+            alert(`Failed to send verification code: ${error.message}`);
+        }
     };
 
-    const handleSignupVerification = (e) => {
+    const handleSignupVerification = async (e) => {
         e.preventDefault();
 
-        if (otp.join('').length === 6) {
-            login({
-                name: formData.name,
+        const otpCode = otp.join('');
+
+        if (otpCode.length !== 6) {
+            alert('Please enter the 6-digit code sent to your email.');
+            return;
+        }
+
+        try {
+            // Verify OTP
+            const { data: { session, user }, error: verifyError } = await supabase.auth.verifyOtp({
                 email: formData.email,
-                role: 'candidate'
+                token: otpCode,
+                type: 'email'
             });
-            navigate('/');
-        } else {
-            alert('Please enter the 6-digit code sent to your mobile.');
+
+            if (verifyError) throw verifyError;
+
+            if (user) {
+                // Ensure profile is created matching our schema
+                // Note: AuthContext might also try to create/load this, but we ensure it here.
+                const { error: profileError } = await supabase
+                    .from('profiles')
+                    .upsert([
+                        {
+                            id: user.id,
+                            name: formData.name,
+                            email: formData.email,
+                            phone: formData.phone,
+                            role: 'candidate'
+                        }
+                    ]);
+
+                if (profileError) {
+                    console.error('Profile creation error:', profileError);
+                    // Continue anyway as auth succeeded
+                }
+
+                // Refresh auth context
+                if (session) {
+                    // Force reload of user profile or just navigate
+                    navigate('/dashboard');
+                }
+            }
+        } catch (err) {
+            console.error('Signup error:', err);
+            alert(`Verification failed: ${err.message}. Please try again.`);
         }
     };
 

@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import {
    ArrowRight,
    Briefcase,
@@ -13,6 +14,34 @@ import { Link, useNavigate } from 'react-router-dom';
 
 const HomePage = () => {
    const navigate = useNavigate();
+   const [jobStats, setJobStats] = useState({
+      totalJobs: 0,
+      activeJobs: 0
+   });
+
+   useEffect(() => {
+      async function fetchJobStats() {
+         try {
+            const { count: totalCount } = await supabase
+               .from('jobs')
+               .select('*', { count: 'exact', head: true });
+
+            const { count: activeCount } = await supabase
+               .from('jobs')
+               .select('*', { count: 'exact', head: true })
+               .eq('status', 'Current Opening');
+
+            setJobStats({
+               totalJobs: totalCount || 0,
+               activeJobs: activeCount || 0
+            });
+         } catch (error) {
+            console.error('Error fetching stats:', error);
+         }
+      }
+
+      fetchJobStats();
+   }, []);
 
    const handleGetStarted = () => {
       navigate('/register');
@@ -67,7 +96,9 @@ const HomePage = () => {
                            ))}
                         </div>
                         <div className="text-left">
-                           <div className="text-sm lg:text-base font-black text-slate-900 leading-none">20k+</div>
+                           <div className="text-sm lg:text-base font-black text-slate-900 leading-none">
+                              {jobStats.totalJobs > 0 ? `${jobStats.totalJobs}+` : '20k+'}
+                           </div>
                            <div className="text-[9px] lg:text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5 lg:mt-1">Active Talent</div>
                         </div>
                      </div>
@@ -143,7 +174,9 @@ const HomePage = () => {
 
                   <div className="grid grid-cols-3 gap-6 lg:gap-12 mb-10 lg:mb-14 border-y lg:border-none border-slate-100 py-8 lg:py-0">
                      <div>
-                        <div className="text-2xl lg:text-4xl font-black text-teal-600 mb-1 lg:mb-2">86k+</div>
+                        <div className="text-2xl lg:text-4xl font-black text-teal-600 mb-1 lg:mb-2">
+                           {jobStats.totalJobs > 0 ? `${jobStats.totalJobs}+` : '86k+'}
+                        </div>
                         <div className="text-[9px] lg:text-[10px] text-slate-400 font-bold uppercase tracking-widest">Total Jobs</div>
                      </div>
                      <div>

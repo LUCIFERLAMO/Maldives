@@ -1,5 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 import { MOCK_APPLICATIONS, MOCK_JOBS } from '../constants';
 import { ApplicationStatus } from '../types';
 import {
@@ -18,12 +20,65 @@ import {
 import { Link } from 'react-router-dom';
 
 const MyApplicationsPage = () => {
+    const { user } = useAuth();
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedApp, setSelectedApp] = useState(null);
-    const [apps, setApps] = useState(MOCK_APPLICATIONS);
+    const [applications, setApplications] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function fetchApplications() {
+            if (!user) {
+                setLoading(false);
+                return;
+            }
+
+            try {
+                const { data, error } = await supabase
+                    .from('applications')
+                    .select(`
+                        *,
+                        jobs (
+                            id,
+                            title,
+                            company,
+                            location
+                        )
+                    `)
+                    .eq('candidate_id', user.id)
+                    .order('applied_date', { ascending: false });
+
+                if (error) throw error;
+
+                // Transform data to match expected format
+                const transformedApps = (data || []).map(app => ({
+                    id: app.id,
+                    jobId: app.job_id,
+                    candidateName: app.candidate_name,
+                    email: app.email,
+                    contactNumber: app.contact_number,
+                    status: app.status,
+                    appliedDate: new Date(app.applied_date).toLocaleDateString(),
+                    adminFeedback: app.admin_feedback,
+                    documentFeedbacks: app.document_feedbacks,
+                    jobTitle: app.jobs?.title,
+                    company: app.jobs?.company
+                }));
+
+                setApplications(transformedApps);
+            } catch (error) {
+                console.error('Error fetching applications:', error);
+                setApplications([]);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        fetchApplications();
+    }, [user]);
 
     const handleRequestProgress = (appId) => {
-        setApps(prev => prev.map(a =>
+        setApplications(prev => prev.map(a =>
             a.id === appId ? { ...a, statusRequestStatus: 'pending' } : a
         ));
         if (selectedApp && selectedApp.id === appId) {
@@ -32,10 +87,7 @@ const MyApplicationsPage = () => {
         alert("Request sent to employer.");
     };
 
-    const allApplications = apps.map(app => {
-        const job = MOCK_JOBS.find(j => j.id === app.jobId);
-        return { ...app, jobTitle: job?.title, company: job?.company };
-    }).filter(app =>
+    const allApplications = applications.filter(app =>
         app.jobTitle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         app.company?.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -116,7 +168,11 @@ const MyApplicationsPage = () => {
 
                 {/* LIST */}
                 <div className="space-y-4">
-                    {allApplications.length > 0 ? (
+                    {loading ? (
+                        <div className="flex justify-center py-20">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
+                        </div>
+                    ) : allApplications.length > 0 ? (
                         allApplications.map(app => renderAppItem(app))
                     ) : (
                         <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
@@ -136,9 +192,9 @@ const MyApplicationsPage = () => {
 
                         <div className="p-8 border-b border-slate-100 flex justify-between items-start bg-slate-50/50">
                             <div className="min-w-0 pr-4">
-                                <h2 className="text-2xl font-bold text-slate-900 leading-tight mb-2">{MOCK_JOBS.find(j => j.id === selectedApp.jobId)?.title}</h2>
+                                <h2 className="text-2xl font-bold text-slate-900 leading-tight mb-2">{selectedApp.jobTitle}</h2>
                                 <div className="flex items-center gap-2 text-slate-600 font-medium">
-                                    <Building2 className="w-4 h-4" /> {MOCK_JOBS.find(j => j.id === selectedApp.jobId)?.company}
+                                    <Building2 className="w-4 h-4" /> {selectedApp.company}
                                 </div>
                             </div>
                             <button onClick={() => setSelectedApp(null)} className="p-2 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors">

@@ -1,4 +1,4 @@
-# 🎯 Complete Client-Side Integration Guide
+   Client-Side Integration Guide
 ## Step-by-Step Setup for Candidate/User Portal Only
 
 ---
@@ -15,8 +15,7 @@ This guide focuses **ONLY** on client-side (candidate/user) pages. We'll skip Ad
 5. **MyApplicationsPage** - Track applications
 6. **CandidateDashboard** - User dashboard
 7. **ProfilePage** - User profile & documents
-8. **SupportPage** - Support tickets
-9. **SuccessPage** - Application confirmation
+8. **SuccessPage** - Application confirmation
 
 ---
 
@@ -209,53 +208,12 @@ ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users manage own documents" ON documents
   FOR ALL USING (user_id = auth.uid());
 
--- ============================================
--- TABLE 5: newsletter_subscribers
--- ============================================
-CREATE TABLE newsletter_subscribers (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  email TEXT UNIQUE NOT NULL,
-  subscribed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  is_active BOOLEAN DEFAULT TRUE
-);
 
--- Enable RLS
-ALTER TABLE newsletter_subscribers ENABLE ROW LEVEL SECURITY;
-
--- Policy: Anyone can subscribe
-CREATE POLICY "Anyone can subscribe" ON newsletter_subscribers
-  FOR INSERT WITH CHECK (true);
-
--- ============================================
--- TABLE 6: support_tickets
--- ============================================
-CREATE TABLE support_tickets (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id),
-  name TEXT NOT NULL,
-  email TEXT NOT NULL,
-  subject TEXT NOT NULL,
-  message TEXT NOT NULL,
-  status TEXT DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'resolved', 'closed')),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Enable RLS
-ALTER TABLE support_tickets ENABLE ROW LEVEL SECURITY;
-
--- Policy: Users can create tickets
-CREATE POLICY "Users can create tickets" ON support_tickets
-  FOR INSERT WITH CHECK (true);
-
--- Policy: Users can view their own tickets
-CREATE POLICY "Users view own tickets" ON support_tickets
-  FOR SELECT USING (user_id = auth.uid() OR user_id IS NULL);
 ```
 
 Click **"Run"** (or Ctrl+Enter)
 
-**✅ Verify:** Go to **Table Editor** → You should see 6 tables!
+**✅ Verify:** Go to **Table Editor** → You should see 4 tables!
 
 ---
 
@@ -298,96 +256,8 @@ Click **"Run"**
 
 ## 🏠 **PART 2: HomePage Integration**
 
-### **Step 7: Add Newsletter Signup**
 
-1. Open `src/pages/HomePage.jsx`
-2. Add imports at top:
-```javascript
-import { useState } from 'react';
-import { supabase } from '../lib/supabase';
-```
-
-3. Add state inside component:
-```javascript
-const HomePage = () => {
-  const navigate = useNavigate();
-  const [newsletterEmail, setNewsletterEmail] = useState('');
-  const [newsletterStatus, setNewsletterStatus] = useState('');
-
-  // ... rest of code
-```
-
-4. Add handler function (before return):
-```javascript
-const handleNewsletterSubmit = async (e) => {
-  e.preventDefault();
-  
-  if (!newsletterEmail || !newsletterEmail.includes('@')) {
-    alert('Please enter a valid email address');
-    return;
-  }
-
-  try {
-    const { error } = await supabase
-      .from('newsletter_subscribers')
-      .insert([{ email: newsletterEmail }]);
-
-    if (error) {
-      if (error.code === '23505') {
-        alert('This email is already subscribed!');
-      } else {
-        alert('Something went wrong. Please try again.');
-      }
-    } else {
-      setNewsletterEmail('');
-      alert('Thank you for subscribing! 🎉');
-    }
-  } catch (err) {
-    console.error('Error:', err);
-    alert('Something went wrong. Please try again.');
-  }
-};
-```
-
-5. Find newsletter section (around line 264-290) and update:
-
-**Find:**
-```javascript
-<input
-  type="email"
-  placeholder="Enter your email..."
-  className="bg-transparent flex-1 px-6 py-4 text-white placeholder-slate-400 outline-none font-medium text-center sm:text-left text-sm"
-/>
-<button className="bg-teal-600 hover:bg-teal-500 px-8 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg w-full sm:w-auto">
-  Subscribe
-</button>
-```
-
-**Replace with:**
-```javascript
-<form onSubmit={handleNewsletterSubmit} className="flex flex-col sm:flex-row gap-3 bg-white/5 p-2 rounded-2xl border border-white/10 backdrop-blur-md focus-within:bg-white/10 transition-colors">
-  <input
-    type="email"
-    placeholder="Enter your email..."
-    value={newsletterEmail}
-    onChange={(e) => setNewsletterEmail(e.target.value)}
-    className="bg-transparent flex-1 px-6 py-4 text-white placeholder-slate-400 outline-none font-medium text-center sm:text-left text-sm"
-    required
-  />
-  <button 
-    type="submit"
-    className="bg-teal-600 hover:bg-teal-500 px-8 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg w-full sm:w-auto"
-  >
-    Subscribe
-  </button>
-</form>
-```
-
-6. **Test:** Try subscribing with an email!
-
----
-
-### **Step 8: Add Real Job Statistics**
+### **Step 7: Add Real Job Statistics**
 
 1. In `HomePage.jsx`, add state:
 ```javascript
@@ -442,7 +312,7 @@ useEffect(() => {
 
 ## 🔐 **PART 3: AuthPage Integration (CRITICAL!)**
 
-### **Step 9: Update AuthContext**
+### **Step 8: Update AuthContext**
 
 1. Open `src/context/AuthContext.jsx`
 2. Replace entire file with:
@@ -590,7 +460,7 @@ export const useAuth = () => {
 
 ---
 
-### **Step 10: Update AuthPage Login**
+### **Step 9: Update AuthPage Login**
 
 1. Open `src/pages/AuthPage.jsx`
 2. Find `handleLoginSubmit` function (around line 51)
@@ -623,7 +493,7 @@ const { login } = useAuth();
 
 ---
 
-### **Step 11: Update AuthPage Signup**
+### **Step 10: Update AuthPage Signup**
 
 1. Find `handleSignupStep1` function (around line 79)
 2. Replace with:
@@ -731,7 +601,7 @@ import { supabase } from '../lib/supabase';
 
 ## 📋 **PART 4: BrowseJobsPage Integration**
 
-### **Step 12: Fetch Jobs from Database**
+### **Step 11: Fetch Jobs from Database**
 
 1. Open `src/pages/BrowseJobsPage.jsx`
 2. Add imports:
@@ -795,7 +665,7 @@ if (loading) {
 
 ## 📄 **PART 5: JobDetailPage Integration**
 
-### **Step 13: Fetch Job Details**
+### **Step 12: Fetch Job Details**
 
 1. Open `src/pages/JobDetailPage.jsx`
 2. Add imports:
@@ -830,7 +700,7 @@ useEffect(() => {
 
 ---
 
-### **Step 14: Implement File Upload**
+### **Step 13: Implement File Upload**
 
 1. Add file upload handler (before return):
 ```javascript
@@ -868,7 +738,7 @@ const uploadFile = async (file, documentType) => {
 
 ---
 
-### **Step 15: Submit Application**
+### **Step 14: Submit Application**
 
 1. Update `handleSubmit` function (around line 63):
 ```javascript
@@ -942,7 +812,7 @@ const handleSubmit = async (e) => {
 
 ## 📊 **PART 6: MyApplicationsPage Integration**
 
-### **Step 16: Fetch User Applications**
+### **Step 15: Fetch User Applications**
 
 1. Open `src/pages/MyApplicationsPage.jsx`
 2. Add imports:
@@ -1020,7 +890,7 @@ useEffect(() => {
 
 ## 🏠 **PART 7: CandidateDashboard Integration**
 
-### **Step 17: Fetch Dashboard Data**
+### **Step 16: Fetch Dashboard Data**
 
 1. Open `src/pages/CandidateDashboard.jsx`
 2. Add imports:
@@ -1073,7 +943,7 @@ useEffect(() => {
 
 ## 👤 **PART 8: ProfilePage Integration**
 
-### **Step 18: Fetch & Update Profile**
+### **Step 17: Fetch & Update Profile**
 
 1. Open `src/pages/ProfilePage.jsx`
 2. Add imports:
@@ -1167,49 +1037,8 @@ const handleDocAction = async (id) => {
 
 ---
 
-## 💬 **PART 9: SupportPage Integration**
 
-### **Step 19: Submit Support Tickets**
-
-1. Open `src/pages/SupportPage.jsx`
-2. Add imports:
-```javascript
-import { supabase } from '../lib/supabase';
-```
-
-3. Update `handleSubmit`:
-```javascript
-const handleSubmit = async (e) => {
-  e.preventDefault();
-
-  try {
-    const { error } = await supabase
-      .from('support_tickets')
-      .insert([
-        {
-          user_id: user?.id || null,
-          name: formData.name,
-          email: formData.email,
-          subject: formData.subject,
-          message: formData.message
-        }
-      ]);
-
-    if (error) throw error;
-    setIsSubmitted(true);
-    setFormData({ name: '', email: '', subject: '', message: '' });
-  } catch (error) {
-    console.error('Error:', error);
-    alert('Failed to submit ticket. Please try again.');
-  }
-};
-```
-
-**✅ SupportPage Complete!**
-
----
-
-## ✅ **PART 10: SuccessPage**
+## ✅ **PART 9: SuccessPage**
 
 No database changes needed - just a confirmation page!
 
@@ -1221,14 +1050,13 @@ No database changes needed - just a confirmation page!
 
 - [ ] All tables created in Supabase
 - [ ] Storage bucket set up
-- [ ] HomePage newsletter working
+
 - [ ] AuthPage login/signup working
 - [ ] BrowseJobsPage shows real jobs
 - [ ] JobDetailPage allows applications
 - [ ] MyApplicationsPage shows user's applications
 - [ ] CandidateDashboard shows stats
 - [ ] ProfilePage manages profile & documents
-- [ ] SupportPage submits tickets
 - [ ] All pages tested and working!
 
 ---

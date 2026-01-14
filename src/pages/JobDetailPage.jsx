@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MOCK_JOBS } from '../constants';
 import { JobStatus } from '../types';
@@ -31,8 +32,31 @@ const JobDetailPage = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
-        const foundJob = MOCK_JOBS.find(j => j.id === id);
-        setJob(foundJob);
+        async function fetchJob() {
+            try {
+                const { data, error } = await supabase
+                    .from('jobs')
+                    .select('*')
+                    .eq('id', id)
+                    .single();
+
+                if (error) throw error;
+                // Map DB snake_case to camelCase where needed for UI
+                const mappedJob = {
+                    ...data,
+                    salaryRange: data.salary_range,
+                    postedDate: data.posted_date
+                };
+                setJob(mappedJob);
+            } catch (error) {
+                console.error('Error fetching job:', error);
+                setJob(null);
+            }
+        }
+
+        if (id) {
+            fetchJob();
+        }
     }, [id]);
 
 
@@ -60,25 +84,97 @@ const JobDetailPage = () => {
         setFiles(prev => ({ ...prev, [key]: file }));
     };
 
-    const handleSubmit = (e) => {
+    const uploadFile = async (file, documentType) => {
+        if (!file || !user) return null;
+
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${documentType}_${Date.now()}.${fileExt}`;
+            const filePath = `${user.id}/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('user-documents')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: urlData } = supabase.storage
+                .from('user-documents')
+                .getPublicUrl(filePath);
+
+            return {
+                filePath,
+                fileName: file.name,
+                url: urlData.publicUrl
+            };
+        } catch (error) {
+            console.error('Upload error:', error);
+            alert('File upload failed. Please try again.');
+            return null;
+        }
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
 
-
-        const isPassportPresent = isAuthenticated || files.passport;
-        const isResumePresent = isAuthenticated || files.resume;
-
-        if (!isResumePresent || !isPassportPresent) {
-            alert("Please ensure Resume and Passport are provided.");
+        if (!isAuthenticated) {
+            alert('Please login to apply');
             setIsSubmitting(false);
             return;
         }
 
+        try {
+            // Upload files
+            const uploadedFiles = {};
+            for (const [key, file] of Object.entries(files)) {
+                if (file) {
+                    const uploadResult = await uploadFile(file, key);
+                    if (uploadResult) {
+                        uploadedFiles[key] = uploadResult;
+                    }
+                }
+            }
 
-        setTimeout(() => {
-            setIsSubmitting(false);
+            // Create application
+            const { data: applicationData, error: appError } = await supabase
+                .from('applications')
+                .insert([
+                    {
+                        job_id: job.id,
+                        candidate_id: user.id,
+                        candidate_name: formData.name,
+                        email: formData.email,
+                        contact_number: formData.contact
+                    }
+                ])
+                .select()
+                .single();
+
+            if (appError) throw appError;
+
+            // Save document metadata
+            if (Object.keys(uploadedFiles).length > 0) {
+                const documentRecords = Object.entries(uploadedFiles).map(([type, fileData]) => ({
+                    user_id: user.id,
+                    application_id: applicationData.id,
+                    document_type: type,
+                    file_name: fileData.fileName,
+                    file_path: fileData.filePath,
+                    file_size: files[type].size,
+                    mime_type: files[type].type
+                }));
+
+                await supabase.from('documents').insert(documentRecords);
+            }
+
             navigate('/success');
-        }, 1500);
+        } catch (error) {
+            console.error('Application error:', error);
+            alert('Failed to submit application. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
 
