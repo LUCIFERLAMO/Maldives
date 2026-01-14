@@ -60,7 +60,30 @@ const Navbar = () => {
                             </div>
                         </div>
 
-                        <Link to="/support" className="text-sm font-bold text-slate-600 hover:text-teal-600 transition-colors">Contact Us</Link>
+                        {/* Contact Us Hover Menu */}
+                        <div className="relative group">
+                            <button className="flex items-center gap-1 text-sm font-bold text-slate-600 hover:text-teal-600 transition-colors py-8">
+                                Contact Us <ChevronDown className="w-3.5 h-3.5 opacity-40 transition-transform group-hover:rotate-180" />
+                            </button>
+
+                            <div className="absolute top-full right-0 pt-2 hidden group-hover:block animate-in fade-in slide-in-from-top-2 duration-200 z-[110]">
+                                <div className="bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-slate-100 py-3 w-64 overflow-hidden ring-1 ring-slate-900/5">
+                                    <div className="px-6 py-3">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Email Us</p>
+                                        <a href="mailto:support@maldivescareer.com" className="text-sm font-bold text-slate-700 hover:text-teal-600 transition-colors block">
+                                            support@maldivescareer.com
+                                        </a>
+                                    </div>
+                                    <div className="h-px bg-slate-50 my-1 mx-4"></div>
+                                    <div className="px-6 py-3">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">WhatsApp</p>
+                                        <a href="https://wa.me/9609991234" target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-slate-700 hover:text-teal-600 transition-colors block">
+                                            +960 999-1234
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
