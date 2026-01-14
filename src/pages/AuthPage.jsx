@@ -151,6 +151,10 @@ const AuthPage = ({ initialMode = 'login' }) => {
                     <div className="absolute top-0 right-0 w-64 h-full bg-white opacity-5 transform skew-x-12 translate-x-20"></div>
 
                     <div className="relative z-10">
+                        <Link to="/" className="inline-flex items-center text-teal-200 hover:text-white mb-6 text-xs font-bold uppercase tracking-widest transition-colors group">
+                            <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> Back to Home
+                        </Link>
+
                         <div className="w-12 h-12 border border-white/30 rounded-xl flex items-center justify-center mb-8 backdrop-blur-sm">
                             <User className="w-6 h-6 text-white" />
                         </div>
@@ -441,6 +445,9 @@ const AdminLoginFlow = ({ email, setEmail, password, setPassword, onLogin, onSwi
                 {/* Left Panel - Dark */}
                 <div className="w-full md:w-[42%] bg-[#0b0f1a] p-6 md:p-16 text-white flex flex-col justify-between relative shrink-0">
                     <div className="relative z-10">
+                        <Link to="/" className="inline-flex items-center text-slate-400 hover:text-white mb-8 text-[10px] font-bold uppercase tracking-widest transition-colors group">
+                            <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> Back to Home
+                        </Link>
                         <div className="w-10 h-10 md:w-12 md:h-12 bg-[#121b2d] rounded-xl flex items-center justify-center mb-4 md:mb-12 border border-slate-800">
                             <Terminal className="w-5 h-5 md:w-6 md:h-6 text-teal-500" />
                         </div>
