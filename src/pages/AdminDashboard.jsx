@@ -305,7 +305,10 @@ const AdminDashboard = () => {
       setSelectedResume(null); setIsBlacklistReview(false);
    };
 
-   const [partnerApplications, setPartnerApplications] = useState(MOCK_NEW_PARTNER_APPS);
+   const [partnerApplications, setPartnerApplications] = useState(() => {
+      const storedApps = JSON.parse(localStorage.getItem('maldives_agent_applications') || '[]');
+      return [...storedApps, ...MOCK_NEW_PARTNER_APPS];
+   });
    const [selectedApplication, setSelectedApplication] = useState(null);
    const [approvalStep, setApprovalStep] = useState('NONE');
 

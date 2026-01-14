@@ -253,23 +253,12 @@ const AuthPage = ({ initialMode = 'login' }) => {
                         {isLogin ? (
                             isAgentLogin ? (
                                 <div className="space-y-3">
-                                    {!showAgentContact ? (
-                                        <button
-                                            onClick={() => setShowAgentContact(true)}
-                                            className="flex items-center gap-2 font-black transition-all text-white group uppercase text-[11px] tracking-widest hover:text-maldives-300"
-                                        >
-                                            New Arrival? <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                                        </button>
-                                    ) : (
-                                        <div className="bg-white/10 border border-white/20 p-5 rounded-2xl backdrop-blur-sm animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                            {/* Agent Contact Info - Keep as is */}
-                                            <p className="text-[10px] font-black uppercase text-maldives-300 mb-2 tracking-widest flex items-center gap-2">
-                                                <MessageCircle className="w-3.5 h-3.5" /> Next Steps
-                                            </p>
-                                            <p className="text-sm font-bold text-white leading-tight">Contact the admin for further process:</p>
-                                            <a href="mailto:admin@maldivescareer.com" className="text-base font-bold text-teal-50 hover:text-white mt-1 block hover:underline decoration-maldives-400 underline-offset-4 transition-colors">admin@maldivescareer.com</a>
-                                        </div>
-                                    )}
+                                    <button
+                                        onClick={() => navigate('/agent-registration')}
+                                        className="flex items-center gap-2 font-black transition-all text-white group uppercase text-[11px] tracking-widest hover:text-maldives-300"
+                                    >
+                                        New Arrival? <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                                    </button>
                                 </div>
                             ) : (
                                 <>

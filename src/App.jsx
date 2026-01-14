@@ -13,6 +13,7 @@ import CandidateDashboard from './pages/CandidateDashboard';
 import MyApplicationsPage from './pages/MyApplicationsPage';
 import ProfilePage from './pages/ProfilePage';
 import SupportPage from './pages/SupportPage';
+import AgentRegistrationPage from './pages/AgentRegistrationPage';
 import { AuthProvider } from './context/AuthContext';
 
 const App = () => {
@@ -32,6 +33,7 @@ const App = () => {
                             <Route path="/admin" element={<AdminDashboard />} />
                             <Route path="/login" element={<AuthPage initialMode="login" />} />
                             <Route path="/register" element={<AuthPage initialMode="register" />} />
+                            <Route path="/agent-registration" element={<AgentRegistrationPage />} />
                             <Route path="/support" element={<SupportPage />} />
 
                             {/* Candidate Protected Routes */}
