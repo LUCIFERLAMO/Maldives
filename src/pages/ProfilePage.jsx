@@ -21,7 +21,7 @@ import {
     AlertTriangle
 } from 'lucide-react';
 
-// Mock Document Structure for Candidates
+
 const CANDIDATE_DOCS = [
     { id: 'resume', label: 'Resume / CV', type: 'PDF', required: true, status: 'missing' },
     { id: 'passport', label: 'Passport Front', type: 'IMG', required: true, status: 'missing' },
@@ -30,7 +30,7 @@ const CANDIDATE_DOCS = [
     { id: 'photo', label: 'Passport Photo', type: 'IMG', required: true, status: 'uploaded', date: '2024-02-01' },
 ];
 
-// Mock Document Structure for Agents
+
 const AGENT_DOCS = [
     { id: 'license', label: 'Operating License', type: 'PDF', required: true, status: 'uploaded', date: '2023-11-10' },
     { id: 'tax', label: 'Tax Compliance (TRC)', type: 'PDF', required: true, status: 'missing' },
@@ -38,7 +38,7 @@ const AGENT_DOCS = [
     { id: 'identity', label: 'Director ID Proof', type: 'IMG', required: true, status: 'uploaded', date: '2023-12-05' },
 ];
 
-// --- 1. COMPONENT: CANDIDATE PROFILE (Maldives Theme) ---
+
 const CandidateProfile = ({ user, profileData, docs, handleDocAction, handleDeleteItem, setIsResettingPassword, setIsEditingPersonal, previewImage, isAddingDoc, setIsAddingDoc, newDocName, setNewDocName, handleAddDoc }) => {
     return (
         <>
@@ -153,8 +153,7 @@ const CandidateProfile = ({ user, profileData, docs, handleDocAction, handleDele
     );
 };
 
-// --- 2. COMPONENT: AGENT PROFILE (Corporate Theme) ---
-// Strictly separate design. No Maldives gradients. Professional Slate/Gray/White.
+
 const AgentProfile = ({ user, profileData, docs, handleDocAction, setIsResettingPassword, setIsEditingPersonal, previewImage }) => {
     return (
         <>
@@ -263,15 +262,15 @@ const AgentProfile = ({ user, profileData, docs, handleDocAction, setIsResetting
     );
 };
 
-// --- MAIN PROFILE PAGE CONTAINER ---
+
 const ProfilePage = () => {
     const { user } = useAuth();
-    const isAgent = user?.role === 'employer'; // or user?.role === 'agent' depending on your types
+    const isAgent = user?.role === 'employer';
 
     const [isEditingPersonal, setIsEditingPersonal] = useState(false);
     const [isResettingPassword, setIsResettingPassword] = useState(false);
 
-    // --- STATE MANAGEMENT ---
+
     const [profileData, setProfileData] = useState({
         name: '',
         title: isAgent ? 'Global Talent Ltd' : 'Senior Guest Relations Officer',

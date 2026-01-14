@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
-import {// jhbjh
+import {
     Search,
     ArrowRight,
     MapPin,
@@ -40,32 +40,28 @@ const BrowseJobsPage = () => {
                 job.company.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesIndustry = selectedIndustry === 'All' || job.industry === selectedIndustry;
 
-            // Status Filter
+
             const matchesStatus = sortBy === 'closed'
                 ? job.status === JobStatus.CLOSED
                 : job.status === JobStatus.OPEN;
 
             return matchesSearch && matchesIndustry && matchesStatus;
         }).sort((a, b) => {
-            // Sort by date descending
             return new Date(b.postedDate).getTime() - new Date(a.postedDate).getTime();
         });
     }, [searchTerm, selectedIndustry, sortBy]);
 
     const scrollContainerRef = useRef(null);
 
-    // 1. Save scroll position before unmounting (or periodically if needed)
     useEffect(() => {
         const container = scrollContainerRef.current;
 
-        // Function to save scroll
         const handleScroll = () => {
             if (container) {
                 sessionStorage.setItem('browseJobsScroll', container.scrollTop.toString());
             }
         }
 
-        // Save on unmount is good, but if we navigate away via link, unmount runs.
         return () => {
             if (container) {
                 sessionStorage.setItem('browseJobsScroll', container.scrollTop.toString());
@@ -73,13 +69,12 @@ const BrowseJobsPage = () => {
         };
     }, []);
 
-    // 2. Restore scroll position
     useLayoutEffect(() => {
         const savedScroll = sessionStorage.getItem('browseJobsScroll');
         if (savedScroll && scrollContainerRef.current) {
             scrollContainerRef.current.scrollTop = parseInt(savedScroll, 10);
         }
-    }, [filteredJobs]); // Re-run if jobs change, ensuring we stay at position if possible
+    }, [filteredJobs]);
 
 
     const handleShare = async (e, job) => {
@@ -93,32 +88,25 @@ const BrowseJobsPage = () => {
             url: url,
         };
 
-        // 1. Try Native Share (Mobile)
         if (navigator.share) {
             try {
                 await navigator.share(shareData);
-                return; // Success
+                return;
             } catch (error) {
                 console.log('Share cancelled or failed:', error);
                 if (error.name !== 'AbortError') {
-                    // If not aborted by user, maybe try copy?
                 } else {
                     return;
                 }
             }
         }
 
-        // 2. Fallback: Copy to Clipboard (Robust)
         try {
             if (navigator.clipboard && window.isSecureContext) {
-                // Secure context (HTTPS)
                 await navigator.clipboard.writeText(url);
             } else {
-                // Unsecure context (HTTP/Localhost) fallback
                 const textArea = document.createElement("textarea");
                 textArea.value = url;
-
-                // Ensure it's part of DOM but hidden
                 textArea.style.position = "fixed";
                 textArea.style.left = "-9999px";
                 textArea.style.top = "0";
@@ -366,7 +354,6 @@ const BrowseJobsPage = () => {
               `}>
                                 {filteredJobs.length > 0 ? filteredJobs.map(job => (
                                     viewType === 'list' ? (
-                                        // LIST VIEW CARD
                                         job.status === JobStatus.CLOSED ? (
                                             <div
                                                 key={job.id}
@@ -472,8 +459,6 @@ const BrowseJobsPage = () => {
                                             </Link>
                                         )
                                     ) : (
-                                        // GRID VIEW CARD
-                                        // GRID VIEW CARD
                                         <Link key={job.id} to={job.status === JobStatus.CLOSED ? '#' : `/job/${job.id}`} className={`w-full group bg-white md:bg-white/80 md:backdrop-blur-sm rounded-[2.5rem] p-4 md:p-8 border shadow-sm hover:shadow-[0_20px_40px_-5px_rgba(0,0,0,0.06)] hover:-translate-y-2 transition-all duration-300 flex flex-col relative overflow-hidden ${job.status === JobStatus.CLOSED ? 'border-red-200 bg-red-50/10 hover:border-red-300' : 'border-slate-200 hover:border-teal-500/30'}`}>
                                             <div className="absolute -right-20 -top-20 w-40 h-40 bg-teal-500/5 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
 

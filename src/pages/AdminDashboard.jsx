@@ -1,4 +1,4 @@
-import React, { useState } from 'react';// react testimgnnghhv - test commit
+import React, { useState } from 'react';
 import {
    Users,
    Briefcase,
@@ -244,25 +244,21 @@ const AdminDashboard = () => {
    const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
    const [newCategoryName, setNewCategoryName] = useState('');
 
-   // Resume Status Logic
    const handleResumeStatusChange = (status) => {
       if (!selectedResume) return;
 
-      // Update Vacancy Applications (allApplications)
-      // Note: MOCK_APPLICATIONS items (and thus allApplications items) have 'id' and 'jobId'
       const updatedApplications = allApplications.map(app => {
          // We match by ID. Assuming selectedResume.id corresponds to app.id
          if (app.id === selectedResume.id) {
             return {
                ...app,
-               status: status // 'Rejected', 'On Hold', 'Selected'
+               status: status
             };
          }
          return app;
       });
       setAllApplications(updatedApplications);
 
-      // Update Agent Resumes
       const updatedResumes = agentResumes.map(resume => {
          if (resume.id === selectedResume.id) {
             let statusColor = '';
@@ -278,12 +274,7 @@ const AdminDashboard = () => {
                statusColor = 'bg-slate-100 text-slate-500 border-slate-200';
             }
             if (status === 'On Hold') {
-               newStatus = 'PROCESSING'; // Map 'On Hold' to PROCESSING for agent view or keep as is?
-               // The user requirement says "Keep on hold ... update to On hold".
-               // I'll stick to the requested string "On Hold" if possible, or mapping it.
-               // For agentResumes, the status field string usually follows a set enum 'PROCESSING', 'ARRIVED', etc.
-               // But for this task, the main focus is Vacancy Management.
-               statusColor = 'bg-purple-50 text-purple-600 border-purple-100';
+               newStatus = 'PROCESSING'; statusColor = 'bg-purple-50 text-purple-600 border-purple-100';
             }
 
             return { ...resume, status: newStatus, statusColor };
@@ -292,19 +283,15 @@ const AdminDashboard = () => {
       });
       setAgentResumes(updatedResumes);
 
-      // Update Audit Queue
       const updatedAuditQueue = auditQueue.map(candidate => {
          if (candidate.id === selectedResume.id) {
             let statusColor = '';
-            // "if the admin approves ... show status as live to public"
             if (status === 'LIVE TO PUBLIC' || status === 'Selected') {
                statusColor = 'bg-emerald-50 text-emerald-600 border-emerald-100';
             }
-            // "if rejected ... show status that it is rejected"
             if (status === 'Rejected') {
                statusColor = 'bg-slate-100 text-slate-500 border-slate-200';
             }
-            // "if place in hold ... show processing"
             if (status === 'On Hold') {
                statusColor = 'bg-purple-50 text-purple-600 border-purple-100';
             }
@@ -315,8 +302,7 @@ const AdminDashboard = () => {
       });
       setAuditQueue(updatedAuditQueue);
 
-      setSelectedResume(null); // Close modal
-      setIsBlacklistReview(false);
+      setSelectedResume(null); setIsBlacklistReview(false);
    };
 
    const [partnerApplications, setPartnerApplications] = useState(MOCK_NEW_PARTNER_APPS);
@@ -353,7 +339,6 @@ const AdminDashboard = () => {
       });
 
       setPartnerApplications(updatedApps);
-      // Only close if not in approval flow or if success finished
       if (status !== 'SELECTED' || approvalStep === 'SUCCESS') {
          setSelectedApplication(null);
          setApprovalStep('NONE');
@@ -372,14 +357,12 @@ const AdminDashboard = () => {
       setApprovalStep('GENERATING');
       setTimeout(() => {
          setApprovalStep('SUCCESS');
-         // Actually update status in background
          handleApplicationStatusChange('SELECTED');
       }, 2000);
    };
 
 
 
-   // Agent Vacancy State
 
 
    const [agentVacancies, setAgentVacancies] = useState([

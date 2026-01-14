@@ -71,7 +71,7 @@ const SupportPage = () => {
                                     Send us a message
                                 </h2>
                                 <p className="text-slate-500 text-sm mt-1">We typically reply within 24 hours.</p>
-                            </div>    //iiloveyouuuuuuu
+                            </div>
 
                             {isSubmitted ? (
                                 <div className="p-12 text-center flex flex-col items-center justify-center min-h-[400px]">

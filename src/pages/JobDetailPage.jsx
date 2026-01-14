@@ -12,14 +12,14 @@ const JobDetailPage = () => {
     const { user, isAuthenticated } = useAuth();
     const [job, setJob] = useState(undefined);
 
-    // Form State
-    const [formData, setFormData] = useState({//abcdef
+
+    const [formData, setFormData] = useState({
         name: '',
         contact: '',
         email: '',
     });
 
-    // File States (Only stores NEW uploads)
+
     const [files, setFiles] = useState({
         resume: null,
         certs: null,
@@ -35,13 +35,13 @@ const JobDetailPage = () => {
         setJob(foundJob);
     }, [id]);
 
-    // Auto-fill profile data on load
+
     useEffect(() => {
         if (isAuthenticated && user) {
             setFormData({
                 name: user.name,
                 email: user.email,
-                contact: '', // Leave blank to force user input or set default
+                contact: '',
             });
         }
     }, [isAuthenticated, user]);
@@ -64,8 +64,7 @@ const JobDetailPage = () => {
         e.preventDefault();
         setIsSubmitting(true);
 
-        // Logic: If user is logged in, they might rely on default docs.
-        // If not logged in, they must upload.
+
         const isPassportPresent = isAuthenticated || files.passport;
         const isResumePresent = isAuthenticated || files.resume;
 
@@ -75,14 +74,14 @@ const JobDetailPage = () => {
             return;
         }
 
-        // Simulate API call
+
         setTimeout(() => {
             setIsSubmitting(false);
             navigate('/success');
         }, 1500);
     };
 
-    // Helper to generate default file names for UI
+
     const getDefaultFileName = (key) => {
         if (!isAuthenticated || !user) return null;
         switch (key) {
@@ -246,7 +245,7 @@ const JobDetailPage = () => {
                                 </div>
                             </div>
                         ) : (
-                            // Guest Mode for Static Docs
+
                             <div className="mb-5 sm:mb-6">
                                 <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3">2. Identification Documents</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

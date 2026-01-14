@@ -28,7 +28,7 @@ const AuthPage = ({ initialMode = 'login' }) => {
     const [mode, setMode] = useState(initialMode);
     const [showAgentContact, setShowAgentContact] = useState(false);
 
-    // Registration States
+
     const [signupStep, setSignupStep] = useState(1);
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
 
@@ -78,13 +78,13 @@ const AuthPage = ({ initialMode = 'login' }) => {
 
     const handleSignupStep1 = (e) => {
         e.preventDefault();
-        // Simulate sending OTP
+
         setSignupStep(2);
     };
 
     const handleSignupVerification = (e) => {
         e.preventDefault();
-        // Mock OTP verification - allow any 6 digit code
+
         if (otp.join('').length === 6) {
             login({
                 name: formData.name,
@@ -103,7 +103,7 @@ const AuthPage = ({ initialMode = 'login' }) => {
         newOtp[index] = value;
         setOtp(newOtp);
 
-        // Auto-advance
+
         if (value && index < 5) {
             const nextInput = document.getElementById(`otp-${index + 1}`);
             nextInput?.focus();
@@ -119,7 +119,7 @@ const AuthPage = ({ initialMode = 'login' }) => {
 
     const isLogin = mode === 'login';
 
-    // --- ADMIN LOGIN VIEW ---
+
     if (isAdminLogin && isLogin) {
         return (
             <AdminLoginFlow
@@ -141,7 +141,7 @@ const AuthPage = ({ initialMode = 'login' }) => {
         );
     }
 
-    // --- UNIFIED SPLIT LAYOUT FOR BOTH LOGIN & SIGNUP ---
+
     return (
         <div className="min-h-[calc(100vh-64px)] bg-[#fdfbf7] flex items-center justify-center p-4">
             <div className="w-full max-w-5xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[600px] border border-slate-100">
@@ -353,7 +353,7 @@ const AdminLoginFlow = ({ email, setEmail, password, setPassword, onLogin, onSwi
 
     const handle2FASubmit = (e) => {
         e.preventDefault();
-        // Simulate verification
+
         if (twoFACode.join('').length === 6) {
             onLogin(e);
         } else {
@@ -362,12 +362,12 @@ const AdminLoginFlow = ({ email, setEmail, password, setPassword, onLogin, onSwi
     };
 
     const handleCodeChange = (index, value) => {
-        if (value.length > 1) return; // Prevent multiple chars
+        if (value.length > 1) return;
         const newCode = [...twoFACode];
         newCode[index] = value;
         setTwoFACode(newCode);
 
-        // Auto-focus next input
+
         if (value && index < 5) {
             const nextInput = document.getElementById(`code-${index + 1}`);
             nextInput?.focus();

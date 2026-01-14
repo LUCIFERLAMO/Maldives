@@ -19,7 +19,6 @@ const CandidateDashboard = () => {
     const myApps = MOCK_APPLICATIONS;
     const actionRequiredCount = myApps.filter(a => a.status === ApplicationStatus.ACTION_REQUIRED).length;
 
-    // Mock logic for watchlist
     const foundJobAlert = {
         id: 'nurse-specialist',
         title: 'Head Nurse (ICU)',

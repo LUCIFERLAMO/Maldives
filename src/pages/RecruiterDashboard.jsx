@@ -22,7 +22,6 @@ const RecruiterDashboard = () => {
     const [activeTab, setActiveTab] = useState('overview');
 
 
-    // Data State
     const [applications, setApplications] = useState(MOCK_APPLICATIONS);
     const [jobs, setJobs] = useState(MOCK_JOBS);
     const [selectedJobForSubmission, setSelectedJobForSubmission] = useState(null);
@@ -44,7 +43,6 @@ const RecruiterDashboard = () => {
     const [jobRequestSearchTerm, setJobRequestSearchTerm] = useState('');
     const [expandedJobRequestId, setExpandedJobRequestId] = useState(null);
 
-    // Filter jobs based on search
     const filteredJobs = useMemo(() => {
         return jobs.filter(j =>
             j.status === JobStatus.OPEN &&
@@ -55,7 +53,6 @@ const RecruiterDashboard = () => {
 
 
 
-    // Open submission modal
     const handleOpenSubmission = (job) => {
         setSelectedJobForSubmission(job);
         setSubmissionFiles({
@@ -68,7 +65,6 @@ const RecruiterDashboard = () => {
     };
 
     const handleConfirmSubmission = () => {
-        // Validation
         if (!submissionFiles.resume || !submissionFiles.identity || !submissionFiles.certs) {
             alert("Please upload all mandatory documents (Resume, ID/Passport, Certificates).");
             return;
@@ -273,7 +269,6 @@ const RecruiterDashboard = () => {
                                         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
                                             <form className="space-y-8" onSubmit={(e) => {
                                                 e.preventDefault();
-                                                // Mock submission logic
                                                 const newRequest = {
                                                     id: Math.random().toString(),
                                                     title: e.target.title.value,
