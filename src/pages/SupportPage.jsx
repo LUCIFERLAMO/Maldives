@@ -19,7 +19,7 @@ const FAQS = [
         question: "What documents do I need for a work visa?",
         answer: "You typically need a valid passport (min 6 months validity), Police Clearance Certificate (PCC), Medical Report (from an approved center), and Passport-sized photos."
     }
-];
+];//fhh
 
 const SupportPage = () => {
     const navigate = useNavigate(); // this is 
