@@ -20,7 +20,7 @@ import { supabase } from '../lib/supabase';
 const AuthPage = ({ initialMode = 'login' }) => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { login, signup } = useAuth();
+    const { login, signup, mockLogin } = useAuth();
 
     const from = location.state?.from;
     const isAgentLogin = from === 'agent' || from === 'recruiter';
@@ -47,11 +47,37 @@ const AuthPage = ({ initialMode = 'login' }) => {
     const handleLoginSubmit = async (e) => {
         e.preventDefault();
 
-        if (isAgentLogin || isAdminLogin) {
-            alert('Agent/Admin login coming soon!');
+        // 1. MOCK LOGIN FOR AGENT/ADMIN
+        if (isAgentLogin) {
+            // Simulate API call for agent
+            setTimeout(() => {
+                mockLogin({
+                    id: 'mock-agent-123',
+                    name: 'Rahul Sharma',
+                    email: formData.email,
+                    role: 'recruiter',
+                    avatar: null
+                });
+                navigate('/recruiter');
+            }, 800);
             return;
         }
 
+        if (isAdminLogin) {
+            // Admin flow is handled in the separate AdminLoginFlow component below, 
+            // but just in case it hits here:
+            mockLogin({
+                id: 'mock-admin-001',
+                name: 'Platform Administrator',
+                email: 'admin@maldivescareer.com',
+                role: 'admin',
+                avatar: null
+            });
+            navigate('/admin');
+            return;
+        }
+
+        // 2. REAL SUPABASE LOGIN FOR CANDIDATES (CLIENT)
         const { error } = await login(formData.email, formData.password);
 
         if (error) {
@@ -178,10 +204,12 @@ const AuthPage = ({ initialMode = 'login' }) => {
                 setPassword={(password) => setFormData(prev => ({ ...prev, password }))}
                 onLogin={(e) => {
                     e.preventDefault();
-                    login({
+                    // Use mockLogin for admin
+                    mockLogin({
+                        id: 'mock-admin-001',
                         name: 'Platform Administrator',
                         email: formData.email,
-                        role: 'employer'
+                        role: 'admin'
                     });
                     navigate('/admin');
                 }}
