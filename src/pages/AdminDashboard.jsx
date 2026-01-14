@@ -16,7 +16,8 @@ import {
    Coins,
    Eye,
    Loader2,
-   AlertTriangle
+   AlertTriangle,
+   Plus
 } from 'lucide-react';
 
 const MOCK_AGENT_RESUMES = [
@@ -243,6 +244,16 @@ const AdminDashboard = () => {
    const [industries, setIndustries] = useState(INDUSTRIES);
    const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
    const [newCategoryName, setNewCategoryName] = useState('');
+   const [categoryError, setCategoryError] = useState('');
+   const [isAddVacancyOpen, setIsAddVacancyOpen] = useState(false);
+   const [vacancyForm, setVacancyForm] = useState({
+      title: '',
+      industry: '',
+      salary: '',
+      headcount: '',
+      description: '',
+      requirements: ''
+   });
 
    // Resume Status Logic
    const handleResumeStatusChange = (status) => {
@@ -362,10 +373,34 @@ const AdminDashboard = () => {
 
    const handleAddCategory = () => {
       if (newCategoryName.trim()) {
+         const normalizedNew = newCategoryName.trim().toLowerCase();
+         const exists = industries.some(ind => ind.toLowerCase() === normalizedNew);
+
+         if (exists) {
+            setCategoryError('Category already exists');
+            return;
+         }
+
          setIndustries([...industries, newCategoryName.trim()]);
          setNewCategoryName('');
+         setCategoryError('');
          setIsAddCategoryOpen(false);
       }
+   };
+
+   const handleSubmitVacancy = (e) => {
+      e.preventDefault();
+      // In a real app, you would submit data here
+      alert('Job vacancy submitted');
+      setIsAddVacancyOpen(false);
+      setVacancyForm({
+         title: '',
+         industry: '',
+         salary: '',
+         headcount: '',
+         description: '',
+         requirements: ''
+      });
    };
 
    const handleGenerateCredentials = () => {
@@ -482,8 +517,8 @@ const AdminDashboard = () => {
    };
 
    return (
-      <div className="min-h-screen bg-white font-sans flex flex-col overflow-hidden">
-         <div className="flex flex-1 overflow-hidden">
+      <div className="min-h-screen bg-white font-sans flex flex-col">
+         <div className="flex flex-1">
             {/* SIDEBAR */}
             <DashboardSidebar
                activeTab={activeTab}
@@ -493,15 +528,16 @@ const AdminDashboard = () => {
             />
 
             {/* MAIN CONTENT */}
-            <main className="flex-1 flex flex-col h-full overflow-hidden relative w-full bg-slate-50/50">
+            {/* MAIN CONTENT */}
+            <main className="flex-1 flex flex-col relative w-full bg-slate-50/50 min-h-screen">
                <DashboardHeader
                   onMenuClick={() => setIsSidebarOpen(true)}
                   title={getPageTitle()}
                />
 
                {/* CONTENT SCROLL AREA */}
-               <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
-                  <div className="max-w-6xl mx-auto space-y-8 pb-10">
+               <div className="flex-1 p-4 md:p-8 overflow-visible">
+                  <div className="max-w-6xl mx-auto space-y-8">
 
                      {/* PAGE TITLE REDMOVED */}
                      <div className="flex items-center justify-between">
@@ -630,9 +666,9 @@ const AdminDashboard = () => {
                                     <h2 className="text-2xl font-bold text-slate-900">Vacancy Categories</h2>
                                     <button
                                        onClick={() => setIsAddCategoryOpen(true)}
-                                       className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/20"
+                                       className="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-bold shadow-lg shadow-teal-600/20 hover:bg-teal-700 transition-all flex items-center gap-2"
                                     >
-                                       <Plus className="w-5 h-5" />
+                                       <Plus className="w-4 h-4" /> Add Category
                                     </button>
                                  </div>
                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -661,9 +697,20 @@ const AdminDashboard = () => {
                               <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                                  <div className="p-6 border-b border-slate-100 flex justify-between items-center">
                                     <h3 className="font-bold text-slate-900 text-sm uppercase tracking-widest">Candidate Moderation Stream</h3>
-                                    <button className="text-slate-400 hover:text-slate-600">
-                                       <Filter className="w-4 h-4" />
-                                    </button>
+                                    <div className="flex items-center gap-3">
+                                       <button
+                                          onClick={() => {
+                                             setVacancyForm(prev => ({ ...prev, industry: selectedIndustry }));
+                                             setIsAddVacancyOpen(true);
+                                          }}
+                                          className="px-4 py-2 rounded-lg bg-teal-600 text-white text-xs font-bold uppercase tracking-wider shadow-lg shadow-teal-600/20 hover:bg-teal-700 transition-all flex items-center gap-2"
+                                       >
+                                          <Plus className="w-4 h-4" /> Add Job Vacancy
+                                       </button>
+                                       <button className="text-slate-400 hover:text-slate-600">
+                                          <Filter className="w-4 h-4" />
+                                       </button>
+                                    </div>
                                  </div>
                                  <div className="overflow-x-auto">
                                     <table className="w-full text-left">
@@ -1381,6 +1428,103 @@ const AdminDashboard = () => {
          }
 
 
+
+         {/* ADD VACANCY MODAL */}
+         {isAddVacancyOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
+                  <h2 className="text-2xl font-bold text-slate-900 mb-8">Add Job Vacancy</h2>
+                  <form onSubmit={handleSubmitVacancy} className="space-y-6">
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                           <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Job Title</label>
+                           <input
+                              required
+                              type="text"
+                              value={vacancyForm.title}
+                              onChange={e => setVacancyForm({ ...vacancyForm, title: e.target.value })}
+                              placeholder="e.g. Senior Sous Chef"
+                              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                           />
+                        </div>
+                        <div className="space-y-2">
+                           <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Field / Industry</label>
+                           <input
+                              required
+                              type="text"
+                              value={vacancyForm.industry}
+                              onChange={e => setVacancyForm({ ...vacancyForm, industry: e.target.value })}
+                              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                           />
+                        </div>
+                        <div className="space-y-2">
+                           <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Salary Range</label>
+                           <input
+                              required
+                              type="text"
+                              value={vacancyForm.salary}
+                              onChange={e => setVacancyForm({ ...vacancyForm, salary: e.target.value })}
+                              placeholder="e.g. $1200 - $1500 USD"
+                              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                           />
+                        </div>
+                        <div className="space-y-2">
+                           <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Headcount Required</label>
+                           <input
+                              required
+                              type="text"
+                              value={vacancyForm.headcount}
+                              onChange={e => setVacancyForm({ ...vacancyForm, headcount: e.target.value })}
+                              placeholder="e.g. 5"
+                              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                           />
+                        </div>
+                     </div>
+
+                     <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Job Description</label>
+                        <textarea
+                           required
+                           rows={4}
+                           value={vacancyForm.description}
+                           onChange={e => setVacancyForm({ ...vacancyForm, description: e.target.value })}
+                           placeholder="Describe the role responsibilities..."
+                           className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all resize-none"
+                        />
+                     </div>
+
+                     <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Requirements</label>
+                        <textarea
+                           required
+                           rows={4}
+                           value={vacancyForm.requirements}
+                           onChange={e => setVacancyForm({ ...vacancyForm, requirements: e.target.value })}
+                           placeholder="List key requirements (one per line)..."
+                           className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all resize-none"
+                        />
+                     </div>
+
+                     <div className="flex gap-4 pt-4 border-t border-slate-100">
+                        <button
+                           type="button"
+                           onClick={() => setIsAddVacancyOpen(false)}
+                           className="px-8 py-3 bg-white border border-slate-200 text-slate-500 rounded-xl text-sm font-bold uppercase tracking-wider hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                        >
+                           Cancel
+                        </button>
+                        <button
+                           type="submit"
+                           className="flex-1 px-8 py-3 bg-teal-600 text-white rounded-xl text-sm font-bold uppercase tracking-wider hover:bg-teal-700 shadow-lg shadow-teal-600/20 transition-all"
+                        >
+                           Submit Request
+                        </button>
+                     </div>
+                  </form>
+               </div>
+            </div>
+         )}
+
          {/* ADD CATEGORY MODAL */}
          {
             isAddCategoryOpen && (
@@ -1392,11 +1536,24 @@ const AdminDashboard = () => {
                         <input
                            type="text"
                            value={newCategoryName}
-                           onChange={(e) => setNewCategoryName(e.target.value)}
+                           onChange={(e) => {
+                              setNewCategoryName(e.target.value);
+                              if (categoryError) setCategoryError('');
+                           }}
                            placeholder="e.g. Retail"
-                           className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                           className={`w-full px-4 py-3 bg-slate-50 border rounded-xl text-sm font-medium text-slate-900 outline-none focus:ring-2 transition-all ${categoryError ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-200 focus:ring-teal-500/20 focus:border-teal-500'}`}
                            autoFocus
+                           onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                 handleAddCategory();
+                              }
+                           }}
                         />
+                        {categoryError && (
+                           <p className="text-xs font-bold text-red-500 mt-2 flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3" /> {categoryError}
+                           </p>
+                        )}
                      </div>
                      <div className="flex gap-3">
                         <button
@@ -1407,7 +1564,7 @@ const AdminDashboard = () => {
                         </button>
                         <button
                            onClick={handleAddCategory}
-                           className="flex-1 px-4 py-3 bg-emerald-50 text-emerald-600 rounded-xl text-sm font-bold uppercase tracking-wider hover:bg-emerald-100 transition-colors"
+                           className="flex-1 px-4 py-3 bg-emerald-600 text-white rounded-xl text-sm font-bold uppercase tracking-wider hover:bg-emerald-700 shadow-lg shadow-emerald-500/30 transition-all"
                         >
                            Add
                         </button>

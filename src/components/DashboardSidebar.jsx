@@ -31,7 +31,7 @@ export const DashboardSidebar = ({ activeTab, setActiveTab, isOpen = false, onCl
             )}
 
             <aside className={`
-                fixed lg:static top-0 left-0 h-screen w-72 bg-slate-900 text-slate-300 flex flex-col z-30
+                fixed lg:sticky top-0 left-0 h-screen w-72 bg-slate-900 text-slate-300 flex flex-col z-30
                 transition-transform duration-300 ease-in-out border-r border-slate-800
                 ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
             `}>
