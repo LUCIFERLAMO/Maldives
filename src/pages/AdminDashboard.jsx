@@ -247,12 +247,14 @@ const AdminDashboard = () => {
    const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
    const [newCategoryName, setNewCategoryName] = useState('');
    const [categoryError, setCategoryError] = useState('');
+   const [jobs, setJobs] = useState(MOCK_JOBS);
    const [isAddVacancyOpen, setIsAddVacancyOpen] = useState(false);
-   const [vacancyForm, setVacancyForm] = useState({
+   const [newVacancy, setNewVacancy] = useState({
       title: '',
       industry: '',
-      salary: '',
-      headcount: '',
+      location: '',
+      type: 'Full-time',
+      experience: '',
       description: '',
       requirements: ''
    });
@@ -390,19 +392,19 @@ const AdminDashboard = () => {
       }
    };
 
-   const handleSubmitVacancy = (e) => {
+   const handleAddVacancy = (e) => {
       e.preventDefault();
-      // In a real app, you would submit data here
-      alert('Job vacancy submitted');
+      const vacancy = {
+         id: (jobs.length + 1).toString(),
+         ...newVacancy,
+         postedDate: new Date().toISOString().split('T')[0],
+         status: 'Current Opening',
+         isReopened: false,
+         requirements: newVacancy.requirements.split(',').map(r => r.trim())
+      };
+      setJobs([...jobs, vacancy]);
+      setNewVacancy({ title: '', industry: '', location: '', type: 'Full-time', experience: '', description: '', requirements: '' });
       setIsAddVacancyOpen(false);
-      setVacancyForm({
-         title: '',
-         industry: '',
-         salary: '',
-         headcount: '',
-         description: '',
-         requirements: ''
-      });
    };
 
    const handleGenerateCredentials = () => {
@@ -492,7 +494,7 @@ const AdminDashboard = () => {
    };
 
    // Vacancy Logic
-   const getJobsByIndustry = (industry) => MOCK_JOBS.filter(j => j.industry === industry);
+   const getJobsByIndustry = (industry) => jobs.filter(j => j.industry === industry);
 
    const getCandidatesForIndustry = (industry) => {
       const jobs = getJobsByIndustry(industry);
@@ -1404,100 +1406,93 @@ const AdminDashboard = () => {
 
 
          {/* ADD VACANCY MODAL */}
-         {isAddVacancyOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
-                  <h2 className="text-2xl font-bold text-slate-900 mb-8">Add Job Vacancy</h2>
-                  <form onSubmit={handleSubmitVacancy} className="space-y-6">
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                           <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Job Title</label>
-                           <input
-                              required
-                              type="text"
-                              value={vacancyForm.title}
-                              onChange={e => setVacancyForm({ ...vacancyForm, title: e.target.value })}
-                              placeholder="e.g. Senior Sous Chef"
-                              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
-                           />
-                        </div>
-                        <div className="space-y-2">
-                           <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Field / Industry</label>
-                           <input
-                              required
-                              type="text"
-                              value={vacancyForm.industry}
-                              onChange={e => setVacancyForm({ ...vacancyForm, industry: e.target.value })}
-                              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
-                           />
-                        </div>
-                        <div className="space-y-2">
-                           <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Salary Range</label>
-                           <input
-                              required
-                              type="text"
-                              value={vacancyForm.salary}
-                              onChange={e => setVacancyForm({ ...vacancyForm, salary: e.target.value })}
-                              placeholder="e.g. $1200 - $1500 USD"
-                              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
-                           />
-                        </div>
-                        <div className="space-y-2">
-                           <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Headcount Required</label>
-                           <input
-                              required
-                              type="text"
-                              value={vacancyForm.headcount}
-                              onChange={e => setVacancyForm({ ...vacancyForm, headcount: e.target.value })}
-                              placeholder="e.g. 5"
-                              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
-                           />
-                        </div>
-                     </div>
-
-                     <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Job Description</label>
-                        <textarea
-                           required
-                           rows={4}
-                           value={vacancyForm.description}
-                           onChange={e => setVacancyForm({ ...vacancyForm, description: e.target.value })}
-                           placeholder="Describe the role responsibilities..."
-                           className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all resize-none"
-                        />
-                     </div>
-
-                     <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Requirements</label>
-                        <textarea
-                           required
-                           rows={4}
-                           value={vacancyForm.requirements}
-                           onChange={e => setVacancyForm({ ...vacancyForm, requirements: e.target.value })}
-                           placeholder="List key requirements (one per line)..."
-                           className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all resize-none"
-                        />
-                     </div>
-
-                     <div className="flex gap-4 pt-4 border-t border-slate-100">
+         {
+            isAddVacancyOpen && (
+               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+                  <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
+                     <div className="flex justify-between items-center mb-8">
+                        <h3 className="text-2xl font-black text-slate-900">Post New Vacancy</h3>
                         <button
-                           type="button"
                            onClick={() => setIsAddVacancyOpen(false)}
-                           className="px-8 py-3 bg-white border border-slate-200 text-slate-500 rounded-xl text-sm font-bold uppercase tracking-wider hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                           className="w-10 h-10 bg-slate-50 hover:bg-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
                         >
-                           Cancel
+                           <X className="w-5 h-5" />
                         </button>
+                     </div>
+
+                     <form onSubmit={handleAddVacancy} className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Job Title</label>
+                              <input
+                                 required
+                                 type="text"
+                                 value={newVacancy.title}
+                                 onChange={(e) => setNewVacancy({ ...newVacancy, title: e.target.value })}
+                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all"
+                                 placeholder="e.g. Senior Chef"
+                              />
+                           </div>
+                           <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Industry</label>
+                              <select
+                                 required
+                                 value={newVacancy.industry}
+                                 onChange={(e) => setNewVacancy({ ...newVacancy, industry: e.target.value })}
+                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all"
+                              >
+                                 <option value="">Select Industry</option>
+                                 {industries.map(ind => (
+                                    <option key={ind} value={ind}>{ind}</option>
+                                 ))}
+                              </select>
+                           </div>
+                           <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Location</label>
+                              <input
+                                 required
+                                 type="text"
+                                 value={newVacancy.location}
+                                 onChange={(e) => setNewVacancy({ ...newVacancy, location: e.target.value })}
+                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all"
+                                 placeholder="e.g. Male Atoll"
+                              />
+                           </div>
+                           <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Experience</label>
+                              <input
+                                 required
+                                 type="text"
+                                 value={newVacancy.experience}
+                                 onChange={(e) => setNewVacancy({ ...newVacancy, experience: e.target.value })}
+                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all"
+                                 placeholder="e.g. 3-5 Years"
+                              />
+                           </div>
+                        </div>
+
+                        <div className="space-y-2">
+                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Requirements (comma separated)</label>
+                           <textarea
+                              required
+                              value={newVacancy.requirements}
+                              onChange={(e) => setNewVacancy({ ...newVacancy, requirements: e.target.value })}
+                              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all min-h-[100px]"
+                              placeholder="e.g. Fluent English, Degree in Hospitality, etc."
+                           />
+                        </div>
+
                         <button
                            type="submit"
-                           className="flex-1 px-8 py-3 bg-teal-600 text-white rounded-xl text-sm font-bold uppercase tracking-wider hover:bg-teal-700 shadow-lg shadow-teal-600/20 transition-all"
+                           className="w-full py-4 bg-teal-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-all shadow-lg shadow-teal-600/20"
                         >
-                           Submit Request
+                           Post Job Vacancy
                         </button>
-                     </div>
-                  </form>
+                     </form>
+                  </div>
                </div>
-            </div>
-         )}
+            )
+         }
 
          {/* ADD CATEGORY MODAL */}
          {
