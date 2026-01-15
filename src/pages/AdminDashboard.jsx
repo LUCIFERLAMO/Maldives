@@ -213,7 +213,7 @@ import { DashboardHeader } from '../components/DashboardHeader';
 import { StatCard } from '../components/StatCard';
 import { MOCK_JOBS, MOCK_APPLICATIONS, INDUSTRIES } from '../constants';
 
-import { FileText } from 'lucide-react';
+
 
 const DocumentCard = ({ label, filename }) => (
    <div className="flex items-center p-4 border border-slate-200 rounded-2xl bg-white hover:border-teal-500 hover:shadow-md transition-all group">
@@ -252,12 +252,12 @@ const AdminDashboard = () => {
    const [newVacancy, setNewVacancy] = useState({
       title: '',
       industry: '',
-      location: '',
-      type: 'Full-time',
-      experience: '',
+      salary: '',
+      headcount: '',
       description: '',
       requirements: ''
    });
+   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
 
    // Resume Status Logic
    const handleResumeStatusChange = (status) => {
@@ -392,6 +392,7 @@ const AdminDashboard = () => {
       }
    };
 
+
    const handleAddVacancy = (e) => {
       e.preventDefault();
       const vacancy = {
@@ -403,8 +404,10 @@ const AdminDashboard = () => {
          requirements: newVacancy.requirements.split(',').map(r => r.trim())
       };
       setJobs([...jobs, vacancy]);
-      setNewVacancy({ title: '', industry: '', location: '', type: 'Full-time', experience: '', description: '', requirements: '' });
+      setNewVacancy({ title: '', industry: '', salary: '', headcount: '', description: '', requirements: '' });
       setIsAddVacancyOpen(false);
+      setShowSuccessNotification(true);
+      setTimeout(() => setShowSuccessNotification(false), 3000);
    };
 
    const handleGenerateCredentials = () => {
@@ -522,6 +525,18 @@ const AdminDashboard = () => {
 
    return (
       <div className="min-h-screen bg-white font-sans flex flex-col">
+         {/* SUCCESS NOTIFICATION */}
+         {showSuccessNotification && (
+            <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[150] bg-emerald-600 text-white px-8 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-300">
+               <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                  <CheckCircle2 className="w-5 h-5" />
+               </div>
+               <div>
+                  <h4 className="font-black text-sm uppercase tracking-wider">Success</h4>
+                  <p className="text-xs font-medium opacity-90">Vacancy Requirements submitted</p>
+               </div>
+            </div>
+         )}
          <div className="flex flex-1">
             {/* SIDEBAR */}
             <DashboardSidebar
@@ -704,7 +719,7 @@ const AdminDashboard = () => {
                                     <div className="flex items-center gap-3">
                                        <button
                                           onClick={() => {
-                                             setVacancyForm(prev => ({ ...prev, industry: selectedIndustry }));
+                                             setNewVacancy(prev => ({ ...prev, industry: selectedIndustry }));
                                              setIsAddVacancyOpen(true);
                                           }}
                                           className="px-4 py-2 rounded-lg bg-teal-600 text-white text-xs font-bold uppercase tracking-wider shadow-lg shadow-teal-600/20 hover:bg-teal-700 transition-all flex items-center gap-2"
@@ -1408,10 +1423,10 @@ const AdminDashboard = () => {
          {/* ADD VACANCY MODAL */}
          {
             isAddVacancyOpen && (
-               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+               <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
                   <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
                      <div className="flex justify-between items-center mb-8">
-                        <h3 className="text-2xl font-black text-slate-900">Post New Vacancy</h3>
+                        <h3 className="text-2xl font-black text-slate-900">Job Requirements</h3>
                         <button
                            onClick={() => setIsAddVacancyOpen(false)}
                            className="w-10 h-10 bg-slate-50 hover:bg-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
@@ -1430,64 +1445,81 @@ const AdminDashboard = () => {
                                  value={newVacancy.title}
                                  onChange={(e) => setNewVacancy({ ...newVacancy, title: e.target.value })}
                                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all"
-                                 placeholder="e.g. Senior Chef"
+                                 placeholder="e.g. Senior Sous Chef"
                               />
                            </div>
                            <div className="space-y-2">
-                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Industry</label>
-                              <select
+                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Field / Industry</label>
+                              <input
                                  required
+                                 type="text"
                                  value={newVacancy.industry}
                                  onChange={(e) => setNewVacancy({ ...newVacancy, industry: e.target.value })}
                                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all"
-                              >
-                                 <option value="">Select Industry</option>
-                                 {industries.map(ind => (
-                                    <option key={ind} value={ind}>{ind}</option>
-                                 ))}
-                              </select>
-                           </div>
-                           <div className="space-y-2">
-                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Location</label>
-                              <input
-                                 required
-                                 type="text"
-                                 value={newVacancy.location}
-                                 onChange={(e) => setNewVacancy({ ...newVacancy, location: e.target.value })}
-                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all"
-                                 placeholder="e.g. Male Atoll"
+                                 placeholder="Hospitality"
                               />
                            </div>
                            <div className="space-y-2">
-                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Experience</label>
+                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Salary Range</label>
                               <input
                                  required
                                  type="text"
-                                 value={newVacancy.experience}
-                                 onChange={(e) => setNewVacancy({ ...newVacancy, experience: e.target.value })}
+                                 value={newVacancy.salary}
+                                 onChange={(e) => setNewVacancy({ ...newVacancy, salary: e.target.value })}
                                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all"
-                                 placeholder="e.g. 3-5 Years"
+                                 placeholder="e.g. $1200 - $1500 USD"
+                              />
+                           </div>
+                           <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Headcount Required</label>
+                              <input
+                                 required
+                                 type="text"
+                                 value={newVacancy.headcount}
+                                 onChange={(e) => setNewVacancy({ ...newVacancy, headcount: e.target.value })}
+                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all"
+                                 placeholder="e.g. 5"
                               />
                            </div>
                         </div>
 
                         <div className="space-y-2">
-                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Requirements (comma separated)</label>
+                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Job Description</label>
+                           <textarea
+                              required
+                              value={newVacancy.description}
+                              onChange={(e) => setNewVacancy({ ...newVacancy, description: e.target.value })}
+                              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all min-h-[100px]"
+                              placeholder="Describe the role responsibilities..."
+                           />
+                        </div>
+
+                        <div className="space-y-2">
+                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Requirements</label>
                            <textarea
                               required
                               value={newVacancy.requirements}
                               onChange={(e) => setNewVacancy({ ...newVacancy, requirements: e.target.value })}
                               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all min-h-[100px]"
-                              placeholder="e.g. Fluent English, Degree in Hospitality, etc."
+                              placeholder="List key requirements (one per line)..."
                            />
                         </div>
 
-                        <button
-                           type="submit"
-                           className="w-full py-4 bg-teal-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-all shadow-lg shadow-teal-600/20"
-                        >
-                           Post Job Vacancy
-                        </button>
+                        <div className="flex gap-4 pt-4 border-t border-slate-100">
+                           <button
+                              type="button"
+                              onClick={() => setIsAddVacancyOpen(false)}
+                              className="px-8 py-3 bg-white border border-slate-200 text-slate-500 rounded-xl text-sm font-bold uppercase tracking-wider hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                           >
+                              Cancel
+                           </button>
+                           <button
+                              type="submit"
+                              className="flex-1 px-8 py-3 bg-emerald-600 text-white rounded-xl text-sm font-bold uppercase tracking-wider hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 transition-all"
+                           >
+                              Submit
+                           </button>
+                        </div>
                      </form>
                   </div>
                </div>
