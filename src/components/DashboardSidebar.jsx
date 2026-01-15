@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Briefcase, UserCheck, Globe2, UserPlus, LogOut } from 'lucide-react';
+import { LayoutDashboard, Briefcase, UserCheck, Globe2, UserPlus, LogOut, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const DashboardSidebar = ({ activeTab, setActiveTab, isOpen = false, onClose }) => {
@@ -54,6 +54,7 @@ export const DashboardSidebar = ({ activeTab, setActiveTab, isOpen = false, onCl
                         { id: 'audit', label: 'AUDIT QUEUE', icon: UserCheck },
                         { id: 'vacancies', label: 'VACANCY\nMANAGEMENT', icon: Briefcase },
                         { id: 'agents', label: 'AGENT ECOSYSTEM', icon: Globe2 },
+                        { id: 'blacklisted', label: 'BLACKLISTED', icon: ShieldAlert },
                     ].map((item) => {
                         const isActive = activeTab === item.id;
                         return (

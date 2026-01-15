@@ -43,9 +43,6 @@ const CandidateDashboard = () => {
                             </h1>
                         </div>
                         <div className="flex gap-3 w-full md:w-auto">
-                            <Link to="/profile" className="flex-1 md:flex-none px-6 py-3 bg-white/10 border border-white/20 text-white rounded-xl font-medium text-sm hover:bg-white/20 transition-colors backdrop-blur-sm">
-                                My Profile
-                            </Link>
                             <Link to="/applications" className="flex-1 md:flex-none px-6 py-3 bg-white text-teal-800 rounded-xl font-bold text-sm hover:bg-teal-50 transition-colors shadow-lg shadow-teal-900/20 active:scale-95 transform transition-transform">
                                 Track Applications
                             </Link>

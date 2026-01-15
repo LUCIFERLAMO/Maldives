@@ -1,4 +1,4 @@
-import React, { useState } from 'react';// react testimgnnghhv - test commit
+import React, { useState, useRef, useEffect } from 'react';
 import {
    Users,
    Briefcase,
@@ -20,8 +20,14 @@ import {
    Plus,
    Calendar,
    FileText,
-   Search
+   Search,
+   ChevronDown
 } from 'lucide-react';
+
+import { DashboardSidebar } from '../components/DashboardSidebar';
+import { DashboardHeader } from '../components/DashboardHeader';
+import { StatCard } from '../components/StatCard';
+import { MOCK_JOBS, MOCK_APPLICATIONS, INDUSTRIES } from '../constants';
 
 const MOCK_AGENT_RESUMES = [
    {
@@ -40,7 +46,8 @@ const MOCK_AGENT_RESUMES = [
          education: 'Deg_Hospitality.pdf',
          pcc: 'Police_Clearance.pdf',
          goodStanding: 'Good_Standing.pdf'
-      }
+      },
+      appliedDate: new Date(Date.now() - 3600000).toISOString() // 1 hour ago
    },
    {
       id: 2,
@@ -58,7 +65,8 @@ const MOCK_AGENT_RESUMES = [
          education: 'Culinary_Arts.pdf',
          pcc: 'PCC_India.pdf',
          goodStanding: 'Ref_Letter.pdf'
-      }
+      },
+      appliedDate: new Date(Date.now() - 86400000 * 2).toISOString() // 2 days ago
    },
    {
       id: 3,
@@ -76,7 +84,8 @@ const MOCK_AGENT_RESUMES = [
          education: 'PADI_Master.pdf',
          pcc: 'DBS_Check.pdf',
          goodStanding: 'Ref_DiveShop.pdf'
-      }
+      },
+      appliedDate: new Date(Date.now() - 86400000 * 10).toISOString() // 10 days ago
    },
    {
       id: 4,
@@ -94,7 +103,8 @@ const MOCK_AGENT_RESUMES = [
          education: 'Spa_Management.pdf',
          pcc: 'FBI_Check.pdf',
          goodStanding: 'Health_Cert.pdf'
-      }
+      },
+      appliedDate: new Date(Date.now() - 86400000 * 45).toISOString() // 45 days ago
    },
 
 ];
@@ -118,7 +128,8 @@ const MOCK_AUDIT_QUEUE = [
          education: 'WSET_Level3.pdf',
          pcc: 'Police_Clearance_IT.pdf',
          goodStanding: 'Ref_Hotel.pdf'
-      }
+      },
+      appliedDate: new Date(Date.now() - 1800000).toISOString() // 30 mins ago
    },
    {
       id: 102,
@@ -138,7 +149,8 @@ const MOCK_AUDIT_QUEUE = [
          education: 'BTech_Mech.pdf',
          pcc: 'PCC_Mumbai.pdf',
          goodStanding: 'Exp_Letter.pdf'
-      }
+      },
+      appliedDate: new Date(Date.now() - 86400000 * 5).toISOString() // 5 days ago
    },
    {
       id: 103,
@@ -158,7 +170,8 @@ const MOCK_AUDIT_QUEUE = [
          education: 'Security_Cert.pdf',
          pcc: 'FBI_Clearance.pdf',
          goodStanding: 'Ref_Mil.pdf'
-      }
+      },
+      appliedDate: new Date(Date.now() - 86400000 * 20).toISOString() // 20 days ago
    }
 ];
 
@@ -209,10 +222,7 @@ const MOCK_NEW_PARTNER_APPS = [
       }
    }
 ];
-import { DashboardSidebar } from '../components/DashboardSidebar';
-import { DashboardHeader } from '../components/DashboardHeader';
-import { StatCard } from '../components/StatCard';
-import { MOCK_JOBS, MOCK_APPLICATIONS, INDUSTRIES } from '../constants';
+
 
 
 
@@ -241,6 +251,24 @@ const AdminDashboard = () => {
    const [agentSubTab, setAgentSubTab] = useState('vacancies');
    const [agentResumes, setAgentResumes] = useState(MOCK_AGENT_RESUMES);
    const [auditQueue, setAuditQueue] = useState(MOCK_AUDIT_QUEUE);
+
+   // Refs for flexible dropdowns
+   const blacklistSourceRef = useRef(null);
+   const blacklistDurationRef = useRef(null);
+
+   // Click outside handler for flexibility
+   useEffect(() => {
+      const handleClickOutside = (event) => {
+         if (blacklistSourceRef.current && !blacklistSourceRef.current.contains(event.target)) {
+            setIsBlacklistSourceOpen(false);
+         }
+         if (blacklistDurationRef.current && !blacklistDurationRef.current.contains(event.target)) {
+            setIsBlacklistDurationOpen(false);
+         }
+      };
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+   }, []);
    const [selectedResume, setSelectedResume] = useState(null);
    const [isBlacklistReview, setIsBlacklistReview] = useState(false);
    const [allApplications, setAllApplications] = useState(MOCK_APPLICATIONS);
@@ -563,6 +591,18 @@ const AdminDashboard = () => {
    const [candidateSearchQuery, setCandidateSearchQuery] = useState('');
    const handleCandidateSearch = () => setCandidateSearchQuery(candidateSearchInput);
 
+
+
+   // 6. Blacklist Candidates
+   const [blacklistSearchInput, setBlacklistSearchInput] = useState('');
+   const [blacklistSearchQuery, setBlacklistSearchQuery] = useState('');
+   const handleBlacklistSearch = () => setBlacklistSearchQuery(blacklistSearchInput);
+
+   const [isBlacklistFilterOpen, setIsBlacklistFilterOpen] = useState(false);
+   const [isBlacklistSourceOpen, setIsBlacklistSourceOpen] = useState(false);
+   const [isBlacklistDurationOpen, setIsBlacklistDurationOpen] = useState(false);
+   const [blacklistFilters, setBlacklistFilters] = useState({ source: 'All', duration: 'All' });
+
    // --- AGENT ECOSYSTEM FILTERS ---
 
    // 1. VACANCIES FILTER
@@ -687,6 +727,44 @@ const AdminDashboard = () => {
          return true;
       });
    };
+
+
+   // Filtering logic for Blacklisted Candidates
+   const filteredBlacklistedCandidates = [...auditQueue, ...agentResumes].filter(candidate => {
+      // Must be REJECTED
+      if (candidate.status !== 'REJECTED') return false;
+
+      // Search Filter
+      if (blacklistSearchQuery) {
+         const q = blacklistSearchQuery.toLowerCase();
+         // Match Name, Email, Role, Agency
+         const matches = candidate.name.toLowerCase().includes(q) || candidate.email.toLowerCase().includes(q) || candidate.role.toLowerCase().includes(q) || (candidate.agency && candidate.agency.toLowerCase().includes(q));
+         if (!matches) return false;
+      }
+
+      // Source Filter
+      if (blacklistFilters.source !== 'All') {
+         const isDirect = ('source' in candidate && candidate.source === 'Direct');
+         if (blacklistFilters.source === 'Direct Application' && !isDirect) return false;
+         if (blacklistFilters.source === 'Agency Ref' && isDirect) return false;
+      }
+
+      // Duration Filter
+      if (blacklistFilters.duration !== 'All' && blacklistFilters.duration !== 'All Time') {
+         if (!candidate.appliedDate) return false;
+         const appliedTime = new Date(candidate.appliedDate).getTime();
+         const now = Date.now();
+         const diffHrs = (now - appliedTime) / (1000 * 60 * 60);
+         const diffDays = diffHrs / 24;
+
+         if (blacklistFilters.duration === 'Last 24 Hours' && diffHrs > 24) return false;
+         if (blacklistFilters.duration === 'Last 7 Days' && diffDays > 7) return false;
+         if (blacklistFilters.duration === 'Last 30 Days' && diffDays > 30) return false;
+         if (blacklistFilters.duration === 'Last 3 Months' && diffDays > 90) return false;
+      }
+
+      return true;
+   });
 
    const getPageTitle = () => {
       switch (activeTab) {
@@ -1723,13 +1801,145 @@ const AdminDashboard = () => {
                         {activeTab === 'blacklisted' && (
                            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                               <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                                 <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                                    <h3 className="font-bold text-slate-900 text-sm uppercase tracking-widest text-red-500 flex items-center gap-2">
+                                 <div className="p-6 border-b border-slate-100 flex justify-between items-center gap-4">
+                                    <h3 className="font-bold text-slate-900 text-sm uppercase tracking-widest text-red-500 flex items-center gap-2 whitespace-nowrap">
                                        <ShieldCheck className="w-4 h-4" /> Rejected Candidates
                                     </h3>
-                                    <button className="text-slate-400 hover:text-slate-600">
-                                       <Filter className="w-4 h-4" />
-                                    </button>
+
+                                    <div className="flex items-center gap-3 w-full justify-end">
+                                       <div className="relative flex-1 max-w-md">
+                                          <input
+                                             type="text"
+                                             placeholder="Search blacklisted candidates..."
+                                             className="w-full pl-4 pr-10 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                                             value={blacklistSearchInput}
+                                             onChange={(e) => setBlacklistSearchInput(e.target.value)}
+                                             onKeyDown={(e) => e.key === 'Enter' && handleBlacklistSearch()}
+                                          />
+                                          <button
+                                             onClick={handleBlacklistSearch}
+                                             className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 transition-colors"
+                                          >
+                                             <Search className="w-4 h-4" />
+                                          </button>
+                                       </div>
+
+                                       <div className="flex items-center gap-2">
+                                          {/* Source Dropdown */}
+                                          <div className="relative" ref={blacklistSourceRef}>
+                                             <div className="flex items-center gap-0">
+                                                <button
+                                                   onClick={() => {
+                                                      setIsBlacklistSourceOpen(!isBlacklistSourceOpen);
+                                                      setIsBlacklistDurationOpen(false);
+                                                      setIsBlacklistFilterOpen(false);
+                                                   }}
+                                                   className={`px-4 py-2 rounded-lg border text-xs font-bold transition-all flex items-center gap-2 ${blacklistFilters.source !== 'All' ? 'bg-red-50 text-red-600 border-red-200 rounded-r-none border-r-0' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}
+                                                >
+                                                   {blacklistFilters.source === 'All' ? 'Source' : blacklistFilters.source}
+                                                   <ChevronDown className={`w-3 h-3 transition-transform ${isBlacklistSourceOpen ? 'rotate-180' : ''}`} />
+                                                </button>
+                                                {blacklistFilters.source !== 'All' && (
+                                                   <button
+                                                      onClick={() => setBlacklistFilters(prev => ({ ...prev, source: 'All' }))}
+                                                      className="h-[34px] px-2 border border-red-200 bg-red-50 text-red-600 rounded-r-lg hover:bg-red-100 transition-colors flex items-center justify-center border-l-0"
+                                                   >
+                                                      <X className="w-3 h-3" />
+                                                   </button>
+                                                )}
+                                             </div>
+                                             {isBlacklistSourceOpen && (
+                                                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                                   {['Direct Application', 'Agency Ref', 'All'].map(source => (
+                                                      <button
+                                                         key={source}
+                                                         onClick={() => {
+                                                            setBlacklistFilters(prev => ({ ...prev, source }));
+                                                            setIsBlacklistSourceOpen(false);
+                                                         }}
+                                                         className={`w-full text-left px-4 py-2.5 text-xs font-bold transition-colors ${blacklistFilters.source === source ? 'bg-red-50 text-red-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                                                      >
+                                                         {source}
+                                                      </button>
+                                                   ))}
+                                                </div>
+                                             )}
+                                          </div>
+
+                                          {/* Duration Dropdown */}
+                                          <div className="relative" ref={blacklistDurationRef}>
+                                             <div className="flex items-center gap-0">
+                                                <button
+                                                   onClick={() => {
+                                                      setIsBlacklistDurationOpen(!isBlacklistDurationOpen);
+                                                      setIsBlacklistSourceOpen(false);
+                                                      setIsBlacklistFilterOpen(false);
+                                                   }}
+                                                   className={`px-4 py-2 rounded-lg border text-xs font-bold transition-all flex items-center gap-2 ${blacklistFilters.duration !== 'All' ? 'bg-red-50 text-red-600 border-red-200 rounded-r-none border-r-0' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}
+                                                >
+                                                   {blacklistFilters.duration === 'All' ? 'Duration' : (blacklistFilters.duration === 'All Time' ? 'All Time' : blacklistFilters.duration)}
+                                                   <ChevronDown className={`w-3 h-3 transition-transform ${isBlacklistDurationOpen ? 'rotate-180' : ''}`} />
+                                                </button>
+                                                {blacklistFilters.duration !== 'All' && blacklistFilters.duration !== 'All Time' && (
+                                                   <button
+                                                      onClick={() => setBlacklistFilters(prev => ({ ...prev, duration: 'All' }))}
+                                                      className="h-[34px] px-2 border border-red-200 bg-red-50 text-red-600 rounded-r-lg hover:bg-red-100 transition-colors flex items-center justify-center border-l-0"
+                                                   >
+                                                      <X className="w-3 h-3" />
+                                                   </button>
+                                                )}
+                                             </div>
+                                             {isBlacklistDurationOpen && (
+                                                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                                   {['Last 24 Hours', 'Last 7 Days', 'Last 30 Days', 'Last 3 Months', 'All Time'].map(duration => (
+                                                      <button
+                                                         key={duration}
+                                                         onClick={() => {
+                                                            setBlacklistFilters(prev => ({ ...prev, duration }));
+                                                            setIsBlacklistDurationOpen(false);
+                                                         }}
+                                                         className={`w-full text-left px-4 py-2.5 text-xs font-bold transition-colors ${blacklistFilters.duration === duration ? 'bg-red-50 text-red-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                                                      >
+                                                         {duration}
+                                                      </button>
+                                                   ))}
+                                                </div>
+                                             )}
+                                          </div>
+
+                                          {/* Advanced Filter Icon (Optional/Extra) */}
+                                          <div className="relative">
+                                             <button
+                                                onClick={() => {
+                                                   setIsBlacklistFilterOpen(!isBlacklistFilterOpen);
+                                                   setIsBlacklistSourceOpen(false);
+                                                   setIsBlacklistDurationOpen(false);
+                                                }}
+                                                className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${isBlacklistFilterOpen ? 'bg-red-50 text-red-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                                             >
+                                                <Filter className="w-4 h-4" />
+                                             </button>
+                                             {isBlacklistFilterOpen && (
+                                                <div className="absolute right-0 top-full mt-4 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                                   <div className="p-6 space-y-6">
+                                                      <div className="space-y-3">
+                                                         <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Quick Filters</h4>
+                                                         <button
+                                                            onClick={() => {
+                                                               setBlacklistFilters({ source: 'All', duration: 'All' });
+                                                               setIsBlacklistFilterOpen(false);
+                                                            }}
+                                                            className="w-full py-2 rounded-lg bg-red-50 text-red-600 text-[10px] font-black uppercase tracking-widest hover:bg-red-100 transition-colors"
+                                                         >
+                                                            Reset All
+                                                         </button>
+                                                      </div>
+                                                   </div>
+                                                </div>
+                                             )}
+                                          </div>
+                                       </div>
+                                    </div>
                                  </div>
                                  <div className="overflow-x-auto">
                                     <table className="w-full text-left">
@@ -1743,48 +1953,49 @@ const AdminDashboard = () => {
                                           </tr>
                                        </thead>
                                        <tbody className="divide-y divide-slate-50">
-                                          {[...auditQueue, ...agentResumes].filter(c => c.status === 'REJECTED').map((candidate, idx) => (
-                                             <tr key={`${candidate.id}-${idx}`} className="hover:bg-red-50/30 transition-colors">
-                                                <td className="px-6 py-4">
-                                                   <div>
-                                                      <p className="text-sm font-bold text-slate-900">{candidate.name}</p>
-                                                      <p className="text-xs text-slate-400 font-medium">{candidate.email}</p>
-                                                   </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                   <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full uppercase tracking-wider">
-                                                      {candidate.role}
-                                                   </span>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                   <div className="flex flex-col">
-                                                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 flex items-center gap-1.5">
-                                                         <span className={`w-1.5 h-1.5 rounded-full ${'source' in candidate && candidate.source === 'Direct' ? 'bg-blue-400' : 'bg-amber-400'}`}></span>
-                                                         {'source' in candidate && candidate.source === 'Direct' ? 'Direct' : 'Agency'}
+                                          {filteredBlacklistedCandidates.length > 0 ? (
+                                             filteredBlacklistedCandidates.map((candidate, idx) => (
+                                                <tr key={`${candidate.id}-${idx}`} className="hover:bg-red-50/30 transition-colors">
+                                                   <td className="px-6 py-4">
+                                                      <div>
+                                                         <p className="text-sm font-bold text-slate-900">{candidate.name}</p>
+                                                         <p className="text-xs text-slate-400 font-medium">{candidate.email}</p>
+                                                      </div>
+                                                   </td>
+                                                   <td className="px-6 py-4">
+                                                      <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full uppercase tracking-wider">
+                                                         {candidate.role}
                                                       </span>
-                                                      {'agency' in candidate && (
-                                                         <span className="text-[10px] font-medium text-slate-400 pl-3">
-                                                            {candidate.agency}
+                                                   </td>
+                                                   <td className="px-6 py-4">
+                                                      <div className="flex flex-col">
+                                                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 flex items-center gap-1.5">
+                                                            <span className={`w-1.5 h-1.5 rounded-full ${'source' in candidate && candidate.source === 'Direct' ? 'bg-blue-400' : 'bg-amber-400'}`}></span>
+                                                            {'source' in candidate && candidate.source === 'Direct' ? 'Direct' : 'Agency'}
                                                          </span>
-                                                      )}
-                                                   </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                   <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${candidate.statusColor}`}>
-                                                      {candidate.status}
-                                                   </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                   <button
-                                                      onClick={() => { setSelectedResume(candidate); setIsBlacklistReview(true); }}
-                                                      className="w-10 h-10 rounded-full bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition-all ml-auto shadow-sm"
-                                                   >
-                                                      <Eye className="w-4 h-4" />
-                                                   </button>
-                                                </td>
-                                             </tr>
-                                          ))}
-                                          {[...auditQueue, ...agentResumes].filter(c => c.status === 'REJECTED').length === 0 && (
+                                                         {'agency' in candidate && (
+                                                            <span className="text-[10px] font-medium text-slate-400 pl-3">
+                                                               {candidate.agency}
+                                                            </span>
+                                                         )}
+                                                      </div>
+                                                   </td>
+                                                   <td className="px-6 py-4">
+                                                      <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${candidate.statusColor}`}>
+                                                         {candidate.status}
+                                                      </span>
+                                                   </td>
+                                                   <td className="px-6 py-4 text-right">
+                                                      <button
+                                                         onClick={() => { setSelectedResume(candidate); setIsBlacklistReview(true); }}
+                                                         className="w-10 h-10 rounded-full bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition-all ml-auto shadow-sm"
+                                                      >
+                                                         <Eye className="w-4 h-4" />
+                                                      </button>
+                                                   </td>
+                                                </tr>
+                                             ))
+                                          ) : (
                                              <tr>
                                                 <td colSpan={5} className="px-6 py-12 text-center text-slate-400 text-sm font-medium">
                                                    No blacklisted candidates found.
