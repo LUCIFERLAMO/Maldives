@@ -8,7 +8,9 @@ import JobDetailPage from './pages/JobDetailPage';
 import SuccessPage from './pages/SuccessPage';
 import RecruiterDashboard from './pages/RecruiterDashboard';
 import AdminDashboard from './pages/AdminDashboard';
-import AuthPage from './pages/AuthPage';
+import CandidateLoginPage from './pages/CandidateLoginPage';
+import AgentLoginPage from './pages/AgentLoginPage';
+import AdminLoginPage from './pages/AdminLoginPage';
 import CandidateDashboard from './pages/CandidateDashboard';
 import MyApplicationsPage from './pages/MyApplicationsPage';
 import ProfilePage from './pages/ProfilePage';
@@ -31,8 +33,10 @@ const App = () => {
                             <Route path="/success" element={<SuccessPage />} />
                             <Route path="/recruiter" element={<RecruiterDashboard />} />
                             <Route path="/admin" element={<AdminDashboard />} />
-                            <Route path="/login" element={<AuthPage initialMode="login" />} />
-                            <Route path="/register" element={<AuthPage initialMode="register" />} />
+                            <Route path="/login" element={<CandidateLoginPage initialMode="login" />} />
+                            <Route path="/register" element={<CandidateLoginPage initialMode="register" />} />
+                            <Route path="/login/agent" element={<AgentLoginPage />} />
+                            <Route path="/login/admin" element={<AdminLoginPage />} />
                             <Route path="/agent-registration" element={<AgentRegistrationPage />} />
                             <Route path="/support" element={<SupportPage />} />
 
@@ -58,7 +62,7 @@ const App = () => {
                                     <h4 className="text-white font-bold mb-6 text-sm uppercase tracking-widest">Platform</h4>
                                     <ul className="space-y-4 text-sm">
                                         <li><Link to="/jobs" className="hover:text-teal-400 transition-colors">Browse Jobs</Link></li>
-                                        <li><Link to="/login" state={{ from: 'agent' }} className="hover:text-teal-400 transition-colors">Agent Portal</Link></li>
+                                        <li><Link to="/login/agent" className="hover:text-teal-400 transition-colors">Agent Portal</Link></li>
                                     </ul>
                                 </div>
                                 <div>

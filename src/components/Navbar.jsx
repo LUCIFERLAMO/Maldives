@@ -91,8 +91,8 @@ const Navbar = () => {
                 <div className="flex items-center gap-4 lg:gap-6">
                     {!isAuthenticated && (
                         <div className="hidden xl:flex items-center gap-6 border-r border-slate-100 pr-6 mr-2">
-                            <Link to="/login" state={{ from: 'agent' }} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors">Agent Portal</Link>
-                            <Link to="/login" state={{ from: 'admin' }} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors">Admin Portal</Link>
+                            <Link to="/login/agent" className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors">Agent Portal</Link>
+                            <Link to="/login/admin" className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors">Admin Portal</Link>
                         </div>
                     )}
 
@@ -196,8 +196,8 @@ const Navbar = () => {
                             <div className="mt-auto pt-8 border-t border-slate-50">
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Portals</p>
                                 <div className="flex flex-col gap-3">
-                                    <Link to="/login" state={{ from: 'agent' }} onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 text-xs font-bold text-slate-600">Agent Portal</Link>
-                                    <Link to="/login" state={{ from: 'admin' }} onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 text-xs font-bold text-slate-600">Admin Portal</Link>
+                                    <Link to="/login/agent" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 text-xs font-bold text-slate-600">Agent Portal</Link>
+                                    <Link to="/login/admin" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 text-xs font-bold text-slate-600">Admin Portal</Link>
                                 </div>
                             </div>
                         )}
