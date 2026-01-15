@@ -1,5 +1,5 @@
 import React from 'react';
-import { HashRouter, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import ScrollToTop from './components/ScrollToTop';
 import HomePage from './pages/HomePage';
@@ -17,7 +17,7 @@ import { AuthProvider } from './context/AuthContext';
 const App = () => {
     return (
         <AuthProvider>
-            <HashRouter>
+            <BrowserRouter>
                 <ScrollToTop />
                 <div className="min-h-screen flex flex-col font-sans bg-white">
                     <Navbar />
@@ -72,7 +72,7 @@ const App = () => {
                         </div>
                     </footer>
                 </div>
-            </HashRouter>
+            </BrowserRouter>
         </AuthProvider>
     );
 };
