@@ -13,6 +13,7 @@ import AgentLoginPage from './pages/AgentLoginPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import CandidateDashboard from './pages/CandidateDashboard';
 import MyApplicationsPage from './pages/MyApplicationsPage';
+import ProfilePage from './pages/ProfilePage';
 import SupportPage from './pages/SupportPage';
 import AgentRegistrationPage from './pages/AgentRegistrationPage';
 import { AuthProvider } from './context/AuthContext';
@@ -42,6 +43,7 @@ const App = () => {
                             {/* Candidate Protected Routes */}
                             <Route path="/dashboard" element={<CandidateDashboard />} />
                             <Route path="/applications" element={<MyApplicationsPage />} />
+                            <Route path="/profile" element={<ProfilePage />} />
                         </Routes>
                     </main>
                     <footer className="bg-slate-900 text-slate-400 py-12">
