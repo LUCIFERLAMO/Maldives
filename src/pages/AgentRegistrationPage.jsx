@@ -10,8 +10,13 @@ import {
     UploadCloud,
     CheckCircle2,
     ArrowRight,
-    FileText
+    FileText,
+    Check,
+    Eye,
+    EyeOff,
+    Loader2
 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 const AgentRegistrationPage = () => {
     const navigate = useNavigate();
@@ -20,11 +25,23 @@ const AgentRegistrationPage = () => {
         fullName: '',
         phone: '',
         workEmail: '',
+        password: '',
         companyName: '',
         experienceRegion: '',
         documents: null,
         agreedToTerms: false
     });
+
+    const [isLoading, setIsLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+
+    // OTP State
+    const [otp, setOtp] = useState('');
+    const [isEmailVerified, setIsEmailVerified] = useState(false);
+    const [isSendingOtp, setIsSendingOtp] = useState(false);
+    const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+    const [otpSent, setOtpSent] = useState(false);
+    const [verifiedUserId, setVerifiedUserId] = useState(null);
 
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [isPreviewMode, setIsPreviewMode] = useState(false);
@@ -35,38 +52,224 @@ const AgentRegistrationPage = () => {
         }
     };
 
+    const handleSendOtp = async () => {
+        if (!formData.workEmail) {
+            alert("Please enter an email address first.");
+            return;
+        }
+        if (!formData.password) {
+            alert("Please enter a password first.");
+            return;
+        }
+        const email = formData.workEmail.trim();
+
+        setIsSendingOtp(true);
+
+        try {
+            // Attempt to sign up the user
+            const { data, error: signUpError } = await supabase.auth.signUp({
+                email: email,
+                password: formData.password,
+                options: {
+                    data: {
+                        full_name: formData.fullName,
+                        status: 'PENDING'
+                    }
+                }
+            });
+
+            if (signUpError) {
+                // Check if the user already exists
+                if (signUpError.message && (
+                    signUpError.message.toLowerCase().includes("registered") ||
+                    signUpError.message.toLowerCase().includes("exists") ||
+                    signUpError.message.toLowerCase().includes("already")
+                )) {
+                    // Try to resend OTP
+                    const { error: resendError } = await supabase.auth.resend({
+                        type: 'signup',
+                        email: email
+                    });
+
+                    if (resendError) {
+                        if (resendError.message.toLowerCase().includes("already") &&
+                            resendError.message.toLowerCase().includes("verified")) {
+                            throw new Error("This email is already verified. Please go to Login page.");
+                        }
+                        throw resendError;
+                    }
+                    alert("Verification code resent to your email!");
+                } else {
+                    throw signUpError;
+                }
+            } else {
+                alert("Verification code sent to your email! Please check your inbox (and spam folder).");
+            }
+
+            setOtpSent(true);
+
+        } catch (err) {
+            console.error("OTP Error:", err);
+            alert(err.message || "Error sending verification code. Please try again.");
+        } finally {
+            setIsSendingOtp(false);
+        }
+    };
+
+    const handleVerifyOtp = async () => {
+        if (!otp || otp.length !== 6) {
+            alert("Please enter a valid 6-digit code.");
+            return;
+        }
+
+        setIsVerifyingOtp(true);
+        const email = formData.workEmail.trim();
+        const token = otp.trim();
+
+        try {
+            // Pre-check: If we already have a session, we might be verified
+            const { data: preSession } = await supabase.auth.getSession();
+            if (preSession?.session?.user) {
+                console.log("User already has session:", preSession.session.user);
+                setVerifiedUserId(preSession.session.user.id);
+                setIsEmailVerified(true);
+                setOtpSent(false);
+                alert("Email verified! Please complete the form.");
+                return;
+            }
+
+            console.log("Verifying OTP for:", email);
+
+            const { data, error } = await supabase.auth.verifyOtp({
+                email,
+                token,
+                type: 'signup'
+            });
+
+            if (error) {
+                console.warn("verifyOtp returned error:", error);
+
+                // FALLBACK: Immediately check if we have a user anyway. 
+                // Sometimes verifyOtp errors on network but session is set.
+                const { data: userData, error: userError } = await supabase.auth.getUser();
+
+                if (userData?.user) {
+                    console.log("Recovered from error, user found:", userData.user);
+                    // Proceed as success
+                    var verifiedUser = userData.user;
+                } else {
+                    // Genuine error
+                    throw error;
+                }
+            } else {
+                console.log("Verify OTP Success Data:", data);
+            }
+
+            let userId = data?.user?.id || data?.session?.user?.id || verifiedUser?.id;
+
+            if (!userId) {
+                // Final attempt to get user
+                const { data: userData } = await supabase.auth.getUser();
+                userId = userData.user?.id;
+            }
+
+            if (userId) {
+                setVerifiedUserId(userId);
+                setIsEmailVerified(true);
+                setOtpSent(false); // Hide OTP input
+                alert("Email Verified Successfully! Please complete the form and submit.");
+            } else {
+                throw new Error("Verification succeeded but could not retrieve user ID. Please try logging in.");
+            }
+
+        } catch (err) {
+            console.error("Verification Error:", err);
+            const msg = err.message?.toLowerCase() || "";
+
+            if (msg.includes("invalid") || msg.includes("expired")) {
+                alert("The code is invalid or expired. Please request a new code.");
+                setOtpSent(false);
+                setOtp('');
+            } else {
+                alert(err.message || "Verification failed. Please try again.");
+            }
+        } finally {
+            setIsVerifyingOtp(false);
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // Create new application object
-        const newApplication = {
-            id: Date.now(),
-            applicant: formData.fullName,
-            agency: formData.companyName,
-            region: formData.experienceRegion,
-            email: formData.workEmail,
-            status: 'YET TO BE CHECKED',
-            statusColor: 'bg-indigo-50 text-indigo-600 border-indigo-100',
-            submittedDate: new Date().toISOString().split('T')[0],
-            phone: formData.phone,
-            documents: {
-                identity: 'Identity_Doc_Pending.pdf',
-                license: 'Business_License_Pending.jpg',
-                profile: 'Agency_Profile_Pending.pdf'
+        if (!isEmailVerified) {
+            alert("Please verify your email address using the Verify button first.");
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            // Use verifiedUserId from state, fallback to getUser if somehow missing (unlikely if verified)
+            let userId = verifiedUserId;
+
+            if (!userId) {
+                const { data: { user }, error: userError } = await supabase.auth.getUser();
+                if (userError || !user) {
+                    console.error("User retrieval error:", userError);
+                    throw new Error("Could not retrieve verified user. Please refresh the page and try again.");
+                }
+                userId = user.id;
             }
-        };
 
-        // Get existing applications or initialize empty array
-        const existingApps = JSON.parse(localStorage.getItem('maldives_agent_applications') || '[]');
+            // 1. Upload Document if provided
+            let documentPath = null;
+            if (formData.documents) {
+                const fileExt = formData.documents.name.split('.').pop();
+                const fileName = `${userId}/license.${fileExt}`;
 
-        // Add new application
-        const updatedApps = [newApplication, ...existingApps];
+                const { data: uploadData, error: uploadError } = await supabase.storage
+                    .from('agency-docs')
+                    .upload(fileName, formData.documents, { upsert: true });
 
-        // Save back to localStorage
-        localStorage.setItem('maldives_agent_applications', JSON.stringify(updatedApps));
+                if (uploadError) {
+                    console.error('Upload error:', uploadError);
+                    // Continue anyway - document upload is not critical
+                } else {
+                    documentPath = fileName;
+                }
+            }
 
-        console.log('Form Submitted & Saved:', newApplication);
-        setIsSubmitted(true);
+            // 2. Create or Update Profile Entry in profiles table
+            const { error: profileError } = await supabase
+                .from('profiles')
+                .upsert([{
+                    id: userId,
+                    email: formData.workEmail,
+                    name: formData.fullName,
+                    company_name: formData.companyName,
+                    role: 'employer',
+                    region: formData.experienceRegion,
+                    phone: formData.phone,
+                    status: 'PENDING',
+                    document_path: documentPath
+                }], {
+                    onConflict: 'id'
+                });
+
+            if (profileError) {
+                console.error('Profile error:', profileError);
+                throw new Error("Failed to save profile: " + profileError.message);
+            }
+
+            // Sign out the user after successful registration
+            await supabase.auth.signOut();
+
+            setIsSubmitted(true);
+        } catch (err) {
+            console.error('Submission Error:', err);
+            alert("Registration Failed: " + err.message);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handlePreview = () => {
@@ -123,7 +326,7 @@ const AgentRegistrationPage = () => {
 
                         <h1 className="text-4xl md:text-5xl font-black leading-tight mb-6 tracking-tighter">
                             Partner <br />
-                            <span className="text-maldives-300">Residency.</span>
+                            <span className="text-teal-300">Residency.</span>
                         </h1>
                         <p className="text-teal-100 font-medium text-lg opacity-90 leading-relaxed">
                             Join our elite network of brokers and partners connecting global talent with Maldivian luxury.
@@ -212,17 +415,97 @@ const AgentRegistrationPage = () => {
 
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Work Email</label>
+                                <div className="flex gap-2">
+                                    <div className="relative group flex-1">
+                                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
+                                        <input
+                                            type="email"
+                                            required
+                                            disabled={isPreviewMode || isEmailVerified || otpSent}
+                                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300 disabled:opacity-70 disabled:cursor-not-allowed"
+                                            placeholder="agent@company.com"
+                                            value={formData.workEmail}
+                                            onChange={e => setFormData({ ...formData, workEmail: e.target.value })}
+                                        />
+                                        {isEmailVerified && <CheckCircle2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-teal-600" />}
+                                    </div>
+                                    {!isEmailVerified && !otpSent && (
+                                        <button
+                                            type="button"
+                                            onClick={handleSendOtp}
+                                            disabled={isSendingOtp || !formData.workEmail || !formData.password}
+                                            className="px-6 py-4 bg-teal-600 text-white rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                                        >
+                                            {isSendingOtp ? "Sending..." : "Verify"}
+                                        </button>
+                                    )}
+                                </div>
+                                {otpSent && !isEmailVerified && (
+                                    <div className="mt-3 animate-in fade-in slide-in-from-top-2">
+                                        <div className="flex gap-2 items-center">
+                                            <input
+                                                type="text"
+                                                placeholder="Enter 6-digit Code"
+                                                className="flex-1 py-3 px-4 bg-white border border-slate-200 rounded-lg font-mono text-center tracking-widest text-lg focus:border-teal-500 outline-none"
+                                                value={otp}
+                                                maxLength={6}
+                                                onChange={e => setOtp(e.target.value)}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={handleVerifyOtp}
+                                                disabled={isVerifyingOtp || otp.length < 6}
+                                                className="px-6 py-3 bg-slate-900 text-white rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2"
+                                            >
+                                                {isVerifyingOtp ? (
+                                                    <>
+                                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                                        Verifying...
+                                                    </>
+                                                ) : (
+                                                    "Confirm"
+                                                )}
+                                            </button>
+                                        </div>
+                                        <div className="flex justify-between items-center mt-2">
+                                            <p className="text-[10px] text-slate-400 ml-1">
+                                                Code sent to {formData.workEmail}
+                                            </p>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setOtpSent(false);
+                                                    setOtp('');
+                                                }}
+                                                className="text-[10px] text-teal-600 font-bold hover:underline"
+                                            >
+                                                Request New Code
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Password</label>
                                 <div className="relative group">
-                                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
+                                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
                                     <input
-                                        type="email"
+                                        type={showPassword ? "text" : "password"}
                                         required
-                                        disabled={isPreviewMode}
-                                        className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300 disabled:opacity-70 disabled:cursor-not-allowed"
-                                        placeholder="agent@company.com"
-                                        value={formData.workEmail}
-                                        onChange={e => setFormData({ ...formData, workEmail: e.target.value })}
+                                        disabled={isPreviewMode || otpSent}
+                                        className="w-full pl-12 pr-12 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300 disabled:opacity-70 disabled:cursor-not-allowed"
+                                        placeholder="Create a password"
+                                        value={formData.password}
+                                        onChange={e => setFormData({ ...formData, password: e.target.value })}
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors"
+                                    >
+                                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    </button>
                                 </div>
                             </div>
 
@@ -302,7 +585,7 @@ const AgentRegistrationPage = () => {
                                             onChange={e => setFormData({ ...formData, agreedToTerms: e.target.checked })}
                                         />
                                         <div className="w-5 h-5 border-2 border-slate-300 rounded md:rounded-[4px] peer-checked:bg-teal-600 peer-checked:border-teal-600 transition-all flex items-center justify-center">
-                                            <CheckCircle2 className="w-3.5 h-3.5 text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
+                                            <Check className="w-3.5 h-3.5 text-white opacity-0 peer-checked:opacity-100 transition-opacity" strokeWidth={3} />
                                         </div>
                                     </div>
                                     <span className="text-xs md:text-sm text-slate-500 font-medium group-hover:text-slate-700 transition-colors">
@@ -313,9 +596,18 @@ const AgentRegistrationPage = () => {
 
                             {!isPreviewMode && <button
                                 type="submit"
-                                className="w-full bg-slate-900 text-white py-5 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 flex items-center justify-center gap-3 mt-4"
+                                disabled={isLoading || !isEmailVerified}
+                                className="w-full bg-slate-900 text-white py-5 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 flex items-center justify-center gap-3 mt-4 disabled:opacity-70 disabled:cursor-not-allowed"
                             >
-                                Submit Application <ArrowRight className="w-4 h-4" />
+                                {isLoading ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" /> Submitting...
+                                    </>
+                                ) : (
+                                    <>
+                                        Submit Application <ArrowRight className="w-4 h-4" />
+                                    </>
+                                )}
                             </button>}
                         </form>
                     </div>
