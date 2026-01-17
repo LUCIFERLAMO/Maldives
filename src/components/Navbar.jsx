@@ -113,12 +113,20 @@ const Navbar = () => {
 
                             {isMenuOpen && (
                                 <div className="absolute right-0 mt-4 w-60 bg-white rounded-2xl shadow-2xl border border-slate-100 py-3 overflow-hidden animate-in fade-in zoom-in-95 duration-200 ring-1 ring-slate-900/5 z-[120]">
-                                    <Link to={user?.role === 'candidate' ? '/dashboard' : (user?.name === 'Platform Administrator' ? '/admin' : '/recruiter')} onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 px-6 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors">
+                                    <Link
+                                        to={
+                                            user?.role === 'candidate' ? '/dashboard' :
+                                                (user?.role === 'admin' || user?.name === 'Platform Administrator') ? '/admin' :
+                                                    '/recruiter'
+                                        }
+                                        onClick={() => setIsMenuOpen(false)}
+                                        className="flex items-center gap-3 px-6 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+                                    >
                                         <LayoutDashboard className="w-4 h-4 text-slate-400" /> Dashboard
                                     </Link>
                                     <div className="h-px bg-slate-50 my-2"></div>
                                     <button
-                                        onClick={() => { logout(); setIsMenuOpen(false); navigate('/'); }}
+                                        onClick={() => { logout(); setIsMenuOpen(false); }}
                                         className="w-full text-left flex items-center gap-3 px-6 py-3 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors"
                                     >
                                         <LogOut className="w-4 h-4" /> Sign Out

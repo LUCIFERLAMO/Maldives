@@ -1,0 +1,30 @@
+Fix the OTP verification issue in src/pages/CandidateLoginPage.jsx. The problem is that when users enter the OTP and click verify, it gets stuck on "checking" and eventually times out.
+
+ISSUES TO FIX:
+1. Add loading state (isVerifying) to show verification progress
+2. Add 30-second timeout to prevent infinite hanging
+3. Disable submit button during verification to prevent multiple clicks
+4. Show loading spinner/text ("Verifying...") on button during verification
+5. Improve error handling with clear, user-friendly messages
+6. Clear OTP input on error so user can retry
+7. Properly await profile creation after OTP verification
+8. Handle session establishment with retry logic if session not immediately available
+
+REQUIREMENTS:
+- Add useState for isVerifying loading state
+- Wrap verifyOtp call in Promise.race with 30-second timeout
+- Update submit button to show loading state and disable when isVerifying is true
+- Add proper error messages for timeout, invalid token, and other errors
+- Ensure profile is created/updated after successful OTP verification
+- Navigate to /dashboard only after session is confirmed
+- Clear OTP array on error: setOtp(['', '', '', '', '', ''])
+
+The function handleSignupVerification (starting around line 86) needs to be completely rewritten with these improvements. The button around line 315 also needs to be updated to show loading state.
+
+Make sure the code handles:
+- OTP verification with timeout
+- Profile creation with upsert
+- Session establishment with fallback retry
+- Clear error messages
+- Loading states
+- Button disabled state during verification

@@ -24,15 +24,30 @@ Supabase's free email service only allows ~3 emails/hour. By connecting your Gma
 8.  **COPY the 16-character code** (it looks like `abcd efgh ijkl mnop`). This is your **SMTP Password**.
 
 ### 2. Enter Settings in Supabase
-Go to the **Custom SMTP** screen in Supabase and fill it in exactly like this:
+Go to the **Custom SMTP** screen in Supabase.
 
-*   **Sender email:** `your.personal.email@gmail.com` (Enter your actual Gmail)
-*   **Sender name:** `My App Test` (Or whatever you want users to see)
+#### ⚠️ THE GOLDEN RULE:
+**The "Sender email" and "Username" MUST BE THE SAME.**
+Google will block the email if you try to log in as one person but send as another.
+
+#### Option A: Use `testing_tiral@gmail.com`
+*(Choose this if you have the App Password for testing_tiral)*
+*   **Sender email:** `testing_tiral@gmail.com`
+*   **Sender name:** `Maldives Residency` (You can write ANYTHING here!)
+*   **Username:** `testing_tiral@gmail.com`
+*   **Password:** `[App Password generated inside testing_tiral account]`
+
+#### Option B: Use `server.globalakjobs@gmail.com`
+*(Choose this if you have the App Password for server.globalakjobs)*
+*   **Sender email:** `server.globalakjobs@gmail.com`
+*   **Sender name:** `Maldives Residency`
+*   **Username:** `server.globalakjobs@gmail.com`
+*   **Password:** `[App Password generated inside server.globalakjobs account]`
+
+#### Common Settings (For both options):
 *   **Host:** `smtp.gmail.com`
-*   **Port number:** `465` (Important: Do not change this)
+*   **Port number:** `465` (Do not use 587)
 *   **Minimum interval:** `60`
-*   **Username:** `your.personal.email@gmail.com` (Same as sender email)
-*   **Password:** `[PASTE THE 16-CHARACTER APP PASSWORD HERE]`
 
 ### 3. Save
 Click **Save**.

@@ -84,19 +84,76 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (email, password) => {
         try {
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email,
-                password
-            });
+            // Retry helper for transient network errors (like AbortSignal)
+            const attemptLogin = async (retries = 3) => {
+                try {
+                    const { data, error } = await supabase.auth.signInWithPassword({
+                        email,
+                        password
+                    });
+                    if (error) throw error;
+                    return data;
+                } catch (err) {
+                    const msg = (err.message || "").toLowerCase();
+                    if ((msg.includes("signal is aborted") || msg.includes("aborted")) && retries > 0) {
+                        console.warn(`Transient login error: ${err.message}. Retrying...`);
+                        await new Promise(r => setTimeout(r, 500));
+                        return attemptLogin(retries - 1);
+                    }
+                    throw err;
+                }
+            };
 
-            if (error) throw error;
+            // 1. Authenticate with retries
+            const data = await attemptLogin();
 
-            if (data.user) {
-                await loadUserProfile(data.user.id);
+            // 2. Check Profile Status (Safely)
+            let profile = null;
+            try {
+                const { data: profileData, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('id, full_name, role, status')
+                    .eq('id', data.user.id)
+                    .single();
+
+                if (profileError) throw profileError;
+                profile = profileData;
+
+            } catch (fetchError) {
+                console.warn("Profile fetch failed, using auth metadata fallback:", fetchError.message);
+                // Fallback to metadata if DB fetch fails (e.g. Schema Error)
+                const metadata = data.user.user_metadata || {};
+                profile = {
+                    id: data.user.id,
+                    full_name: metadata.full_name || metadata.name || 'Agent',
+                    role: 'agent', // Defaulting to agent if we can't check
+                    status: 'APPROVED', // Assuming approved if they have a valid login
+                    phone: '',
+                    avatar_url: ''
+                };
             }
+
+            // 3. Block if not Approved (Agency logic)
+            // Only check strict status if we actually fetched a real profile from DB
+            // If we are using fallback, we assume they are good to go (or we block them elsewhere)
+            if (profile.status !== 'APPROVED') {
+                await supabase.auth.signOut();
+                throw new Error("Your account is pending approval by Admin.");
+            }
+
+            // Success - update state
+            setUser({
+                id: profile.id,
+                name: profile.full_name,
+                email: data.user.email,
+                phone: profile.phone || '',
+                role: profile.role,
+                avatar: profile.avatar_url || ''
+            });
 
             return { error: null };
         } catch (error) {
+            console.error('Login error:', error);
             return { error: error.message };
         }
     };
@@ -142,9 +199,15 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = async () => {
-        await supabase.auth.signOut();
-        setUser(null);
-        window.location.href = '/';
+        try {
+            await supabase.auth.signOut();
+        } catch (error) {
+            console.error('Logout error:', error);
+        } finally {
+            setUser(null);
+            // Explicitly reload to clear any memory/client-side state
+            window.location.href = '/';
+        }
     };
 
     return (

@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 
 const AgentLoginPage = () => {
     const navigate = useNavigate();
-    const { mockLogin } = useAuth();
+    const { login, mockLogin } = useAuth();
 
     const [formData, setFormData] = useState({
         email: '',
@@ -15,22 +15,37 @@ const AgentLoginPage = () => {
     const handleLoginSubmit = async (e) => {
         e.preventDefault();
 
-        // HARDCODED AGENT AUTH
-        if (formData.email === 'agent@maldives.com' && formData.password === 'agent123') {
-            // Simulate API call for agent
-            setTimeout(() => {
-                mockLogin({
-                    id: 'mock-agent-123',
-                    name: 'Rahul Sharma',
-                    email: formData.email,
-                    role: 'recruiter',
-                    avatar: null
-                });
-                navigate('/recruiter');
-            }, 800);
-        } else {
-            alert('Invalid Agent Credentials. Try agent@maldives.com / agent123');
+        try {
+            const { error } = await login(formData.email, formData.password);
+
+            if (error) {
+                const msg = error.toLowerCase();
+                if (msg.includes("signal is aborted") || msg.includes("aborted")) {
+                    console.warn("Ignored abort signal error in login UI");
+                    // Optionally show a user friendly toast or just ignore if it's transient
+                } else {
+                    alert("Login Failed: " + error);
+                }
+                return;
+            }
+            navigate('/recruiter');
+
+        } catch (err) {
+            console.error(err);
+            alert("An error occurred during login.");
         }
+    };
+
+    // Temporary Logic for Developer Access
+    const handleTempAccess = () => {
+        mockLogin({
+            id: 'temp-dev-agent',
+            name: 'Developer Agent',
+            email: 'dev@agent.com',
+            role: 'agent',
+            status: 'APPROVED'
+        });
+        navigate('/recruiter');
     };
 
     return (
@@ -84,9 +99,16 @@ const AgentLoginPage = () => {
                                 Enter Portal <ArrowRight className="w-5 h-5" />
                             </button>
                         </form>
-                        <p className="mt-8 text-center text-xs text-slate-400">
-                            Use <span className="font-mono font-bold text-slate-600">agent@maldives.com</span> / <span className="font-mono font-bold text-slate-600">agent123</span>
-                        </p>
+
+                        {/* Temporary Developer Access Link */}
+                        <div className="mt-6 text-center">
+                            <button
+                                onClick={handleTempAccess}
+                                className="text-[10px] text-slate-400 font-bold uppercase tracking-widest hover:text-teal-600 transition-colors border-b border-transparent hover:border-teal-600 pb-0.5"
+                            >
+                                Temporary Developer Access
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

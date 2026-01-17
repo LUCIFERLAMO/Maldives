@@ -1,5 +1,6 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { ApplicationStatus, JobStatus } from '../types';
 import { MOCK_APPLICATIONS, MOCK_JOBS } from '../constants';
 import {
@@ -23,7 +24,53 @@ const RecruiterDashboard = () => {
 
 
     const [applications, setApplications] = useState(MOCK_APPLICATIONS);
-    const [jobs, setJobs] = useState(MOCK_JOBS);
+
+    // --- REAL DATA FETCHER ---
+    const [pipelineData, setPipelineData] = useState([]);
+    // This gets the list of candidates from the database
+    useEffect(() => {
+        if (!user?.id) return;
+
+        const fetchPipeline = async () => {
+            const { data, error } = await supabase
+                .from('applications')
+                .select(`
+                    *,
+                    jobs ( title, company )
+                `)
+                .eq('agent_id', user.id); // Only fetch MY candidates
+
+            if (error) console.error("Error fetching pipeline:", error);
+            if (data) {
+                setPipelineData(data);
+            }
+        };
+        fetchPipeline();
+    }, [user?.id]);
+    // -------------------------
+    const [jobs, setJobs] = useState([]);
+
+    // FETCH REAL JOBS (Jennita's Task)
+    useEffect(() => {
+        const fetchJobs = async () => {
+            const { data, error } = await supabase
+                .from('jobs')
+                .select('*')
+                .eq('status', 'Current Opening');
+
+            if (data) {
+                setJobs(data);
+                // DEBUG: Alert if 0 jobs found despite success
+                if (data.length === 0) console.warn("Fetch successful but 0 jobs found with status 'Current Opening'");
+            }
+            if (error) {
+                console.error("Error fetching jobs:", error);
+                alert("DEBUG ERROR: Could not fetch jobs. " + error.message);
+            }
+        };
+        fetchJobs();
+    }, []);
+
     const [selectedJobForSubmission, setSelectedJobForSubmission] = useState(null);
     const [submissionFiles, setSubmissionFiles] = useState({
         resume: null,
@@ -35,10 +82,17 @@ const RecruiterDashboard = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [pipelineSearchTerm, setPipelineSearchTerm] = useState('');
 
-    const [jobRequests, setJobRequests] = useState([
-        { id: '1', title: 'Head Nurse', field: 'Healthcare', status: 'PENDING', salary: '$2000 - $3000', headcount: 5, description: 'Leading the nursing team...', requirements: 'BSc Nursing, 5 years exp' },
-        { id: '2', title: 'Sous Chef', field: 'Hospitality', status: 'APPROVED', salary: '$1500 - $2000', headcount: 2, description: 'Assist executive chef...', requirements: 'Culinary Degree, HACCP' }
-    ]);
+    const [jobRequests, setJobRequests] = useState([]);
+
+    // FETCH REAL JOB REQUESTS
+    useEffect(() => {
+        if (!user?.id) return;
+        const fetchRequests = async () => {
+            const { data } = await supabase.from('job_requests').select('*').eq('agent_id', user.id);
+            if (data) setJobRequests(data);
+        };
+        fetchRequests();
+    }, [user?.id]);
     const [showJobRequestForm, setShowJobRequestForm] = useState(false);
     const [jobRequestSearchTerm, setJobRequestSearchTerm] = useState('');
     const [expandedJobRequestId, setExpandedJobRequestId] = useState(null);
@@ -64,14 +118,50 @@ const RecruiterDashboard = () => {
         });
     };
 
-    const handleConfirmSubmission = () => {
+    const handleConfirmSubmission = async () => {
         if (!submissionFiles.resume || !submissionFiles.identity || !submissionFiles.certs) {
             alert("Please upload all mandatory documents (Resume, ID/Passport, Certificates).");
             return;
         }
-        alert("Candidate submission successful! The profile has been entered into the vetting queue.");
-        setSelectedJobForSubmission(null);
+
+        try {
+            // 1. Upload Resume (Bucket 'candidate-docs' exists)
+            const resumeName = `${user.id}/${Date.now()}_resume`;
+            const { data: resumeData, error: resumeError } = await supabase.storage
+                .from('candidate-docs')
+                .upload(resumeName, submissionFiles.resume);
+
+            if (resumeError) throw resumeError;
+
+            // 2. Insert Application (Table 'applications' exists)
+            const { error: dbError } = await supabase
+                .from('applications')
+                .insert([{
+                    agent_id: user.id,
+                    job_id: selectedJobForSubmission.id,
+                    candidate_name: "Test Candidate (Manual)", //Ideally we should have a form field for this
+                    email: "manual@test.com", //And this
+                    resume_url: resumeData.path,
+                    // Add passport_url etc. here
+                    status: 'APPLIED'
+                }]);
+
+            if (dbError) throw dbError;
+
+            alert("Success! Candidate Submitted to Database.");
+            setSelectedJobForSubmission(null);
+
+            // Refresh Pipeline
+            const { data } = await supabase.from('applications').select('*, jobs(title, company)').eq('agent_id', user.id);
+            if (data) setPipelineData(data);
+
+        } catch (err) {
+            console.error("Submission Error:", err);
+            alert("Error: " + err.message);
+        }
     };
+
+
 
     return (
         <div className="min-h-screen bg-white font-sans flex overflow-hidden">
@@ -130,7 +220,7 @@ const RecruiterDashboard = () => {
                 </nav>
 
                 <div className="p-6 border-t border-slate-800">
-                    <button onClick={() => { logout(); navigate('/'); }} className="w-full flex items-center gap-3 px-4 py-4 rounded-xl text-sm font-semibold tracking-wide hover:bg-red-500/10 hover:text-red-400 transition-all text-slate-500">
+                    <button onClick={logout} className="w-full flex items-center gap-3 px-4 py-4 rounded-xl text-sm font-semibold tracking-wide hover:bg-red-500/10 hover:text-red-400 transition-all text-slate-500">
                         <LogOut className="w-5 h-5" /> Sign Out
                     </button>
                 </div>
@@ -203,9 +293,11 @@ const RecruiterDashboard = () => {
                                                                         <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider">{req.field}</span>
                                                                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${req.status === 'APPROVED' ? 'bg-teal-50 text-teal-700 border-teal-100' :
                                                                             req.status === 'REJECTED' ? 'bg-red-50 text-red-700 border-red-100' :
-                                                                                'bg-amber-50 text-amber-700 border-amber-100'
+                                                                                req.status === 'REJECTED' ? 'bg-red-50 text-red-700 border-red-100' :
+                                                                                    req.status === 'PENDING' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                                                                                        'bg-slate-50 text-slate-700 border-slate-100'
                                                                             }`}>
-                                                                            {req.status}
+                                                                            {req.status === 'PENDING' ? 'WAITING' : req.status}
                                                                         </span>
                                                                     </div>
                                                                     <h3 className="text-lg font-bold text-slate-900 mb-1 group-hover:text-teal-700 transition-colors">{req.title}</h3>
@@ -267,20 +359,37 @@ const RecruiterDashboard = () => {
                                         </div>
 
                                         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
-                                            <form className="space-y-8" onSubmit={(e) => {
+                                            <form className="space-y-8" onSubmit={async (e) => {
                                                 e.preventDefault();
-                                                const newRequest = {
-                                                    id: Math.random().toString(),
-                                                    title: e.target.title.value,
-                                                    field: e.target.field.value,
-                                                    description: e.target.description.value,
-                                                    salary: e.target.salary.value,
-                                                    headcount: e.target.headcount.value,
-                                                    requirements: e.target.requirements.value,
-                                                    status: 'PENDING'
-                                                };
-                                                setJobRequests([newRequest, ...jobRequests]);
-                                                setShowJobRequestForm(false);
+                                                if (!user?.id) {
+                                                    alert("Session expired. Please log in again.");
+                                                    return;
+                                                }
+                                                try {
+                                                    const { error } = await supabase.from('job_requests').insert([{
+                                                        agent_id: user.id,
+                                                        title: e.target.title.value,
+                                                        field: e.target.field.value,
+                                                        salary: e.target.salary.value,
+                                                        headcount: e.target.headcount.value,
+                                                        description: e.target.description.value,
+                                                        requirements: e.target.requirements.value,
+                                                        status: 'PENDING'
+                                                    }]);
+
+                                                    if (error) throw error;
+
+                                                    alert("Job Request Submitted to Admin! Status: Waiting approval.");
+                                                    setShowJobRequestForm(false);
+
+                                                    // Refresh list
+                                                    const { data } = await supabase.from('job_requests').select('*').eq('agent_id', user.id);
+                                                    if (data) setJobRequests(data);
+
+                                                } catch (err) {
+                                                    console.error("Submission Error:", err);
+                                                    alert("Error submitting request: " + err.message);
+                                                }
                                             }}>
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     <div className="space-y-2">
@@ -349,51 +458,59 @@ const RecruiterDashboard = () => {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                                    {filteredJobs.map((job) => (
-                                        <div
-                                            key={job.id}
-                                            className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 hover:shadow-md hover:border-teal-200 transition-all group flex flex-col relative overflow-hidden"
-                                        >
-                                            {/* Status Stripe */}
-                                            <div className="absolute top-0 left-0 w-1 h-full bg-teal-500"></div>
+                                {filteredJobs.length === 0 ? (
+                                    <div className="col-span-full flex flex-col items-center justify-center py-16 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                                        <Briefcase className="w-12 h-12 text-slate-300 mb-4" />
+                                        <h3 className="text-slate-900 font-bold text-lg">No Active Vacancies</h3>
+                                        <p className="text-slate-500 text-sm mt-1">Check back later for new opportunities.</p>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                                        {filteredJobs.map((job) => (
+                                            <div
+                                                key={job.id}
+                                                className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 hover:shadow-md hover:border-teal-200 transition-all group flex flex-col relative overflow-hidden"
+                                            >
+                                                {/* Status Stripe */}
+                                                <div className="absolute top-0 left-0 w-1 h-full bg-teal-500"></div>
 
-                                            <div className="flex justify-between items-start mb-4 pl-2">
-                                                <div>
-                                                    <h3 className="font-bold text-slate-900 text-lg leading-tight group-hover:text-teal-700 transition-colors">{job.title}</h3>
-                                                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-1">{job.company}</p>
+                                                <div className="flex justify-between items-start mb-4 pl-2">
+                                                    <div>
+                                                        <h3 className="font-bold text-slate-900 text-lg leading-tight group-hover:text-teal-700 transition-colors">{job.title}</h3>
+                                                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-1">{job.company}</p>
+                                                    </div>
+                                                    <div className="bg-slate-50 p-2 rounded-lg border border-slate-100 group-hover:bg-teal-50 group-hover:border-teal-100 transition-colors">
+                                                        <BriefcaseIcon className="w-5 h-5 text-slate-400 group-hover:text-teal-600" />
+                                                    </div>
                                                 </div>
-                                                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100 group-hover:bg-teal-50 group-hover:border-teal-100 transition-colors">
-                                                    <BriefcaseIcon className="w-5 h-5 text-slate-400 group-hover:text-teal-600" />
+
+                                                <div className="grid grid-cols-2 gap-y-3 gap-x-4 mb-6 pl-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                                                        <span className="text-xs font-medium text-slate-600">{job.location}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Award className="w-3.5 h-3.5 text-slate-400" />
+                                                        <span className="text-xs font-medium text-slate-600">{job.experience} Exp</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 col-span-2">
+                                                        <Users className="w-3.5 h-3.5 text-slate-400" />
+                                                        <span className="text-xs font-medium text-slate-600">Immediate Requirement</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="mt-auto pl-2">
+                                                    <button
+                                                        onClick={() => handleOpenSubmission(job)}
+                                                        className="w-full bg-slate-900 text-white py-3 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-teal-700 hover:shadow-lg hover:shadow-teal-900/10 transition-all"
+                                                    >
+                                                        <UserPlus className="w-4 h-4" /> Submit Candidate
+                                                    </button>
                                                 </div>
                                             </div>
-
-                                            <div className="grid grid-cols-2 gap-y-3 gap-x-4 mb-6 pl-2">
-                                                <div className="flex items-center gap-2">
-                                                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                                                    <span className="text-xs font-medium text-slate-600">{job.location}</span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <Award className="w-3.5 h-3.5 text-slate-400" />
-                                                    <span className="text-xs font-medium text-slate-600">{job.experience} Exp</span>
-                                                </div>
-                                                <div className="flex items-center gap-2 col-span-2">
-                                                    <Users className="w-3.5 h-3.5 text-slate-400" />
-                                                    <span className="text-xs font-medium text-slate-600">Immediate Requirement</span>
-                                                </div>
-                                            </div>
-
-                                            <div className="mt-auto pl-2">
-                                                <button
-                                                    onClick={() => handleOpenSubmission(job)}
-                                                    className="w-full bg-slate-900 text-white py-3 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-teal-700 hover:shadow-lg hover:shadow-teal-900/10 transition-all"
-                                                >
-                                                    <UserPlus className="w-4 h-4" /> Submit Candidate
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
 
                         ) : activeTab === 'overview' ? (
@@ -406,7 +523,7 @@ const RecruiterDashboard = () => {
                                         <p className="text-slate-500 text-sm mt-1">Here's what's happening with your candidates today.</p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                                        {/* Date removed as requested */}
                                     </div>
                                 </div>
 
@@ -416,7 +533,7 @@ const RecruiterDashboard = () => {
                                         <div className="flex justify-between items-center">
                                             <div>
                                                 <p className="text-sm font-bold text-slate-500 uppercase tracking-wide">Total Candidates</p>
-                                                <h3 className="text-4xl font-black text-slate-900 mt-3">{applications.length}</h3>
+                                                <h3 className="text-4xl font-black text-slate-900 mt-3">{pipelineData.length}</h3>
                                             </div>
                                             <div className="p-4 bg-indigo-50 rounded-2xl text-indigo-600">
                                                 <Users className="w-8 h-8" />
@@ -429,7 +546,7 @@ const RecruiterDashboard = () => {
                                             <div>
                                                 <p className="text-sm font-bold text-slate-500 uppercase tracking-wide">Selected</p>
                                                 <h3 className="text-4xl font-black text-slate-900 mt-3">
-                                                    {applications.filter(app => app.status === ApplicationStatus.SELECTED).length}
+                                                    {pipelineData.filter(app => app.status === ApplicationStatus.SELECTED).length}
                                                 </h3>
                                             </div>
                                             <div className="p-4 bg-teal-50 rounded-2xl text-teal-600">
@@ -443,7 +560,7 @@ const RecruiterDashboard = () => {
                                             <div>
                                                 <p className="text-sm font-bold text-slate-500 uppercase tracking-wide">In Waiting</p>
                                                 <h3 className="text-4xl font-black text-slate-900 mt-3">
-                                                    {applications.filter(app => [ApplicationStatus.APPLIED, ApplicationStatus.PROCESSING, ApplicationStatus.INTERVIEW].includes(app.status)).length}
+                                                    {pipelineData.filter(app => [ApplicationStatus.APPLIED, ApplicationStatus.PROCESSING, ApplicationStatus.INTERVIEW].includes(app.status)).length}
                                                 </h3>
                                             </div>
                                             <div className="p-4 bg-amber-50 rounded-2xl text-amber-600">
@@ -457,7 +574,7 @@ const RecruiterDashboard = () => {
                                             <div>
                                                 <p className="text-sm font-bold text-slate-500 uppercase tracking-wide">Blacklisted</p>
                                                 <h3 className="text-4xl font-black text-slate-900 mt-3">
-                                                    {applications.filter(app => app.status === ApplicationStatus.BLACKLISTED).length}
+                                                    {pipelineData.filter(app => app.status === ApplicationStatus.BLACKLISTED).length}
                                                 </h3>
                                             </div>
                                             <div className="p-4 bg-red-50 rounded-2xl text-red-600">
@@ -482,12 +599,11 @@ const RecruiterDashboard = () => {
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
-                                                {applications.slice(0, 5).map((app) => {
-                                                    const job = jobs.find(j => j.id === app.jobId);
+                                                {pipelineData.slice(0, 5).map((app) => {
                                                     return (
                                                         <tr key={app.id} className="hover:bg-slate-50 transition-colors">
-                                                            <td className="px-8 py-5 font-medium text-slate-900">{app.candidateName}</td>
-                                                            <td className="px-8 py-5 text-slate-600">{job?.title || 'Unknown Role'}</td>
+                                                            <td className="px-8 py-5 font-medium text-slate-900">{app.candidate_name || app.candidateName}</td>
+                                                            <td className="px-8 py-5 text-slate-600">{app.jobs?.title || 'Unknown Role'}</td>
                                                             <td className="px-8 py-5 text-right">
                                                                 <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide
                                                    ${app.status === ApplicationStatus.SELECTED ? 'bg-teal-50 text-teal-700 border border-teal-100' :
@@ -536,9 +652,9 @@ const RecruiterDashboard = () => {
                                         <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
                                             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Active:</span>
                                             <span className="bg-teal-100 text-teal-700 px-2.5 py-0.5 rounded-full text-xs font-bold">
-                                                {applications.filter(app =>
-                                                    app.candidateName.toLowerCase().includes(pipelineSearchTerm.toLowerCase()) ||
-                                                    app.email.toLowerCase().includes(pipelineSearchTerm.toLowerCase())
+                                                {pipelineData.filter(app =>
+                                                    (app.candidate_name || app.candidateName || '').toLowerCase().includes(pipelineSearchTerm.toLowerCase()) ||
+                                                    (app.email || '').toLowerCase().includes(pipelineSearchTerm.toLowerCase())
                                                 ).length}
                                             </span>
                                         </div>
@@ -557,29 +673,28 @@ const RecruiterDashboard = () => {
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
-                                                {applications
+                                                {pipelineData
                                                     .filter(app =>
-                                                        app.candidateName.toLowerCase().includes(pipelineSearchTerm.toLowerCase()) ||
-                                                        app.email.toLowerCase().includes(pipelineSearchTerm.toLowerCase())
+                                                        (app.candidate_name || app.candidateName || '').toLowerCase().includes(pipelineSearchTerm.toLowerCase()) ||
+                                                        (app.email || '').toLowerCase().includes(pipelineSearchTerm.toLowerCase())
                                                     )
                                                     .map((app) => {
-                                                        const job = jobs.find(j => j.id === app.jobId);
                                                         return (
                                                             <tr key={app.id} className="hover:bg-slate-50/80 transition-colors group">
                                                                 <td className="px-6 py-4">
                                                                     <div className="flex items-center gap-3">
                                                                         <div className="w-8 h-8 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center text-xs font-bold border border-teal-100 uppercase">
-                                                                            {app.candidateName.charAt(0)}
+                                                                            {(app.candidate_name || app.candidateName || '?').charAt(0)}
                                                                         </div>
                                                                         <div>
-                                                                            <div className="font-bold text-slate-900 text-sm">{app.candidateName}</div>
+                                                                            <div className="font-bold text-slate-900 text-sm">{app.candidate_name || app.candidateName}</div>
                                                                             <div className="text-xs text-slate-500">{app.email}</div>
                                                                         </div>
                                                                     </div>
                                                                 </td>
                                                                 <td className="px-6 py-4">
-                                                                    <div className="font-medium text-slate-900 text-sm">{job?.title || 'Unknown Role'}</div>
-                                                                    <div className="text-xs text-slate-500">{job?.company || 'Unknown Company'}</div>
+                                                                    <div className="font-medium text-slate-900 text-sm">{app.jobs?.title || 'Unknown Role'}</div>
+                                                                    <div className="text-xs text-slate-500">{app.jobs?.company || 'Unknown Company'}</div>
                                                                 </td>
                                                                 <td className="px-6 py-4">
                                                                     <div className="text-sm text-slate-600 font-medium">{new Date().toLocaleDateString()}</div>
@@ -600,9 +715,9 @@ const RecruiterDashboard = () => {
                                                         );
                                                     }
                                                     )}
-                                                {applications.filter(app =>
-                                                    app.candidateName.toLowerCase().includes(pipelineSearchTerm.toLowerCase()) ||
-                                                    app.email.toLowerCase().includes(pipelineSearchTerm.toLowerCase())
+                                                {pipelineData.filter(app =>
+                                                    (app.candidate_name || app.candidateName || '').toLowerCase().includes(pipelineSearchTerm.toLowerCase()) ||
+                                                    (app.email || '').toLowerCase().includes(pipelineSearchTerm.toLowerCase())
                                                 ).length === 0 && (
                                                         <tr>
                                                             <td colSpan={5} className="px-6 py-12 text-center text-slate-500 text-sm">

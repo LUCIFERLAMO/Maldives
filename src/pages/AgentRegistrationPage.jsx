@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
     ArrowLeft,
@@ -52,6 +52,50 @@ const AgentRegistrationPage = () => {
         }
     };
 
+    // Restore state from sessionStorage on mount
+    useEffect(() => {
+        const savedState = sessionStorage.getItem('agent_reg_state');
+        if (savedState) {
+            try {
+                const parsed = JSON.parse(savedState);
+                // Only restore if it's recent (optional expiration could be added here)
+                setFormData(prev => ({ ...prev, ...parsed.formData }));
+                setOtpSent(parsed.otpSent || false);
+                setIsEmailVerified(parsed.isEmailVerified || false);
+                if (parsed.verifiedUserId) setVerifiedUserId(parsed.verifiedUserId);
+            } catch (e) {
+                console.error("Failed to parse saved registration state", e);
+                sessionStorage.removeItem('agent_reg_state');
+            }
+        }
+    }, []);
+
+    // Helper to clear session state
+    const clearSessionState = () => {
+        sessionStorage.removeItem('agent_reg_state');
+        setOtpSent(false);
+        setIsEmailVerified(false);
+        setVerifiedUserId(null);
+        setOtp('');
+    };
+
+    const handleChangeEmail = () => {
+        if (window.confirm("Are you sure? This will require verifying the new email address.")) {
+            clearSessionState();
+            setFormData(prev => ({ ...prev, workEmail: '' }));
+        }
+    };
+
+    const saveSessionState = (updates = {}) => {
+        const currentState = {
+            formData: { ...formData, ...updates.formData },
+            otpSent: updates.otpSent !== undefined ? updates.otpSent : otpSent,
+            isEmailVerified: updates.isEmailVerified !== undefined ? updates.isEmailVerified : isEmailVerified,
+            verifiedUserId: updates.verifiedUserId !== undefined ? updates.verifiedUserId : verifiedUserId
+        };
+        sessionStorage.setItem('agent_reg_state', JSON.stringify(currentState));
+    };
+
     const handleSendOtp = async () => {
         if (!formData.workEmail) {
             alert("Please enter an email address first.");
@@ -66,6 +110,7 @@ const AgentRegistrationPage = () => {
         setIsSendingOtp(true);
 
         try {
+            console.log("Sending OTP to:", email);
             // Attempt to sign up the user
             const { data, error: signUpError } = await supabase.auth.signUp({
                 email: email,
@@ -79,6 +124,7 @@ const AgentRegistrationPage = () => {
             });
 
             if (signUpError) {
+                console.warn("SignUp Error:", signUpError);
                 // Check if the user already exists
                 if (signUpError.message && (
                     signUpError.message.toLowerCase().includes("registered") ||
@@ -98,25 +144,32 @@ const AgentRegistrationPage = () => {
                         }
                         throw resendError;
                     }
-                    alert("Verification code resent to your email!");
+                    setTimeout(() => alert("Verification code resent to your email!"), 0);
                 } else {
                     throw signUpError;
                 }
             } else {
-                alert("Verification code sent to your email! Please check your inbox (and spam folder).");
+                setTimeout(() => alert("Verification code sent to your email! Please check your inbox (and spam folder)."), 0);
             }
 
             setOtpSent(true);
+            saveSessionState({ otpSent: true }); // Save state
 
         } catch (err) {
             console.error("OTP Error:", err);
-            alert(err.message || "Error sending verification code. Please try again.");
+            setTimeout(() => alert(err.message || "Error sending verification code. Please try again."), 0);
         } finally {
             setIsSendingOtp(false);
         }
     };
 
-    const handleVerifyOtp = async () => {
+    const handleVerifyOtp = async (e) => {
+        // Prevent any form submission side-effects
+        if (e && e.preventDefault) e.preventDefault();
+
+        // Prevent double-clicks
+        if (isVerifyingOtp) return;
+
         if (!otp || otp.length !== 6) {
             alert("Please enter a valid 6-digit code.");
             return;
@@ -127,71 +180,54 @@ const AgentRegistrationPage = () => {
         const token = otp.trim();
 
         try {
-            // Pre-check: If we already have a session, we might be verified
-            const { data: preSession } = await supabase.auth.getSession();
-            if (preSession?.session?.user) {
-                console.log("User already has session:", preSession.session.user);
-                setVerifiedUserId(preSession.session.user.id);
-                setIsEmailVerified(true);
-                setOtpSent(false);
-                alert("Email verified! Please complete the form.");
-                return;
-            }
-
             console.log("Verifying OTP for:", email);
 
+            // Simple, direct verification
             const { data, error } = await supabase.auth.verifyOtp({
                 email,
                 token,
                 type: 'signup'
             });
 
-            if (error) {
-                console.warn("verifyOtp returned error:", error);
+            if (error) throw error;
 
-                // FALLBACK: Immediately check if we have a user anyway. 
-                // Sometimes verifyOtp errors on network but session is set.
-                const { data: userData, error: userError } = await supabase.auth.getUser();
-
-                if (userData?.user) {
-                    console.log("Recovered from error, user found:", userData.user);
-                    // Proceed as success
-                    var verifiedUser = userData.user;
-                } else {
-                    // Genuine error
-                    throw error;
-                }
-            } else {
-                console.log("Verify OTP Success Data:", data);
-            }
-
-            let userId = data?.user?.id || data?.session?.user?.id || verifiedUser?.id;
-
-            if (!userId) {
-                // Final attempt to get user
-                const { data: userData } = await supabase.auth.getUser();
-                userId = userData.user?.id;
-            }
+            // Verification Successful Logic
+            const userId = data.user?.id || data.session?.user?.id;
 
             if (userId) {
+                console.log("Verification Successful, User ID:", userId);
                 setVerifiedUserId(userId);
                 setIsEmailVerified(true);
-                setOtpSent(false); // Hide OTP input
-                alert("Email Verified Successfully! Please complete the form and submit.");
+                setOtpSent(false);
+                saveSessionState({ isEmailVerified: true, otpSent: false, verifiedUserId: userId }); // Save Verified State
+                alert("Email Verified Successfully!");
             } else {
-                throw new Error("Verification succeeded but could not retrieve user ID. Please try logging in.");
+                // Poll user session as fallback if ID is missing (rare)
+                const { data: sessionData } = await supabase.auth.getSession();
+                if (sessionData?.session?.user) {
+                    setVerifiedUserId(sessionData.session.user.id);
+                    setIsEmailVerified(true);
+                    setOtpSent(false);
+                    saveSessionState({ isEmailVerified: true, otpSent: false, verifiedUserId: sessionData.session.user.id });
+                    alert("Email Verified Successfully!");
+                } else {
+                    throw new Error("Verification successful, but user retrieval failed. Please try logging in.");
+                }
             }
 
         } catch (err) {
-            console.error("Verification Error:", err);
-            const msg = err.message?.toLowerCase() || "";
+            console.error("Verification Catch Error:", err);
 
-            if (msg.includes("invalid") || msg.includes("expired")) {
-                alert("The code is invalid or expired. Please request a new code.");
-                setOtpSent(false);
-                setOtp('');
+            const msg = (err.message || "").toLowerCase();
+
+            if (msg.includes("signal is aborted") || msg.includes("aborted")) {
+                console.warn("Transient abort error ignored.");
+                // Do not alert user for this specific error
+            } else if (msg.includes("expired") || msg.includes("invalid") || msg.includes("bad")) {
+                alert("Code Expired or Invalid. Please click 'Request New Code' to try again.");
+                setOtp(''); // Clear invalid code to prompt re-entry
             } else {
-                alert(err.message || "Verification failed. Please try again.");
+                alert("Verification Failed: " + (err.message || "Unknown error"));
             }
         } finally {
             setIsVerifyingOtp(false);
@@ -208,65 +244,104 @@ const AgentRegistrationPage = () => {
 
         setIsLoading(true);
         try {
-            // Use verifiedUserId from state, fallback to getUser if somehow missing (unlikely if verified)
-            let userId = verifiedUserId;
+            console.log("Starting Submission...");
 
-            if (!userId) {
-                const { data: { user }, error: userError } = await supabase.auth.getUser();
-                if (userError || !user) {
-                    console.error("User retrieval error:", userError);
-                    throw new Error("Could not retrieve verified user. Please refresh the page and try again.");
+            // Flag to track if we timed out to prevent "zombie" execution side effects
+            let isTimedOut = false;
+
+            // Timeout for overall submission
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => {
+                    isTimedOut = true;
+                    reject(new Error("Submission timed out. Please check your network."));
+                }, 25000)
+            );
+
+            const submissionLogic = (async () => {
+                // Use verifiedUserId from state, fallback to getUser if somehow missing (unlikely if verified)
+                let userId = verifiedUserId;
+
+                if (!userId) {
+                    const { data: { user }, error: userError } = await supabase.auth.getUser();
+                    if (userError || !user) {
+                        console.error("User retrieval error:", userError);
+                        throw new Error("Could not retrieve verified user. Please refresh page and try again.");
+                    }
+                    userId = user.id;
                 }
-                userId = user.id;
-            }
 
-            // 1. Upload Document if provided
-            let documentPath = null;
-            if (formData.documents) {
-                const fileExt = formData.documents.name.split('.').pop();
-                const fileName = `${userId}/license.${fileExt}`;
+                if (isTimedOut) return; // Guard: Stop if timed out
 
-                const { data: uploadData, error: uploadError } = await supabase.storage
-                    .from('agency-docs')
-                    .upload(fileName, formData.documents, { upsert: true });
+                // 1. Upload Document if provided
+                let documentPath = null;
+                if (formData.documents) {
+                    const fileExt = formData.documents.name.split('.').pop();
+                    const fileName = `${userId}/license.${fileExt}`;
 
-                if (uploadError) {
-                    console.error('Upload error:', uploadError);
-                    // Continue anyway - document upload is not critical
-                } else {
-                    documentPath = fileName;
+                    const { data: uploadData, error: uploadError } = await supabase.storage
+                        .from('agency-docs')
+                        .upload(fileName, formData.documents, { upsert: true });
+
+                    if (uploadError) {
+                        console.error('Upload error:', uploadError);
+                        // Continue anyway
+                    } else {
+                        documentPath = fileName;
+                    }
                 }
-            }
 
-            // 2. Create or Update Profile Entry in profiles table
-            const { error: profileError } = await supabase
-                .from('profiles')
-                .upsert([{
-                    id: userId,
-                    email: formData.workEmail,
-                    name: formData.fullName,
-                    company_name: formData.companyName,
-                    role: 'employer',
-                    region: formData.experienceRegion,
-                    phone: formData.phone,
-                    status: 'PENDING',
-                    document_path: documentPath
-                }], {
-                    onConflict: 'id'
-                });
+                if (isTimedOut) return; // Guard: Stop if timed out
 
-            if (profileError) {
-                console.error('Profile error:', profileError);
-                throw new Error("Failed to save profile: " + profileError.message);
-            }
+                // 2. Create or Update Profile Entry
+                const { error: profileError } = await supabase
+                    .from('profiles')
+                    .upsert([{
+                        id: userId,
+                        email: formData.workEmail,
+                        full_name: formData.fullName,
+                        role: 'agent',
+                        phone: formData.phone
+                    }], {
+                        onConflict: 'id'
+                    });
 
-            // Sign out the user after successful registration
-            await supabase.auth.signOut();
+                if (profileError) {
+                    throw new Error("Failed to save profile: " + profileError.message);
+                }
 
+                if (isTimedOut) return; // Guard: Stop if timed out
+
+                // 3. Create Agency Entry
+                const { error: agencyError } = await supabase
+                    .from('agencies')
+                    .insert([{
+                        name: formData.companyName,
+                        region: formData.experienceRegion,
+                        contact_email: formData.workEmail,
+                        document_url: documentPath,
+                        owner_id: userId,
+                        status: 'pending'
+                    }]);
+
+                if (agencyError) {
+                    throw new Error("Failed to save agency details: " + agencyError.message);
+                }
+
+                if (isTimedOut) return; // Guard: Stop if timed out (Critical: Prevent SignOut)
+
+                // Sign out
+                await supabase.auth.signOut();
+                return true;
+            })();
+
+            await Promise.race([submissionLogic, timeoutPromise]);
+
+            // Clear session state on successful submission
+            sessionStorage.removeItem('agent_reg_state');
             setIsSubmitted(true);
         } catch (err) {
             console.error('Submission Error:', err);
-            alert("Registration Failed: " + err.message);
+            setTimeout(() => alert("Registration Failed: " + err.message), 50);
         } finally {
             setIsLoading(false);
         }
@@ -316,7 +391,7 @@ const AgentRegistrationPage = () => {
                     <div className="absolute top-0 right-0 w-80 h-full bg-white opacity-5 transform skew-x-12 translate-x-20"></div>
 
                     <div className="relative z-10">
-                        <Link to={isPreviewMode ? "/" : "/login"} className="inline-flex items-center text-teal-200 hover:text-white mb-8 text-xs font-bold uppercase tracking-widest transition-colors group">
+                        <Link to={isPreviewMode ? "/" : "/login/agent"} className="inline-flex items-center text-teal-200 hover:text-white mb-8 text-xs font-bold uppercase tracking-widest transition-colors group">
                             <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> {isPreviewMode ? "Return Home" : "Back to Login"}
                         </Link>
 
@@ -387,11 +462,15 @@ const AgentRegistrationPage = () => {
                                         <input
                                             type="text"
                                             required
-                                            disabled={isPreviewMode}
-                                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300 disabled:opacity-70 disabled:cursor-not-allowed"
+                                            disabled={isPreviewMode || !isEmailVerified}
+                                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed"
                                             placeholder="John Doe"
                                             value={formData.fullName}
-                                            onChange={e => setFormData({ ...formData, fullName: e.target.value })}
+                                            onChange={e => {
+                                                const newVal = e.target.value;
+                                                setFormData({ ...formData, fullName: newVal });
+                                                saveSessionState({ formData: { ...formData, fullName: newVal } });
+                                            }}
                                         />
                                     </div>
                                 </div>
@@ -403,11 +482,15 @@ const AgentRegistrationPage = () => {
                                         <input
                                             type="tel"
                                             required
-                                            disabled={isPreviewMode}
-                                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300 disabled:opacity-70 disabled:cursor-not-allowed"
+                                            disabled={isPreviewMode || !isEmailVerified}
+                                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed"
                                             placeholder="+960 777-9999"
                                             value={formData.phone}
-                                            onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                                            onChange={e => {
+                                                const newVal = e.target.value;
+                                                setFormData({ ...formData, phone: newVal });
+                                                saveSessionState({ formData: { ...formData, phone: newVal } });
+                                            }}
                                         />
                                     </div>
                                 </div>
@@ -425,7 +508,11 @@ const AgentRegistrationPage = () => {
                                             className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300 disabled:opacity-70 disabled:cursor-not-allowed"
                                             placeholder="agent@company.com"
                                             value={formData.workEmail}
-                                            onChange={e => setFormData({ ...formData, workEmail: e.target.value })}
+                                            onChange={e => {
+                                                const newVal = e.target.value;
+                                                setFormData({ ...formData, workEmail: newVal });
+                                                // Don't strongly enforce saving email on every keystroke to avoid clutter, but we can on blur or just let sendOtp save it.
+                                            }}
                                         />
                                         {isEmailVerified && <CheckCircle2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-teal-600" />}
                                     </div>
@@ -471,16 +558,25 @@ const AgentRegistrationPage = () => {
                                             <p className="text-[10px] text-slate-400 ml-1">
                                                 Code sent to {formData.workEmail}
                                             </p>
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setOtpSent(false);
-                                                    setOtp('');
-                                                }}
-                                                className="text-[10px] text-teal-600 font-bold hover:underline"
-                                            >
-                                                Request New Code
-                                            </button>
+                                            <div className="flex gap-4">
+                                                <button
+                                                    type="button"
+                                                    onClick={handleChangeEmail}
+                                                    className="text-[10px] text-slate-500 font-bold hover:text-slate-700"
+                                                >
+                                                    Change Email
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setOtpSent(false);
+                                                        setOtp('');
+                                                    }}
+                                                    className="text-[10px] text-teal-600 font-bold hover:underline"
+                                                >
+                                                    Request New Code
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
@@ -493,11 +589,12 @@ const AgentRegistrationPage = () => {
                                     <input
                                         type={showPassword ? "text" : "password"}
                                         required
-                                        disabled={isPreviewMode || otpSent}
+                                        disabled={isPreviewMode || otpSent || isEmailVerified}
                                         className="w-full pl-12 pr-12 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300 disabled:opacity-70 disabled:cursor-not-allowed"
                                         placeholder="Create a password"
                                         value={formData.password}
                                         onChange={e => setFormData({ ...formData, password: e.target.value })}
+                                    // Password usually not saved to storage for security
                                     />
                                     <button
                                         type="button"
@@ -517,8 +614,8 @@ const AgentRegistrationPage = () => {
                                         <input
                                             type="text"
                                             required
-                                            disabled={isPreviewMode}
-                                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300 disabled:opacity-70 disabled:cursor-not-allowed"
+                                            disabled={isPreviewMode || !isEmailVerified}
+                                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed"
                                             placeholder="Global Recruiters Ltd"
                                             value={formData.companyName}
                                             onChange={e => setFormData({ ...formData, companyName: e.target.value })}
@@ -533,8 +630,8 @@ const AgentRegistrationPage = () => {
                                         <input
                                             type="text"
                                             required
-                                            disabled={isPreviewMode}
-                                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300 disabled:opacity-70 disabled:cursor-not-allowed"
+                                            disabled={isPreviewMode || !isEmailVerified}
+                                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed"
                                             placeholder="e.g. South Asia, Europe"
                                             value={formData.experienceRegion}
                                             onChange={e => setFormData({ ...formData, experienceRegion: e.target.value })}
@@ -545,12 +642,13 @@ const AgentRegistrationPage = () => {
 
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Company Documents</label>
-                                <div className={`border-2 border-dashed border-slate-200 rounded-xl p-8 transition-all text-center relative group ${isPreviewMode ? 'bg-slate-50' : 'hover:border-teal-500 hover:bg-teal-50/30 cursor-pointer'}`}>
+                                <div className={`border-2 border-dashed border-slate-200 rounded-xl p-8 transition-all text-center relative group ${isPreviewMode || !isEmailVerified ? 'bg-slate-50 opacity-50 cursor-not-allowed' : 'hover:border-teal-500 hover:bg-teal-50/30 cursor-pointer'}`}>
 
                                     {!isPreviewMode && <input
                                         type="file"
                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                                         accept=".pdf,.jpg,.jpeg,.png"
+                                        disabled={!isEmailVerified}
                                         onChange={handleFileChange}
                                         required={!formData.documents}
                                     />}
@@ -574,12 +672,12 @@ const AgentRegistrationPage = () => {
                             </div>
 
                             <div className="pt-2">
-                                <label className={`flex items-start gap-3 group ${isPreviewMode ? 'opacity-70' : 'cursor-pointer'}`}>
+                                <label className={`flex items-start gap-3 group ${isPreviewMode || !isEmailVerified ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
                                     <div className="relative flex items-center mt-1">
                                         <input
                                             type="checkbox"
                                             required
-                                            disabled={isPreviewMode}
+                                            disabled={isPreviewMode || !isEmailVerified}
                                             className="peer sr-only"
                                             checked={formData.agreedToTerms}
                                             onChange={e => setFormData({ ...formData, agreedToTerms: e.target.checked })}
@@ -597,7 +695,7 @@ const AgentRegistrationPage = () => {
                             {!isPreviewMode && <button
                                 type="submit"
                                 disabled={isLoading || !isEmailVerified}
-                                className="w-full bg-slate-900 text-white py-5 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 flex items-center justify-center gap-3 mt-4 disabled:opacity-70 disabled:cursor-not-allowed"
+                                className="w-full bg-slate-900 text-white py-5 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 flex items-center justify-center gap-3 mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {isLoading ? (
                                     <>
