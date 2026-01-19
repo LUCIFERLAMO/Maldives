@@ -6,17 +6,14 @@ import {
    CheckCircle2,
    Clock,
    UserPlus,
-   ArrowUpRight,
    Filter,
    ArrowRight,
    Globe2,
    X,
    MapPin,
    ShieldCheck,
-   Coins,
    Eye,
    Loader2,
-   AlertTriangle,
    Plus,
    Calendar,
    FileText,
@@ -26,7 +23,6 @@ import {
 
 import { DashboardSidebar } from '../components/DashboardSidebar';
 import { DashboardHeader } from '../components/DashboardHeader';
-import { StatCard } from '../components/StatCard';
 import { MOCK_JOBS, MOCK_APPLICATIONS, INDUSTRIES } from '../constants';
 
 const MOCK_AGENT_RESUMES = [
@@ -1995,139 +1991,6 @@ const AdminDashboard = () => {
                            </div>
                         )}
 
-                        {/* RESUME MODAL */}
-                        {selectedResume && (
-                           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6">
-                              <div
-                                 className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
-                                 onClick={() => { setSelectedResume(null); setIsBlacklistReview(false); }}
-                              />
-                              <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-
-                                 {/* Modal Header */}
-                                 <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-white z-10">
-                                    <div className="flex items-center gap-4">
-                                       <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-lg font-bold text-slate-700">
-                                          {selectedResume.name.charAt(0)}
-                                       </div>
-                                       <div>
-                                          <h2 className="text-xl font-bold text-slate-900">{selectedResume.name}</h2>
-                                          <p className="text-sm text-slate-500 font-medium flex items-center gap-2">
-                                             {selectedResume.role} <span className="w-1 h-1 rounded-full bg-slate-300"></span> {selectedResume.nationality}
-                                          </p>
-                                       </div>
-                                    </div>
-                                    <button
-                                       onClick={() => { setSelectedResume(null); setIsBlacklistReview(false); }}
-                                       className="w-8 h-8 rounded-full bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-900 flex items-center justify-center transition-colors"
-                                    >
-                                       <X className="w-5 h-5" />
-                                    </button>
-                                 </div>
-
-                                 {/* Modal Content - Two Columns */}
-                                 <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
-                                    {/* LEFT: Documents List */}
-                                    <div className="w-full lg:w-1/3 bg-slate-50 p-6 border-r border-slate-100 overflow-y-auto">
-                                       <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Submitted Documents</h3>
-                                       <div className="space-y-3">
-                                          {Object.entries(selectedResume.documents).map(([key, filename]) => (
-                                             <DocumentCard key={key} label={key} filename={filename} />
-                                          ))}
-                                       </div>
-
-                                       <div className="mt-8">
-                                          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Contact Info</h3>
-                                          <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
-                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center">
-                                                   <Globe2 className="w-4 h-4" />
-                                                </div>
-                                                <div className="overflow-hidden">
-                                                   <p className="text-xs text-slate-400 font-bold uppercase">Email</p>
-                                                   <p className="text-sm font-semibold text-slate-900 truncate">{selectedResume.email}</p>
-                                                </div>
-                                             </div>
-                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-green-50 text-green-600 flex items-center justify-center">
-                                                   <Globe2 className="w-4 h-4" />
-                                                </div>
-                                                <div>
-                                                   <p className="text-xs text-slate-400 font-bold uppercase">WhatsApp</p>
-                                                   <p className="text-sm font-semibold text-slate-900">{selectedResume.whatsapp}</p>
-                                                </div>
-                                             </div>
-                                          </div>
-                                       </div>
-                                    </div>
-
-                                    {/* RIGHT: Document Preview (Placeholder) */}
-                                    <div className="flex-1 bg-slate-100 p-6 lg:p-8 flex items-center justify-center relative">
-                                       <div className="bg-white shadow-xl rounded-xl w-full h-full max-w-2xl flex flex-col overflow-hidden border border-slate-200">
-                                          <div className="bg-slate-800 text-white px-4 py-2 text-xs font-medium flex justify-between items-center">
-                                             <span>resume_preview.pdf</span>
-                                             <span>Page 1 of 2</span>
-                                          </div>
-                                          <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8">
-                                             <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 mb-2">
-                                                <FileText className="w-8 h-8" />
-                                             </div>
-                                             <p className="text-slate-500 font-medium">Document viewer placeholder</p>
-                                             <button className="text-teal-600 font-bold text-sm hover:underline">Download Original</button>
-                                          </div>
-                                       </div>
-                                    </div>
-                                 </div>
-
-                                 {/* Modal Footer - Actions */}
-                                 <div className="p-4 sm:p-6 border-t border-slate-100 bg-white flex justify-end gap-3 z-10">
-                                    {isBlacklistReview || (selectedResume && selectedResume.status === 'REJECTED') ? (
-                                       <>
-                                          <button
-                                             onClick={() => { setSelectedResume(null); setIsBlacklistReview(false); }}
-                                             className="px-6 py-3 rounded-xl bg-blue-50 text-blue-600 font-bold text-sm uppercase tracking-wider hover:bg-blue-100 transition-colors"
-                                          >
-                                             Cancel
-                                          </button>
-                                          <button
-                                             onClick={() => handleResumeStatusChange('PROCESSING')}
-                                             className="px-6 py-3 rounded-xl bg-amber-50 text-amber-600 font-bold text-sm uppercase tracking-wider hover:bg-amber-100 transition-colors"
-                                          >
-                                             On Hold
-                                          </button>
-                                          <button
-                                             onClick={() => handleResumeStatusChange('LIVE TO PUBLIC')}
-                                             className="px-6 py-3 rounded-xl bg-emerald-600 text-white font-bold text-sm uppercase tracking-wider hover:bg-emerald-500 shadow-lg shadow-emerald-500/30 transition-all flex items-center gap-2"
-                                          >
-                                             <CheckCircle2 className="w-5 h-5" /> Accept & Approve
-                                          </button>
-                                       </>
-                                    ) : (
-                                       <>
-                                          <button
-                                             onClick={() => handleResumeStatusChange('REJECTED')}
-                                             className="px-6 py-3 rounded-xl bg-red-50 text-red-600 font-bold text-sm uppercase tracking-wider hover:bg-red-100 transition-colors"
-                                          >
-                                             Reject
-                                          </button>
-                                          <button
-                                             onClick={() => handleResumeStatusChange('PROCESSING')}
-                                             className="px-6 py-3 rounded-xl bg-slate-100 text-slate-600 font-bold text-sm uppercase tracking-wider hover:bg-slate-200 transition-colors"
-                                          >
-                                             Keep in Hold
-                                          </button>
-                                          <button
-                                             onClick={() => handleResumeStatusChange('LIVE TO PUBLIC')}
-                                             className="px-6 py-3 rounded-xl bg-slate-900 text-white font-bold text-sm uppercase tracking-wider hover:bg-slate-800 shadow-lg shadow-slate-900/20 transition-all flex items-center gap-2"
-                                          >
-                                             <CheckCircle2 className="w-5 h-5" /> Approve Candidate
-                                          </button>
-                                       </>
-                                    )}
-                                 </div>
-                              </div>
-                           </div>
-                        )}
 
                         {/* PLACEHOLDER FOR OTHER TABS */}
                         {activeTab === 'network' && (
@@ -2448,7 +2311,7 @@ const AdminDashboard = () => {
                               </div>
                            </div>
                            <button
-                              onClick={() => setSelectedResume(null)}
+                              onClick={() => { setSelectedResume(null); setIsBlacklistReview(false); }}
                               className="w-10 h-10 bg-slate-50 hover:bg-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
                            >
                               <X className="w-5 h-5" />
@@ -2507,26 +2370,51 @@ const AdminDashboard = () => {
 
                         {/* Actions Footer */}
                         <div className="p-8 bg-slate-50/50 border-t border-slate-100 flex items-center justify-end gap-4">
-                           <button
-                              onClick={() => handleResumeStatusChange('Rejected')}
-                              className="px-8 py-4 rounded-xl bg-red-50 text-red-600 text-[10px] font-black uppercase tracking-widest hover:bg-red-100 transition-colors"
-                           >
-                              Reject
-                           </button>
+                           {isBlacklistReview || (selectedResume && selectedResume.status === 'REJECTED') ? (
+                              <>
+                                 <button
+                                    onClick={() => { setSelectedResume(null); setIsBlacklistReview(false); }}
+                                    className="px-8 py-4 rounded-xl bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors"
+                                 >
+                                    Cancel
+                                 </button>
+                                 <button
+                                    onClick={() => handleResumeStatusChange('On Hold')}
+                                    className="px-8 py-4 rounded-xl bg-amber-50 text-amber-600 text-[10px] font-black uppercase tracking-widest hover:bg-amber-100 transition-colors"
+                                 >
+                                    Keep on Hold
+                                 </button>
+                                 <button
+                                    onClick={() => handleResumeStatusChange('Selected')}
+                                    className="px-8 py-4 rounded-xl bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500 shadow-lg shadow-emerald-500/30 transition-colors flex items-center gap-2"
+                                 >
+                                    <CheckCircle2 className="w-5 h-5" /> Accept & Approve
+                                 </button>
+                              </>
+                           ) : (
+                              <>
+                                 <button
+                                    onClick={() => handleResumeStatusChange('Rejected')}
+                                    className="px-8 py-4 rounded-xl bg-red-50 text-red-600 text-[10px] font-black uppercase tracking-widest hover:bg-red-100 transition-colors"
+                                 >
+                                    Reject
+                                 </button>
 
-                           <button
-                              onClick={() => handleResumeStatusChange('On Hold')}
-                              className="px-8 py-4 rounded-xl bg-amber-50 text-amber-600 text-[10px] font-black uppercase tracking-widest hover:bg-amber-100 transition-colors"
-                           >
-                              Keep on Hold
-                           </button>
+                                 <button
+                                    onClick={() => handleResumeStatusChange('On Hold')}
+                                    className="px-8 py-4 rounded-xl bg-amber-50 text-amber-600 text-[10px] font-black uppercase tracking-widest hover:bg-amber-100 transition-colors"
+                                 >
+                                    Keep on Hold
+                                 </button>
 
-                           <button
-                              onClick={() => handleResumeStatusChange('Selected')}
-                              className="px-8 py-4 rounded-xl bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-500/20"
-                           >
-                              Approve
-                           </button>
+                                 <button
+                                    onClick={() => handleResumeStatusChange('Selected')}
+                                    className="px-8 py-4 rounded-xl bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-500/20"
+                                 >
+                                    Approve
+                                 </button>
+                              </>
+                           )}
                         </div>
                      </div>
                   </div>
