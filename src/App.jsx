@@ -17,6 +17,8 @@ import SupportPage from './pages/SupportPage';
 import AgentRegistrationPage from './pages/AgentRegistrationPage';
 import { AuthProvider } from './context/AuthContext';
 
+import ProtectedRoute from './components/ProtectedRoute';
+
 const AppContent = () => {
     const location = useLocation();
     // Hide Global Navbar/Footer for Recruiter and Admin Dashboards (they have their own sidebars)
@@ -27,23 +29,65 @@ const AppContent = () => {
             {!isDashboard && <Navbar />}
             <main className="flex-grow">
                 <Routes>
+                    {/* Public Routes */}
                     <Route path="/" element={<HomePage />} />
                     <Route path="/jobs" element={<BrowseJobsPage />} />
                     <Route path="/job/:id" element={<JobDetailPage />} />
                     <Route path="/success" element={<SuccessPage />} />
-                    <Route path="/recruiter" element={<RecruiterDashboard />} />
-                    <Route path="/admin" element={<AdminDashboard />} />
+                    <Route path="/support" element={<SupportPage />} />
+
+                    {/* Authentication Routes */}
                     <Route path="/login" element={<CandidateLoginPage initialMode="login" />} />
                     <Route path="/register" element={<CandidateLoginPage initialMode="register" />} />
                     <Route path="/login/agent" element={<AgentLoginPage />} />
                     <Route path="/login/admin" element={<AdminLoginPage />} />
                     <Route path="/agent-registration" element={<AgentRegistrationPage />} />
-                    <Route path="/support" element={<SupportPage />} />
 
-                    {/* Candidate Protected Routes */}
-                    <Route path="/dashboard" element={<CandidateDashboard />} />
-                    <Route path="/applications" element={<MyApplicationsPage />} />
-                    <Route path="/profile" element={<ProfilePage />} />
+                    {/* Protected Admin Routes */}
+                    <Route
+                        path="/admin"
+                        element={
+                            <ProtectedRoute allowedRoles={['admin']}>
+                                <AdminDashboard />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    {/* Protected Recruiter/Agent Routes */}
+                    <Route
+                        path="/recruiter"
+                        element={
+                            <ProtectedRoute allowedRoles={['agent']}>
+                                <RecruiterDashboard />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    {/* Protected Candidate Routes */}
+                    <Route
+                        path="/dashboard"
+                        element={
+                            <ProtectedRoute allowedRoles={['candidate']}>
+                                <CandidateDashboard />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/applications"
+                        element={
+                            <ProtectedRoute allowedRoles={['candidate']}>
+                                <MyApplicationsPage />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/profile"
+                        element={
+                            <ProtectedRoute allowedRoles={['candidate']}>
+                                <ProfilePage />
+                            </ProtectedRoute>
+                        }
+                    />
                 </Routes>
             </main>
             {!isDashboard && (

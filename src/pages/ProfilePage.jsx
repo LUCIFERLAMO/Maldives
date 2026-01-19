@@ -362,15 +362,32 @@ const ProfilePage = () => {
         }
     };
 
-    const handlePasswordReset = (e) => {
+    const handlePasswordReset = async (e) => {
         e.preventDefault();
         if (passwords.new !== passwords.confirm) {
             alert("Passwords do not match");
             return;
         }
-        alert("Password updated");
-        setIsResettingPassword(false);
-        setPasswords({ current: '', new: '', confirm: '' });
+
+        if (passwords.new.length < 6) {
+            alert("Password must be at least 6 characters long");
+            return;
+        }
+
+        try {
+            const { error } = await supabase.auth.updateUser({
+                password: passwords.new
+            });
+
+            if (error) throw error;
+
+            alert("Password updated successfully");
+            setIsResettingPassword(false);
+            setPasswords({ current: '', new: '', confirm: '' });
+        } catch (error) {
+            console.error('Error updating password:', error);
+            alert(`Failed to update password: ${error.message}`);
+        }
     };
 
     const handleDocAction = (id) => {
@@ -474,6 +491,42 @@ const ProfilePage = () => {
                             <button onClick={() => setIsEditingPersonal(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
                         </div>
                         <form onSubmit={handlePersonalSubmit} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
+                                <input
+                                    type="text"
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                                    value={profileData.name}
+                                    onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Title / Role</label>
+                                <input
+                                    type="text"
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                                    value={profileData.title}
+                                    onChange={(e) => setProfileData({ ...profileData, title: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
+                                <input
+                                    type="tel"
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                                    value={profileData.phone}
+                                    onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Location</label>
+                                <input
+                                    type="text"
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                                    value={profileData.location}
+                                    onChange={(e) => setProfileData({ ...profileData, location: e.target.value })}
+                                />
+                            </div>
                             <button type="submit" className="w-full py-2.5 bg-slate-900 text-white rounded-lg font-medium text-sm hover:bg-slate-800">Save Changes</button>
                         </form>
                     </div>

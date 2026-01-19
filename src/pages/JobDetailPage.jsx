@@ -32,8 +32,17 @@ const JobDetailPage = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
+        // Validate UUID format to prevent DB errors
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (id && !uuidRegex.test(id)) {
+            console.error("Invalid Job ID format");
+            navigate('/jobs'); // Redirect invalid IDs to jobs list
+            return;
+        }
+
         async function fetchJob() {
             try {
+                // ... fetch logic ...
                 const { data, error } = await supabase
                     .from('jobs')
                     .select('*')
@@ -41,7 +50,6 @@ const JobDetailPage = () => {
                     .single();
 
                 if (error) throw error;
-                // Map DB snake_case to camelCase where needed for UI
                 const mappedJob = {
                     ...data,
                     salaryRange: data.salary_range,
@@ -57,7 +65,7 @@ const JobDetailPage = () => {
         if (id) {
             fetchJob();
         }
-    }, [id]);
+    }, [id, navigate]);
 
 
     useEffect(() => {
@@ -87,10 +95,25 @@ const JobDetailPage = () => {
     const uploadFile = async (file, documentType) => {
         if (!file || !user) return null;
 
+        // Security: Restrict File Types & Size
+        const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+        if (!allowedTypes.includes(file.type)) {
+            alert(`Invalid file type for ${documentType}. Please upload PDF or Images only.`);
+            return null;
+        }
+
+        const maxSize = 5 * 1024 * 1024; // 5MB limit
+        if (file.size > maxSize) {
+            alert(`File ${file.name} is too large. Max size is 5MB.`);
+            return null;
+        }
+
         try {
             const fileExt = file.name.split('.').pop();
-            const fileName = `${documentType}_${Date.now()}.${fileExt}`;
-            const filePath = `${user.id}/${fileName}`;
+            // Sanitize filename to prevent directory traversal or weird chars
+            const cleanFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '');
+            const storageFileName = `${documentType}_${Date.now()}_${cleanFileName}`;
+            const filePath = `${user.id}/${storageFileName}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('user-documents')
@@ -104,7 +127,7 @@ const JobDetailPage = () => {
 
             return {
                 filePath,
-                fileName: file.name,
+                fileName: cleanFileName,
                 url: urlData.publicUrl
             };
         } catch (error) {
@@ -125,6 +148,19 @@ const JobDetailPage = () => {
         }
 
         try {
+            // SECURITY: Check if job is still open (Race Condition verify)
+            const { data: freshJob, error: statusError } = await supabase
+                .from('jobs')
+                .select('status')
+                .eq('id', job.id)
+                .single();
+
+            if (!statusError && freshJob?.status === JobStatus.CLOSED) {
+                alert('This position has just been closed and is no longer accepting applications.');
+                navigate('/jobs');
+                return;
+            }
+
             // Upload files
             const uploadedFiles = {};
             for (const [key, file] of Object.entries(files)) {

@@ -40,9 +40,10 @@ const BrowseJobsPage = () => {
     };
 
     const filteredJobs = useMemo(() => {
+        const sanitizedSearch = searchTerm.replace(/[<>]/g, '').toLowerCase(); // Simple sanitizer
         return jobs.filter(job => {
-            const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                job.company.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesSearch = job.title.toLowerCase().includes(sanitizedSearch) ||
+                job.company.toLowerCase().includes(sanitizedSearch);
             const matchesIndustry = selectedIndustry === 'All' || job.industry === selectedIndustry;
 
 

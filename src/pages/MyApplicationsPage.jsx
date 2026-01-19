@@ -87,10 +87,11 @@ const MyApplicationsPage = () => {
         alert("Request sent to employer.");
     };
 
-    const allApplications = applications.filter(app =>
-        app.jobTitle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        app.company?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const allApplications = applications.filter(app => {
+        const sanitizedQuery = searchQuery.replace(/[<>]/g, '').toLowerCase();
+        return app.jobTitle?.toLowerCase().includes(sanitizedQuery) ||
+            app.company?.toLowerCase().includes(sanitizedQuery);
+    });
 
     const renderAppItem = (app) => {
         const isAction = app.status === ApplicationStatus.ACTION_REQUIRED;
@@ -234,7 +235,10 @@ const MyApplicationsPage = () => {
                                                         <FileText className="w-4 h-4 text-slate-400" />
                                                         {fb.docId.toUpperCase()}
                                                     </div>
-                                                    <button className="text-xs font-bold text-white bg-slate-900 px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors shadow-sm">
+                                                    <button
+                                                        onClick={() => window.location.href = '/profile'}
+                                                        className="text-xs font-bold text-white bg-slate-900 px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors shadow-sm"
+                                                    >
                                                         Re-upload
                                                     </button>
                                                 </div>

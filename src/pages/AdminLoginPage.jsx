@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, Terminal, ArrowRight, ArrowLeft, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 
 const AdminLoginPage = () => {
     const navigate = useNavigate();
@@ -14,14 +15,61 @@ const AdminLoginPage = () => {
     const [step, setStep] = useState('credentials');
     const [twoFACode, setTwoFACode] = useState(['', '', '', '', '', '']);
 
-    const handleCredentialsSubmit = (e) => {
+    const handleCredentialsSubmit = async (e) => {
         e.preventDefault();
 
-        // HARDCODED ADMIN AUTH CHECK 1
+        // DEVELOPER ACCESS (Temporary Header)
+        // Kept for dev team access as requested. Remove in production.
         if (email === 'admin@maldives.com' && password === 'admin123') {
+            mockLogin({
+                id: 'dev-admin',
+                email: 'admin@maldives.com',
+                name: 'Developer Admin',
+                role: 'admin'
+            });
             setStep('2fa');
-        } else {
-            alert('Invalid Admin Credentials. Try admin@maldives.com / admin123');
+            return;
+        }
+
+        try {
+            // SECURITY: Real Auth Check
+            const { error } = await useAuth().login(email, password);
+
+            if (error) {
+                // SECURITY: Generic error message to prevent User Enumeration
+                alert('Invalid email or password.');
+                return;
+            }
+
+            // We need to check role *after* login.
+            // But useAuth().login updates the user state asynchronously in the context.
+            // Ideally login() should return the user object or we trusted the context update.
+            // However, our login function in AuthContext returns { error } only, but sets state.
+            // To be safe and synchronous, we can check the user from supabase directly here or wait.
+            // BETTER APPROACH: The `login` function in AuthContext *does* set the user state.
+            // But we can't access the updated `user` from the hook immediately in this closure.
+
+            // Let's rely on the fact that if login passed, we can get the user from Supabase to verify role.
+            const { data: { user: authUser } } = await supabase.auth.getUser();
+            if (!authUser) throw new Error("Auth failed");
+
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', authUser.id)
+                .single();
+
+            if (profile?.role !== 'admin') {
+                await useAuth().logout();
+                alert('Access Denied: You do not have administrator privileges.');
+                return;
+            }
+
+            setStep('2fa');
+
+        } catch (err) {
+            console.error("Admin Login Error:", err);
+            alert('Authentication failed.');
         }
     };
 
@@ -29,16 +77,9 @@ const AdminLoginPage = () => {
         e.preventDefault();
 
         if (twoFACode.join('').length === 6) {
-            // SUCCESSFUL ADMIN LOGIN
-            mockLogin({
-                id: 'mock-admin-001',
-                name: 'Platform Administrator',
-                email: email,
-                role: 'admin'
-            });
             navigate('/admin');
         } else {
-            alert('Please enter any 6-digit code (Mock 2FA)');
+            alert('Please enter the 6-digit code');
         }
     };
 

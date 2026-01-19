@@ -41,10 +41,17 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
         e.preventDefault();
 
         // REAL SUPABASE LOGIN FOR CANDIDATES (CLIENT)
+        if (formData.password.length < 6) {
+            alert('Password must be at least 6 characters long.');
+            return;
+        }
+
+        // REAL SUPABASE LOGIN FOR CANDIDATES (CLIENT)
         const { error } = await login(formData.email, formData.password);
 
         if (error) {
-            alert(`Login failed: ${error}`);
+            // SECURITY: Generic error message
+            alert('Invalid email or password.');
         } else {
             navigate('/dashboard');
         }
@@ -68,7 +75,7 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
                     data: {
                         name: formData.name,
                         phone: formData.phone,
-                        role: 'candidate'
+                        role: 'candidate' // Verified: Hardcoded role assignment
                     }
                 }
             });

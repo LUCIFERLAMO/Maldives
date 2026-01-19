@@ -246,6 +246,24 @@ const AgentRegistrationPage = () => {
         try {
             console.log("Starting Submission...");
 
+            // SECURITY: Link client-side checks to logical checks
+            if (formData.password && formData.password.length < 6) {
+                throw new Error("Password must be at least 6 characters long.");
+            }
+
+            // SECURITY: Validate File (Type and Size)
+            if (formData.documents) {
+                const file = formData.documents;
+                const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+                if (!allowedTypes.includes(file.type)) {
+                    throw new Error("Invalid file type. Only PDF and Images are allowed.");
+                }
+                const maxSize = 5 * 1024 * 1024; // 5MB
+                if (file.size > maxSize) {
+                    throw new Error("File size exceeds 5MB limit.");
+                }
+            }
+
             // Flag to track if we timed out to prevent "zombie" execution side effects
             let isTimedOut = false;
 

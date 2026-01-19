@@ -22,9 +22,9 @@ const AgentLoginPage = () => {
                 const msg = error.toLowerCase();
                 if (msg.includes("signal is aborted") || msg.includes("aborted")) {
                     console.warn("Ignored abort signal error in login UI");
-                    // Optionally show a user friendly toast or just ignore if it's transient
                 } else {
-                    alert("Login Failed: " + error);
+                    // SECURITY: Generic error message
+                    alert("Invalid email or password.");
                 }
                 return;
             }

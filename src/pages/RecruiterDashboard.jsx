@@ -25,6 +25,14 @@ const RecruiterDashboard = () => {
 
     const [applications, setApplications] = useState(MOCK_APPLICATIONS);
 
+    // FIXED: Form State for Candidate Submission
+    const [submissionData, setSubmissionData] = useState({
+        name: '',
+        email: '',
+        whatsapp: '',
+        nationality: ''
+    });
+
     // --- REAL DATA FETCHER ---
     const [pipelineData, setPipelineData] = useState([]);
     // This gets the list of candidates from the database
@@ -109,6 +117,8 @@ const RecruiterDashboard = () => {
 
     const handleOpenSubmission = (job) => {
         setSelectedJobForSubmission(job);
+        // Reset form
+        setSubmissionData({ name: '', email: '', whatsapp: '', nationality: '' });
         setSubmissionFiles({
             resume: null,
             identity: null,
@@ -123,12 +133,16 @@ const RecruiterDashboard = () => {
             alert("Please upload all mandatory documents (Resume, ID/Passport, Certificates).");
             return;
         }
+        if (!submissionData.name || !submissionData.email || !submissionData.whatsapp || !submissionData.nationality) {
+            alert("Please fill in all identity details (Name, Email, Phone, Nationality).");
+            return;
+        }
 
         try {
-            // 1. Upload Resume (Bucket 'candidate-docs' exists)
+            // 1. Upload Resume (Bucket 'resumes' exists)
             const resumeName = `${user.id}/${Date.now()}_resume`;
             const { data: resumeData, error: resumeError } = await supabase.storage
-                .from('candidate-docs')
+                .from('resumes')
                 .upload(resumeName, submissionFiles.resume);
 
             if (resumeError) throw resumeError;
@@ -139,8 +153,10 @@ const RecruiterDashboard = () => {
                 .insert([{
                     agent_id: user.id,
                     job_id: selectedJobForSubmission.id,
-                    candidate_name: "Test Candidate (Manual)", //Ideally we should have a form field for this
-                    email: "manual@test.com", //And this
+                    candidate_name: submissionData.name,
+                    email: submissionData.email,
+                    phone: submissionData.whatsapp,
+                    nationality: submissionData.nationality,
                     resume_url: resumeData.path,
                     // Add passport_url etc. here
                     status: 'APPLIED'
@@ -774,19 +790,43 @@ const RecruiterDashboard = () => {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-2">
                                             <label className="text-xs font-semibold text-slate-700">Candidate Full Name *</label>
-                                            <input type="text" placeholder="As per passport" className="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-4 text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all" />
+                                            <input
+                                                type="text"
+                                                placeholder="As per passport"
+                                                value={submissionData.name}
+                                                onChange={e => setSubmissionData({ ...submissionData, name: e.target.value })}
+                                                className="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-4 text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                                            />
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-xs font-semibold text-slate-700">Email Address *</label>
-                                            <input type="email" placeholder="email@candidate.com" className="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-4 text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all" />
+                                            <input
+                                                type="email"
+                                                placeholder="email@candidate.com"
+                                                value={submissionData.email}
+                                                onChange={e => setSubmissionData({ ...submissionData, email: e.target.value })}
+                                                className="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-4 text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                                            />
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-xs font-semibold text-slate-700">WhatsApp Number *</label>
-                                            <input type="tel" placeholder="+CountrCode Number" className="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-4 text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all" />
+                                            <input
+                                                type="tel"
+                                                placeholder="+CountrCode Number"
+                                                value={submissionData.whatsapp}
+                                                onChange={e => setSubmissionData({ ...submissionData, whatsapp: e.target.value })}
+                                                className="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-4 text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                                            />
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-xs font-semibold text-slate-700">Nationality *</label>
-                                            <input type="text" placeholder="Nationality" className="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-4 text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all" />
+                                            <input
+                                                type="text"
+                                                placeholder="Nationality"
+                                                value={submissionData.nationality}
+                                                onChange={e => setSubmissionData({ ...submissionData, nationality: e.target.value })}
+                                                className="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-4 text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                                            />
                                         </div>
                                     </div>
                                 </div>
