@@ -141,73 +141,49 @@ const JobDetailPage = () => {
         e.preventDefault();
         setIsSubmitting(true);
 
+        // NOTE: Authentication check removed/bypassed for "No Supabase" mode.
+        // If you still use Supabase Auth, you can uncomment this:
+        /*
         if (!isAuthenticated) {
             alert('Please login to apply');
             setIsSubmitting(false);
             return;
         }
+        */
 
         try {
-            // SECURITY: Check if job is still open (Race Condition verify)
-            const { data: freshJob, error: statusError } = await supabase
-                .from('jobs')
-                .select('status')
-                .eq('id', job.id)
-                .single();
+            // Prepare FormData for the Backend (Multer/GridFS)
+            const formDataPayload = new FormData();
+            formDataPayload.append('job_id', job.id);
+            formDataPayload.append('name', formData.name);
+            formDataPayload.append('email', formData.email);
+            formDataPayload.append('contact', formData.contact);
 
-            if (!statusError && freshJob?.status === JobStatus.CLOSED) {
-                alert('This position has just been closed and is no longer accepting applications.');
-                navigate('/jobs');
+            // Append the Resume File
+            if (files.resume) {
+                formDataPayload.append('resume', files.resume);
+            } else {
+                alert('Please upload a resume');
+                setIsSubmitting(false);
                 return;
             }
 
-            // Upload files
-            const uploadedFiles = {};
-            for (const [key, file] of Object.entries(files)) {
-                if (file) {
-                    const uploadResult = await uploadFile(file, key);
-                    if (uploadResult) {
-                        uploadedFiles[key] = uploadResult;
-                    }
-                }
+            // Send to Local Backend
+            const response = await fetch('http://localhost:5000/api/applications', {
+                method: 'POST',
+                body: formDataPayload, // No Content-Type header needed (browser sets multipart/form-data)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Application submission failed');
             }
 
-            // Create application
-            const { data: applicationData, error: appError } = await supabase
-                .from('applications')
-                .insert([
-                    {
-                        job_id: job.id,
-                        candidate_id: user.id,
-                        candidate_name: formData.name,
-                        email: formData.email,
-                        contact_number: formData.contact
-                    }
-                ])
-                .select()
-                .single();
-
-            if (appError) throw appError;
-
-            // Save document metadata
-            if (Object.keys(uploadedFiles).length > 0) {
-                const documentRecords = Object.entries(uploadedFiles).map(([type, fileData]) => ({
-                    user_id: user.id,
-                    application_id: applicationData.id,
-                    document_type: type,
-                    file_name: fileData.fileName,
-                    file_path: fileData.filePath,
-                    file_size: files[type].size,
-                    mime_type: files[type].type
-                }));
-
-                await supabase.from('documents').insert(documentRecords);
-            }
-
+            // Success
             navigate('/success');
         } catch (error) {
             console.error('Application error:', error);
-            alert('Failed to submit application. Please try again.');
+            alert(`Failed to submit application: ${error.message}`);
         } finally {
             setIsSubmitting(false);
         }

@@ -39,7 +39,7 @@ const AgentLoginPage = () => {
     // Temporary Logic for Developer Access
     const handleTempAccess = () => {
         mockLogin({
-            id: 'temp-dev-agent',
+            id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
             name: 'Developer Agent',
             email: 'dev@agent.com',
             role: 'agent',

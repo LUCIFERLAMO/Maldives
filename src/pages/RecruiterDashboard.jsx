@@ -179,6 +179,25 @@ const RecruiterDashboard = () => {
 
 
 
+    // --- AGENT PROFILE FETCHER ---
+    const [agentProfile, setAgentProfile] = useState(null);
+    useEffect(() => {
+        if (!user?.id) return;
+
+        const fetchAgentProfile = async () => {
+            const { data, error } = await supabase
+                .from('agents')
+                .select('*')
+                .eq('auth_id', user.id)
+                .single();
+
+            if (data) {
+                setAgentProfile(data);
+            }
+        };
+        fetchAgentProfile();
+    }, [user?.id]);
+
     return (
         <div className="min-h-screen bg-white font-sans flex overflow-hidden">
 
@@ -190,8 +209,12 @@ const RecruiterDashboard = () => {
                             <Globe className="w-5 h-5" />
                         </div>
                         <div className="min-w-0">
-                            <span className="font-bold text-white text-sm tracking-tight block leading-none">GlobalTalent</span>
-                            <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider mt-1 block">Partner Portal</span>
+                            <span className="font-bold text-white text-sm tracking-tight block leading-none truncate w-48">
+                                {agentProfile?.company_name || "GlobalTalent"}
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider mt-1 block truncate w-48">
+                                {agentProfile?.full_name || "Partner Portal"}
+                            </span>
                         </div>
                     </div>
                 </div>
