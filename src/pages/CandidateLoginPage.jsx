@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
     Mail,
     Lock,
@@ -7,19 +7,17 @@ import {
     ArrowRight,
     ArrowLeft,
     CheckCircle2,
-    Phone
+    Phone,
+    Loader2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../lib/supabase';
 
 const CandidateLoginPage = ({ initialMode = 'login' }) => {
     const navigate = useNavigate();
     const { login } = useAuth();
 
     const [mode, setMode] = useState(initialMode);
-
-    const [signupStep, setSignupStep] = useState(1);
-    const [otp, setOtp] = useState(['', '', '', '', '', '']);
+    const [isLoading, setIsLoading] = useState(false);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -30,130 +28,94 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
 
     useEffect(() => {
         setMode(initialMode);
-        // Reset steps when mode changes
-        if (initialMode === 'login') {
-            setSignupStep(1);
-            setOtp(['', '', '', '', '', '']);
-        }
     }, [initialMode]);
 
     const handleLoginSubmit = async (e) => {
         e.preventDefault();
+        setIsLoading(true);
 
-        // REAL SUPABASE LOGIN FOR CANDIDATES (CLIENT)
         if (formData.password.length < 6) {
             alert('Password must be at least 6 characters long.');
+            setIsLoading(false);
             return;
         }
 
-        // REAL SUPABASE LOGIN FOR CANDIDATES (CLIENT)
-        const { error } = await login(formData.email, formData.password);
+        try {
+            const response = await fetch('http://localhost:5000/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: formData.email,
+                    password: formData.password,
+                    role: 'CANDIDATE'
+                })
+            });
 
-        if (error) {
-            // SECURITY: Generic error message
-            alert('Invalid email or password.');
-        } else {
-            navigate('/dashboard');
+            const data = await response.json();
+
+            if (response.ok) {
+                // Store user in localStorage (matching AuthContext pattern)
+                const userData = {
+                    id: data.user._id,
+                    name: data.user.full_name,
+                    email: data.user.email,
+                    role: data.user.role
+                };
+                localStorage.setItem('user', JSON.stringify(userData));
+                window.location.href = '/dashboard'; // Force reload to update AuthContext
+            } else {
+                alert('Invalid email or password.');
+            }
+        } catch (err) {
+            console.error('Login error:', err);
+            alert('Network error. Please try again.');
+        } finally {
+            setIsLoading(false);
         }
     };
 
-    const handleSignupStep1 = async (e) => {
+    const handleSignupSubmit = async (e) => {
         e.preventDefault();
+        setIsLoading(true);
 
-        // Validate phone number
         if (!formData.phone || formData.phone.length < 10) {
             alert('Please enter a valid phone number');
+            setIsLoading(false);
+            return;
+        }
+
+        if (formData.password.length < 6) {
+            alert('Password must be at least 6 characters long.');
+            setIsLoading(false);
             return;
         }
 
         try {
-            // Initiate OTP Login (Passwordless Signup)
-            const { error } = await supabase.auth.signInWithOtp({
-                email: formData.email,
-                options: {
-                    // This optional data will be used if a new user is created
-                    data: {
-                        name: formData.name,
-                        phone: formData.phone,
-                        role: 'candidate' // Verified: Hardcoded role assignment
-                    }
-                }
+            const response = await fetch('http://localhost:5000/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: formData.email,
+                    password: formData.password,
+                    name: formData.name,
+                    role: 'CANDIDATE'
+                })
             });
 
-            if (error) throw error;
+            const data = await response.json();
 
-            // Move to OTP step
-            setSignupStep(2);
-        } catch (error) {
-            console.error('Error sending OTP:', error);
-            alert(`Failed to send verification code: ${error.message}`);
-        }
-    };
-
-    const handleSignupVerification = async (e) => {
-        e.preventDefault();
-
-        const otpCode = otp.join('');
-
-        if (otpCode.length !== 6) {
-            alert('Please enter the 6-digit code sent to your email.');
-            return;
-        }
-
-        try {
-            // Verify OTP
-            const { data: { session, user }, error: verifyError } = await supabase.auth.verifyOtp({
-                email: formData.email,
-                token: otpCode,
-                type: 'email'
-            });
-
-            if (verifyError) throw verifyError;
-
-            if (user) {
-                // Ensure profile is created matching our schema
-                const { error: profileError } = await supabase
-                    .from('profiles')
-                    .upsert([
-                        {
-                            id: user.id,
-                            name: formData.name,
-                            email: formData.email,
-                            phone: formData.phone,
-                            role: 'candidate'
-                        }
-                    ]);
-
-                if (profileError) {
-                    console.error('Profile creation error:', profileError);
-                }
-
-                if (session) {
-                    navigate('/dashboard');
-                }
+            if (response.ok) {
+                alert('Registration successful! Please log in.');
+                setMode('login');
+                setFormData({ ...formData, password: '' });
+            } else {
+                alert('Registration Failed: ' + data.message);
             }
         } catch (err) {
             console.error('Signup error:', err);
-            alert(`Verification failed: ${err.message}. Please try again.`);
-        }
-    };
-
-    const handleOtpChange = (index, value) => {
-        if (value.length > 1) return;
-        const newOtp = [...otp];
-        newOtp[index] = value;
-        setOtp(newOtp);
-
-        if (value && index < 5) {
-            const nextInput = document.getElementById(`otp-${index + 1}`);
-            nextInput?.focus();
-        }
-    };
-
-    const handleOtpKeyDown = (index, e) => {
-        if (e.key === 'Backspace' && !otp[index] && index > 0) {
-            const prevInput = document.getElementById(`otp-${index - 1}`);
-            prevInput?.focus();
+            alert('Network error. Please try again.');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -225,8 +187,8 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
                                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
                                     <input type="password" required placeholder="Password" className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-500 outline-none transition-all font-bold text-slate-700" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
                                 </div>
-                                <button type="submit" className="w-full bg-slate-900 text-white py-5 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 flex items-center justify-center gap-2 mt-4">
-                                    Log In <ArrowRight className="w-5 h-5" />
+                                <button type="submit" disabled={isLoading} className="w-full bg-slate-900 text-white py-5 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 flex items-center justify-center gap-2 mt-4 disabled:opacity-50">
+                                    {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Logging in...</> : <>Log In <ArrowRight className="w-5 h-5" /></>}
                                 </button>
                             </form>
                         </div>
@@ -236,102 +198,72 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
                     {!isLogin && (
                         <div className="max-w-[400px] mx-auto w-full animate-in fade-in slide-in-from-right-4 duration-500">
 
-                            {/* Progress Indicator */}
-                            <div className="flex items-center gap-2 mb-8">
-                                <div className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${signupStep >= 1 ? 'bg-teal-600' : 'bg-slate-100'}`}></div>
-                                <div className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${signupStep >= 2 ? 'bg-teal-600' : 'bg-slate-100'}`}></div>
-                            </div>
+                            <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Create Account</h2>
+                            <p className="text-slate-500 mb-8 font-medium">Join the professional Maldivian workforce.</p>
 
-                            <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">
-                                {signupStep === 1 ? 'Create Account' : 'Verify Mobile'}
-                            </h2>
-                            <p className="text-slate-500 mb-8 font-medium">
-                                {signupStep === 1 ? 'Join the professional Maldivian workforce.' : `Enter the code sent to ${formData.phone}`}
-                            </p>
-
-                            {/* STEP 1: DETAILS */}
-                            {signupStep === 1 && (
-                                <form onSubmit={handleSignupStep1} className="space-y-4">
-                                    <div>
-                                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-2 block">Full Name</label>
-                                        <div className="relative group">
-                                            <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
-                                            <input
-                                                type="text"
-                                                required
-                                                className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all"
-                                                value={formData.name}
-                                                onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                            />
-                                        </div>
+                            <form onSubmit={handleSignupSubmit} className="space-y-4">
+                                <div>
+                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-2 block">Full Name</label>
+                                    <div className="relative group">
+                                        <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
+                                        <input
+                                            type="text"
+                                            required
+                                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all"
+                                            value={formData.name}
+                                            onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                        />
                                     </div>
+                                </div>
 
-                                    <div>
-                                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-2 block">Email Address</label>
-                                        <div className="relative group">
-                                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
-                                            <input
-                                                type="email"
-                                                required
-                                                className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all"
-                                                value={formData.email}
-                                                onChange={e => setFormData({ ...formData, email: e.target.value })}
-                                            />
-                                        </div>
+                                <div>
+                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-2 block">Email Address</label>
+                                    <div className="relative group">
+                                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
+                                        <input
+                                            type="email"
+                                            required
+                                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all"
+                                            value={formData.email}
+                                            onChange={e => setFormData({ ...formData, email: e.target.value })}
+                                        />
                                     </div>
+                                </div>
 
-                                    <div>
-                                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-2 block">Mobile Number</label>
-                                        <div className="relative group">
-                                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
-                                            <input
-                                                type="tel"
-                                                required
-                                                className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all"
-                                                placeholder="7779999"
-                                                value={formData.phone}
-                                                onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                                            />
-                                        </div>
+                                <div>
+                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-2 block">Mobile Number</label>
+                                    <div className="relative group">
+                                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
+                                        <input
+                                            type="tel"
+                                            required
+                                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all"
+                                            placeholder="7779999"
+                                            value={formData.phone}
+                                            onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                                        />
                                     </div>
+                                </div>
 
-                                    <button type="submit" className="w-full bg-teal-600 text-white py-5 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-teal-700 transition-all shadow-xl shadow-teal-600/20 mt-6 flex items-center justify-center gap-3">
-                                        Verify Mobile <ArrowRight className="w-4 h-4" />
-                                    </button>
-                                </form>
-                            )}
-
-                            {/* STEP 2: OTP */}
-                            {signupStep === 2 && (
-                                <form onSubmit={handleSignupVerification} className="space-y-6">
-                                    <div className="flex gap-2 justify-center my-8">
-                                        {otp.map((digit, idx) => (
-                                            <input
-                                                key={idx}
-                                                id={`otp-${idx}`}
-                                                type="text"
-                                                maxLength={1}
-                                                value={digit}
-                                                onChange={(e) => handleOtpChange(idx, e.target.value)}
-                                                onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                                                className="w-12 h-14 text-center text-xl font-black bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all"
-                                            />
-                                        ))}
+                                <div>
+                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-2 block">Password</label>
+                                    <div className="relative group">
+                                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
+                                        <input
+                                            type="password"
+                                            required
+                                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all"
+                                            placeholder="Min 6 characters"
+                                            value={formData.password}
+                                            onChange={e => setFormData({ ...formData, password: e.target.value })}
+                                        />
                                     </div>
+                                </div>
 
-                                    <button type="submit" className="w-full bg-slate-900 text-white py-5 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 flex items-center justify-center gap-3">
-                                        Verify & Create Account <CheckCircle2 className="w-4 h-4" />
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        onClick={() => setSignupStep(1)}
-                                        className="w-full text-slate-400 font-bold text-xs hover:text-slate-600 transition-colors flex items-center justify-center gap-2"
-                                    >
-                                        <ArrowLeft className="w-3 h-3" /> Change Number
-                                    </button>
-                                </form>
-                            )}
+                                <button type="submit" disabled={isLoading} className="w-full bg-teal-600 text-white py-5 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-teal-700 transition-all shadow-xl shadow-teal-600/20 mt-6 flex items-center justify-center gap-3 disabled:opacity-50">
+                                    {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating Account...</> : <>Create Account <ArrowRight className="w-4 h-4" /></>}
+                                </button>
+                            </form>
                         </div>
                     )}
 

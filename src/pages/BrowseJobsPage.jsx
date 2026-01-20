@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
-import { supabase } from '../lib/supabase';
 import {
     Search,
     ArrowRight,
@@ -29,7 +28,7 @@ const BrowseJobsPage = () => {
     const [isSortOpen, setIsSortOpen] = useState(false);
     const [expandedJobId, setExpandedJobId] = useState(null);
 
-    // Supabase State
+    // MongoDB State
     const [jobs, setJobs] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -55,7 +54,7 @@ const BrowseJobsPage = () => {
         }).sort((a, b) => {
             return new Date(b.postedDate).getTime() - new Date(a.postedDate).getTime();
         });
-    }, [searchTerm, selectedIndustry, sortBy]);
+    }, [searchTerm, selectedIndustry, sortBy, jobs]);
 
     const scrollContainerRef = useRef(null);
 
@@ -82,24 +81,19 @@ const BrowseJobsPage = () => {
         }
     }, [filteredJobs]);
 
-    // Fetch Jobs from Supabase
+    // Fetch Jobs from MongoDB Backend
     useEffect(() => {
         async function fetchJobs() {
             try {
-                const { data, error } = await supabase
-                    .from('jobs')
-                    .select('*')
-                    .eq('status', 'Current Opening')
-                    .order('posted_date', { ascending: false });
+                const response = await fetch('http://localhost:5000/api/jobs');
+                const data = await response.json();
 
-                if (error) throw error;
-
-                // Map database fields to frontend structure if needed
-                // Our DB columns match most frontend expectations, but let's ensure:
+                // Map database fields to frontend structure
                 const mappedJobs = (data || []).map(job => ({
                     ...job,
-                    postedDate: job.posted_date, // Map snake_case to camelCase
-                    salaryRange: job.salary_range
+                    postedDate: job.posted_date,
+                    salaryRange: job.salary_range,
+                    status: job.status === 'Current Opening' ? JobStatus.OPEN : JobStatus.CLOSED
                 }));
 
                 setJobs(mappedJobs);

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import {
     User,
@@ -306,32 +305,23 @@ const ProfilePage = () => {
 
             setPreviewImage(user.avatar || null);
 
-            // Fetch Documents
+            // Fetch Documents from MongoDB backend
             async function fetchDocuments() {
                 try {
-                    const { data, error } = await supabase
-                        .from('documents')
-                        .select('*')
-                        .eq('user_id', user.id);
-
-                    if (error) throw error;
-
-                    const userDocs = (data || []).map(d => ({
-                        id: d.id,
-                        label: d.document_type.toUpperCase(), // Using type as label for now, or fetch map
-                        type: d.mime_type?.includes('pdf') ? 'PDF' : 'IMG',
-                        required: false,
-                        status: 'uploaded',
-                        date: new Date(d.created_at).toISOString().split('T')[0],
-                        filePath: d.file_path
-                    }));
-
-                    // Merge with required docs structure if needed, or just list them
-                    // For now, let's append them or handle merging logic if strict requirements exist
-                    // Simple approach: Show fetched docs + missing required ones
-
-                    // (Simplified for this step: just using what's fetched + default missing set)
-                    // In a real app, we'd merge with CANDIDATE_DOCS based on type.
+                    const response = await fetch(`http://localhost:5000/api/documents?user_id=${user.id}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        const userDocs = (data || []).map(d => ({
+                            id: d._id,
+                            label: d.document_type?.toUpperCase() || 'DOCUMENT',
+                            type: d.mime_type?.includes('pdf') ? 'PDF' : 'IMG',
+                            required: false,
+                            status: 'uploaded',
+                            date: new Date(d.created_at).toISOString().split('T')[0],
+                            filePath: d.file_path
+                        }));
+                        // Merge fetched docs with default structure if needed
+                    }
                 } catch (err) {
                     console.error('Error fetching documents:', err);
                 }
@@ -344,16 +334,16 @@ const ProfilePage = () => {
     const handlePersonalSubmit = async (e) => {
         e.preventDefault();
         try {
-            const { error } = await supabase
-                .from('profiles')
-                .update({
+            const response = await fetch(`http://localhost:5000/api/profiles/${user.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
                     name: profileData.name,
                     phone: profileData.phone,
-                    // location, title etc if added to schema
                 })
-                .eq('id', user.id);
+            });
 
-            if (error) throw error;
+            if (!response.ok) throw new Error('Failed to update profile');
             alert('Profile updated successfully');
             setIsEditingPersonal(false);
         } catch (error) {
@@ -375,11 +365,20 @@ const ProfilePage = () => {
         }
 
         try {
-            const { error } = await supabase.auth.updateUser({
-                password: passwords.new
+            const response = await fetch(`http://localhost:5000/api/auth/password`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: user.id,
+                    currentPassword: passwords.current,
+                    newPassword: passwords.new,
+                })
             });
 
-            if (error) throw error;
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.message || 'Password update failed');
+            }
 
             alert("Password updated successfully");
             setIsResettingPassword(false);

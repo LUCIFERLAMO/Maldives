@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, Terminal, ArrowRight, ArrowLeft, ShieldCheck } from 'lucide-react';
+import { Mail, Lock, Terminal, ArrowRight, ArrowLeft, ShieldCheck, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../lib/supabase';
 
 const AdminLoginPage = () => {
     const navigate = useNavigate();
@@ -10,6 +9,7 @@ const AdminLoginPage = () => {
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
     // Admin Flow State
     const [step, setStep] = useState('credentials');
@@ -17,6 +17,7 @@ const AdminLoginPage = () => {
 
     const handleCredentialsSubmit = async (e) => {
         e.preventDefault();
+        setIsLoading(true);
 
         // DEVELOPER ACCESS (Temporary Header)
         // Kept for dev team access as requested. Remove in production.
@@ -27,49 +28,37 @@ const AdminLoginPage = () => {
                 name: 'Developer Admin',
                 role: 'admin'
             });
+            setIsLoading(false);
             setStep('2fa');
             return;
         }
 
         try {
-            // SECURITY: Real Auth Check
-            const { error } = await useAuth().login(email, password);
+            // Call MongoDB backend for ADMIN login
+            const response = await fetch('http://localhost:5000/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password, role: 'ADMIN' })
+            });
 
-            if (error) {
-                // SECURITY: Generic error message to prevent User Enumeration
+            const data = await response.json();
+
+            if (response.ok) {
+                mockLogin({
+                    id: data.user._id,
+                    email: data.user.email,
+                    name: data.user.full_name,
+                    role: data.user.role
+                });
+                setStep('2fa');
+            } else {
                 alert('Invalid email or password.');
-                return;
             }
-
-            // We need to check role *after* login.
-            // But useAuth().login updates the user state asynchronously in the context.
-            // Ideally login() should return the user object or we trusted the context update.
-            // However, our login function in AuthContext returns { error } only, but sets state.
-            // To be safe and synchronous, we can check the user from supabase directly here or wait.
-            // BETTER APPROACH: The `login` function in AuthContext *does* set the user state.
-            // But we can't access the updated `user` from the hook immediately in this closure.
-
-            // Let's rely on the fact that if login passed, we can get the user from Supabase to verify role.
-            const { data: { user: authUser } } = await supabase.auth.getUser();
-            if (!authUser) throw new Error("Auth failed");
-
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('role')
-                .eq('id', authUser.id)
-                .single();
-
-            if (profile?.role !== 'admin') {
-                await useAuth().logout();
-                alert('Access Denied: You do not have administrator privileges.');
-                return;
-            }
-
-            setStep('2fa');
-
         } catch (err) {
             console.error("Admin Login Error:", err);
-            alert('Authentication failed.');
+            alert('Authentication failed. Network error.');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -227,9 +216,10 @@ const AdminLoginPage = () => {
 
                             <button
                                 type="submit"
-                                className="w-full bg-[#0b0f1a] text-white py-4 md:py-6 rounded-xl md:rounded-2xl font-black uppercase text-[10px] md:text-xs tracking-[0.2em] hover:bg-black transition-all shadow-2xl flex items-center justify-center gap-3 mt-4 md:mt-6"
+                                disabled={isLoading}
+                                className="w-full bg-[#0b0f1a] text-white py-4 md:py-6 rounded-xl md:rounded-2xl font-black uppercase text-[10px] md:text-xs tracking-[0.2em] hover:bg-black transition-all shadow-2xl flex items-center justify-center gap-3 mt-4 md:mt-6 disabled:opacity-50"
                             >
-                                Authenticate Access <ArrowRight className="w-4 h-4 md:w-5 md:h-5" />
+                                {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Authenticating...</> : <>Authenticate Access <ArrowRight className="w-4 h-4 md:w-5 md:h-5" /></>}
                             </button>
                         </form>
                         <p className="mt-8 text-center text-xs text-slate-400">

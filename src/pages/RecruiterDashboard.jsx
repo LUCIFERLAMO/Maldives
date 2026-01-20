@@ -1,6 +1,5 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
 import { ApplicationStatus, JobStatus } from '../types';
 import { MOCK_APPLICATIONS, MOCK_JOBS } from '../constants';
 import {
@@ -40,17 +39,14 @@ const RecruiterDashboard = () => {
         if (!user?.id) return;
 
         const fetchPipeline = async () => {
-            const { data, error } = await supabase
-                .from('applications')
-                .select(`
-                    *,
-                    jobs ( title, company )
-                `)
-                .eq('agent_id', user.id); // Only fetch MY candidates
-
-            if (error) console.error("Error fetching pipeline:", error);
-            if (data) {
-                setPipelineData(data);
+            try {
+                const response = await fetch(`http://localhost:5000/api/applications?agent_id=${user.id}`);
+                const data = await response.json();
+                if (data) {
+                    setPipelineData(data);
+                }
+            } catch (error) {
+                console.error("Error fetching pipeline:", error);
             }
         };
         fetchPipeline();
@@ -58,22 +54,19 @@ const RecruiterDashboard = () => {
     // -------------------------
     const [jobs, setJobs] = useState([]);
 
-    // FETCH REAL JOBS (Jennita's Task)
+    // FETCH REAL JOBS
     useEffect(() => {
         const fetchJobs = async () => {
-            const { data, error } = await supabase
-                .from('jobs')
-                .select('*')
-                .eq('status', 'Current Opening');
+            try {
+                const response = await fetch('http://localhost:5000/api/jobs');
+                const data = await response.json();
 
-            if (data) {
-                setJobs(data);
-                // DEBUG: Alert if 0 jobs found despite success
-                if (data.length === 0) console.warn("Fetch successful but 0 jobs found with status 'Current Opening'");
-            }
-            if (error) {
+                // Filter for current openings
+                const openJobs = (data || []).filter(j => j.status === 'Current Opening');
+                setJobs(openJobs);
+                if (openJobs.length === 0) console.warn("Fetch successful but 0 jobs found with status 'Current Opening'");
+            } catch (error) {
                 console.error("Error fetching jobs:", error);
-                alert("DEBUG ERROR: Could not fetch jobs. " + error.message);
             }
         };
         fetchJobs();
@@ -96,8 +89,13 @@ const RecruiterDashboard = () => {
     useEffect(() => {
         if (!user?.id) return;
         const fetchRequests = async () => {
-            const { data } = await supabase.from('job_requests').select('*').eq('agent_id', user.id);
-            if (data) setJobRequests(data);
+            try {
+                const response = await fetch(`http://localhost:5000/api/job-requests?agent_id=${user.id}`);
+                const data = await response.json();
+                if (data) setJobRequests(data);
+            } catch (error) {
+                console.error("Error fetching job requests:", error);
+            }
         };
         fetchRequests();
     }, [user?.id]);
@@ -107,9 +105,8 @@ const RecruiterDashboard = () => {
 
     const filteredJobs = useMemo(() => {
         return jobs.filter(j =>
-            j.status === JobStatus.OPEN &&
-            (j.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                j.company.toLowerCase().includes(searchTerm.toLowerCase()))
+        (j.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            j.company.toLowerCase().includes(searchTerm.toLowerCase()))
         );
     }, [jobs, searchTerm]);
 
@@ -139,37 +136,33 @@ const RecruiterDashboard = () => {
         }
 
         try {
-            // 1. Upload Resume (Bucket 'resumes' exists)
-            const resumeName = `${user.id}/${Date.now()}_resume`;
-            const { data: resumeData, error: resumeError } = await supabase.storage
-                .from('resumes')
-                .upload(resumeName, submissionFiles.resume);
+            // Create FormData for file upload
+            const formDataPayload = new FormData();
+            formDataPayload.append('agent_id', user.id);
+            formDataPayload.append('job_id', selectedJobForSubmission.id || selectedJobForSubmission._id);
+            formDataPayload.append('name', submissionData.name);
+            formDataPayload.append('email', submissionData.email);
+            formDataPayload.append('contact', submissionData.whatsapp);
+            formDataPayload.append('nationality', submissionData.nationality);
+            formDataPayload.append('resume', submissionFiles.resume);
 
-            if (resumeError) throw resumeError;
+            const response = await fetch('http://localhost:5000/api/applications', {
+                method: 'POST',
+                body: formDataPayload,
+            });
 
-            // 2. Insert Application (Table 'applications' exists)
-            const { error: dbError } = await supabase
-                .from('applications')
-                .insert([{
-                    agent_id: user.id,
-                    job_id: selectedJobForSubmission.id,
-                    candidate_name: submissionData.name,
-                    email: submissionData.email,
-                    phone: submissionData.whatsapp,
-                    nationality: submissionData.nationality,
-                    resume_url: resumeData.path,
-                    // Add passport_url etc. here
-                    status: 'APPLIED'
-                }]);
-
-            if (dbError) throw dbError;
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Submission failed');
+            }
 
             alert("Success! Candidate Submitted to Database.");
             setSelectedJobForSubmission(null);
 
             // Refresh Pipeline
-            const { data } = await supabase.from('applications').select('*, jobs(title, company)').eq('agent_id', user.id);
-            if (data) setPipelineData(data);
+            const pipelineResponse = await fetch(`http://localhost:5000/api/applications?agent_id=${user.id}`);
+            const pipelineData = await pipelineResponse.json();
+            if (pipelineData) setPipelineData(pipelineData);
 
         } catch (err) {
             console.error("Submission Error:", err);
@@ -185,14 +178,14 @@ const RecruiterDashboard = () => {
         if (!user?.id) return;
 
         const fetchAgentProfile = async () => {
-            const { data, error } = await supabase
-                .from('agents')
-                .select('*')
-                .eq('auth_id', user.id)
-                .single();
-
-            if (data) {
-                setAgentProfile(data);
+            try {
+                const response = await fetch(`http://localhost:5000/api/agents/${user.id}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setAgentProfile(data);
+                }
+            } catch (error) {
+                console.error("Error fetching agent profile:", error);
             }
         };
         fetchAgentProfile();
@@ -405,24 +398,29 @@ const RecruiterDashboard = () => {
                                                     return;
                                                 }
                                                 try {
-                                                    const { error } = await supabase.from('job_requests').insert([{
-                                                        agent_id: user.id,
-                                                        title: e.target.title.value,
-                                                        field: e.target.field.value,
-                                                        salary: e.target.salary.value,
-                                                        headcount: e.target.headcount.value,
-                                                        description: e.target.description.value,
-                                                        requirements: e.target.requirements.value,
-                                                        status: 'PENDING'
-                                                    }]);
+                                                    const response = await fetch('http://localhost:5000/api/job-requests', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({
+                                                            agent_id: user.id,
+                                                            title: e.target.title.value,
+                                                            field: e.target.field.value,
+                                                            salary: e.target.salary.value,
+                                                            headcount: e.target.headcount.value,
+                                                            description: e.target.description.value,
+                                                            requirements: e.target.requirements.value,
+                                                            status: 'PENDING'
+                                                        })
+                                                    });
 
-                                                    if (error) throw error;
+                                                    if (!response.ok) throw new Error('Failed to submit request');
 
                                                     alert("Job Request Submitted to Admin! Status: Waiting approval.");
                                                     setShowJobRequestForm(false);
 
                                                     // Refresh list
-                                                    const { data } = await supabase.from('job_requests').select('*').eq('agent_id', user.id);
+                                                    const refreshResponse = await fetch(`http://localhost:5000/api/job-requests?agent_id=${user.id}`);
+                                                    const data = await refreshResponse.json();
                                                     if (data) setJobRequests(data);
 
                                                 } catch (err) {

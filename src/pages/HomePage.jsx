@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
 import {
    ArrowRight,
    Briefcase,
@@ -22,18 +21,12 @@ const HomePage = () => {
    useEffect(() => {
       async function fetchJobStats() {
          try {
-            const { count: totalCount } = await supabase
-               .from('jobs')
-               .select('*', { count: 'exact', head: true });
-
-            const { count: activeCount } = await supabase
-               .from('jobs')
-               .select('*', { count: 'exact', head: true })
-               .eq('status', 'Current Opening');
+            const response = await fetch('http://localhost:5000/api/jobs');
+            const jobs = await response.json();
 
             setJobStats({
-               totalJobs: totalCount || 0,
-               activeJobs: activeCount || 0
+               totalJobs: jobs.length || 0,
+               activeJobs: jobs.filter(j => j.status === 'Current Opening').length || 0
             });
          } catch (error) {
             console.error('Error fetching stats:', error);

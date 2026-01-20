@@ -16,20 +16,31 @@ const AgentLoginPage = () => {
         e.preventDefault();
 
         try {
-            const { error } = await login(formData.email, formData.password);
+            const response = await fetch('http://localhost:5000/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: formData.email,
+                    password: formData.password,
+                    role: 'AGENT'
+                })
+            });
 
-            if (error) {
-                const msg = error.toLowerCase();
-                if (msg.includes("signal is aborted") || msg.includes("aborted")) {
-                    console.warn("Ignored abort signal error in login UI");
-                } else {
-                    // SECURITY: Generic error message
-                    alert("Invalid email or password.");
-                }
-                return;
+            const data = await response.json();
+
+            if (response.ok) {
+                const userData = {
+                    id: data.user._id,
+                    name: data.user.full_name,
+                    email: data.user.email,
+                    role: data.user.role,
+                    status: 'APPROVED'
+                };
+                localStorage.setItem('user', JSON.stringify(userData));
+                window.location.href = '/recruiter';
+            } else {
+                alert("Invalid email or password.");
             }
-            navigate('/recruiter');
-
         } catch (err) {
             console.error(err);
             alert("An error occurred during login.");

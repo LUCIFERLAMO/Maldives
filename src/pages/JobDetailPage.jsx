@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MOCK_JOBS } from '../constants';
 import { JobStatus } from '../types';
@@ -32,28 +31,18 @@ const JobDetailPage = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
-        // Validate UUID format to prevent DB errors
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        if (id && !uuidRegex.test(id)) {
-            console.error("Invalid Job ID format");
-            navigate('/jobs'); // Redirect invalid IDs to jobs list
-            return;
-        }
-
         async function fetchJob() {
             try {
-                // ... fetch logic ...
-                const { data, error } = await supabase
-                    .from('jobs')
-                    .select('*')
-                    .eq('id', id)
-                    .single();
-
-                if (error) throw error;
+                const response = await fetch(`http://localhost:5000/api/jobs/${id}`);
+                if (!response.ok) {
+                    throw new Error('Job not found');
+                }
+                const data = await response.json();
                 const mappedJob = {
                     ...data,
                     salaryRange: data.salary_range,
-                    postedDate: data.posted_date
+                    postedDate: data.posted_date,
+                    status: data.status === 'Current Opening' ? JobStatus.OPEN : JobStatus.CLOSED
                 };
                 setJob(mappedJob);
             } catch (error) {
@@ -92,6 +81,7 @@ const JobDetailPage = () => {
         setFiles(prev => ({ ...prev, [key]: file }));
     };
 
+    // uploadFile function - now handled by the backend API via FormData
     const uploadFile = async (file, documentType) => {
         if (!file || !user) return null;
 
@@ -108,33 +98,11 @@ const JobDetailPage = () => {
             return null;
         }
 
-        try {
-            const fileExt = file.name.split('.').pop();
-            // Sanitize filename to prevent directory traversal or weird chars
-            const cleanFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '');
-            const storageFileName = `${documentType}_${Date.now()}_${cleanFileName}`;
-            const filePath = `${user.id}/${storageFileName}`;
-
-            const { error: uploadError } = await supabase.storage
-                .from('user-documents')
-                .upload(filePath, file);
-
-            if (uploadError) throw uploadError;
-
-            const { data: urlData } = supabase.storage
-                .from('user-documents')
-                .getPublicUrl(filePath);
-
-            return {
-                filePath,
-                fileName: cleanFileName,
-                url: urlData.publicUrl
-            };
-        } catch (error) {
-            console.error('Upload error:', error);
-            alert('File upload failed. Please try again.');
-            return null;
-        }
+        // Return the file to be uploaded via FormData to the backend
+        return {
+            file,
+            fileName: file.name,
+        };
     };
 
     const handleSubmit = async (e) => {

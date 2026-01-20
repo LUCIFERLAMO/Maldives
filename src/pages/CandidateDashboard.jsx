@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { MOCK_APPLICATIONS, MOCK_JOBS } from '../constants';
 import { ApplicationStatus } from '../types';
@@ -25,30 +24,17 @@ const CandidateDashboard = () => {
             if (!user) return;
 
             try {
-                const { data, error } = await supabase
-                    .from('applications')
-                    .select(`
-                        *,
-                        jobs (
-                            id,
-                            title,
-                            company,
-                            location
-                        )
-                    `)
-                    .eq('candidate_id', user.id)
-                    .order('applied_date', { ascending: false });
-
-                if (error) throw error;
+                const response = await fetch(`http://localhost:5000/api/applications?candidate_id=${user.id}`);
+                const data = await response.json();
 
                 const transformedApps = (data || []).map(app => ({
-                    id: app.id,
+                    id: app._id || app.id,
                     jobId: app.job_id,
                     status: app.status,
-                    appliedDate: new Date(app.applied_date).toLocaleDateString(),
+                    appliedDate: new Date(app.applied_date || app.createdAt).toLocaleDateString(),
                     adminFeedback: app.admin_feedback,
-                    title: app.jobs?.title,
-                    company: app.jobs?.company
+                    title: app.job?.title || app.jobs?.title || 'Unknown Role',
+                    company: app.job?.company || app.jobs?.company || 'Unknown Company'
                 }));
 
                 setApplications(transformedApps);
