@@ -1,16 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, User, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const AgentLoginPage = () => {
     const navigate = useNavigate();
-    const { login, mockLogin } = useAuth();
+    const { login, mockLogin, logout } = useAuth();
+
+    // Clear any existing session when login page loads
+    useEffect(() => {
+        localStorage.removeItem('user');
+    }, []);
 
     const [formData, setFormData] = useState({
         email: '',
         password: ''
     });
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleLoginSubmit = async (e) => {
         e.preventDefault();
@@ -104,7 +110,21 @@ const AgentLoginPage = () => {
                             </div>
                             <div className="relative group">
                                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
-                                <input type="password" required placeholder="Password" className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-500 outline-none transition-all font-bold text-slate-700" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    required
+                                    placeholder="Password"
+                                    className="w-full pl-12 pr-12 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-500 outline-none transition-all font-bold text-slate-700"
+                                    value={formData.password}
+                                    onChange={e => setFormData({ ...formData, password: e.target.value })}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors"
+                                >
+                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                </button>
                             </div>
                             <button type="submit" className="w-full bg-slate-900 text-white py-5 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 flex items-center justify-center gap-2 mt-4">
                                 Enter Portal <ArrowRight className="w-5 h-5" />

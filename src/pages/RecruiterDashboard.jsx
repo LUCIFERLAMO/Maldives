@@ -206,7 +206,7 @@ const RecruiterDashboard = () => {
                                 {agentProfile?.company_name || "GlobalTalent"}
                             </span>
                             <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider mt-1 block truncate w-48">
-                                {agentProfile?.full_name || "Partner Portal"}
+                                {agentProfile?.full_name || user?.name || "Partner Portal"}
                             </span>
                         </div>
                     </div>
@@ -556,7 +556,7 @@ const RecruiterDashboard = () => {
                                 {/* Welcome Header */}
                                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200 pb-6">
                                     <div>
-                                        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : 'Evening'}, Global Talent.</h2>
+                                        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : 'Evening'}, {user?.name?.split(' ')[0] || 'Partner'}.</h2>
                                         <p className="text-slate-500 text-sm mt-1">Here's what's happening with your candidates today.</p>
                                     </div>
                                     <div className="text-right">

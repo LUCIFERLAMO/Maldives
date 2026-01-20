@@ -85,7 +85,7 @@ app.get('/api/health', (req, res) => {
 // AUTH ROUTES
 app.post('/api/auth/register', async (req, res) => {
     try {
-        const { email, password, role, name, agencyName, skills } = req.body;
+        const { email, password, role, name, agencyName, skills, contact } = req.body;
 
         // Check if user exists
         const existingUser = await Profile.findOne({ email });
@@ -98,6 +98,7 @@ app.post('/api/auth/register', async (req, res) => {
             email,
             password, // NOTE: In production, hash this password with bcrypt!
             role,
+            contact_number: contact,
             agency_name: role === 'AGENT' ? agencyName : undefined,
             skills: role === 'CANDIDATE' ? skills : undefined
         });

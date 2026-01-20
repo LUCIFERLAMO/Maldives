@@ -30,12 +30,126 @@ const AgentRegistrationPage = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitted, setIsSubmitted] = useState(false);
+    const [errors, setErrors] = useState({});
+
+    // ===== INPUT VALIDATION FUNCTIONS =====
+
+    // Only letters and spaces (no special characters)
+    const validateName = (name) => /^[A-Za-z\s]+$/.test(name);
+
+    // Only 10 digits
+    const validatePhone = (phone) => /^\d{10}$/.test(phone);
+
+    // Valid email format
+    const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+    // Only letters and numbers (alphanumeric with spaces)
+    const validateCompanyName = (name) => /^[A-Za-z0-9\s]+$/.test(name);
+
+    // Only letters and spaces
+    const validateRegion = (region) => /^[A-Za-z\s,]+$/.test(region);
+
+    // Sanitize input to prevent XSS/SQL injection
+    const sanitizeInput = (input) => {
+        return input
+            .replace(/[<>]/g, '') // Remove < and > for XSS
+            .replace(/['"`;]/g, '') // Remove quotes and semicolons for SQL injection
+            .replace(/--/g, '') // Remove SQL comment syntax
+            .replace(/\/\*/g, '') // Remove SQL block comment start
+            .replace(/\*\//g, '') // Remove SQL block comment end
+            .trim();
+    };
+
+    // ===== INPUT HANDLERS WITH REAL-TIME VALIDATION =====
+
+    const handleNameChange = (e) => {
+        const value = e.target.value.replace(/[^A-Za-z\s]/g, ''); // Strip non-letters
+        setFormData({ ...formData, fullName: value });
+        if (value && !validateName(value)) {
+            setErrors(prev => ({ ...prev, fullName: 'Only letters allowed' }));
+        } else {
+            setErrors(prev => ({ ...prev, fullName: '' }));
+        }
+    };
+
+    const handlePhoneChange = (e) => {
+        const value = e.target.value.replace(/\D/g, '').slice(0, 10); // Only digits, max 10
+        setFormData({ ...formData, phone: value });
+        if (value && value.length !== 10) {
+            setErrors(prev => ({ ...prev, phone: 'Must be exactly 10 digits' }));
+        } else {
+            setErrors(prev => ({ ...prev, phone: '' }));
+        }
+    };
+
+    const handleEmailChange = (e) => {
+        const value = e.target.value;
+        setFormData({ ...formData, workEmail: value });
+        if (value && !validateEmail(value)) {
+            setErrors(prev => ({ ...prev, workEmail: 'Invalid email format' }));
+        } else {
+            setErrors(prev => ({ ...prev, workEmail: '' }));
+        }
+    };
+
+    const handlePasswordChange = (e) => {
+        const value = sanitizeInput(e.target.value); // Sanitize password
+        setFormData({ ...formData, password: value });
+        if (value && value.length < 6) {
+            setErrors(prev => ({ ...prev, password: 'Minimum 6 characters' }));
+        } else {
+            setErrors(prev => ({ ...prev, password: '' }));
+        }
+    };
+
+    const handleCompanyChange = (e) => {
+        const value = e.target.value.replace(/[^A-Za-z0-9\s]/g, ''); // Only alphanumeric
+        setFormData({ ...formData, companyName: value });
+        if (value && !validateCompanyName(value)) {
+            setErrors(prev => ({ ...prev, companyName: 'Only letters and numbers allowed' }));
+        } else {
+            setErrors(prev => ({ ...prev, companyName: '' }));
+        }
+    };
+
+    const handleRegionChange = (e) => {
+        const value = e.target.value.replace(/[^A-Za-z\s,]/g, ''); // Only letters and commas
+        setFormData({ ...formData, experienceRegion: value });
+        if (value && !validateRegion(value)) {
+            setErrors(prev => ({ ...prev, experienceRegion: 'Only letters allowed' }));
+        } else {
+            setErrors(prev => ({ ...prev, experienceRegion: '' }));
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        // Final validation before submit
+        const validationErrors = {};
+
+        if (!validateName(formData.fullName)) {
+            validationErrors.fullName = 'Name must contain only letters';
+        }
+        if (!validatePhone(formData.phone)) {
+            validationErrors.phone = 'Phone must be exactly 10 digits';
+        }
+        if (!validateEmail(formData.workEmail)) {
+            validationErrors.workEmail = 'Please enter a valid email';
+        }
         if (formData.password.length < 6) {
-            alert("Password must be at least 6 characters long.");
+            validationErrors.password = 'Password must be at least 6 characters';
+        }
+        if (!validateCompanyName(formData.companyName)) {
+            validationErrors.companyName = 'Company name can only contain letters and numbers';
+        }
+        if (!validateRegion(formData.experienceRegion)) {
+            validationErrors.experienceRegion = 'Region must contain only letters';
+        }
+
+        if (Object.keys(validationErrors).length > 0) {
+            setErrors(validationErrors);
+            alert("Please fix the validation errors before submitting.");
             return;
         }
 
@@ -45,11 +159,12 @@ const AgentRegistrationPage = () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    email: formData.workEmail,
-                    password: formData.password,
-                    name: formData.fullName,
+                    email: sanitizeInput(formData.workEmail),
+                    password: sanitizeInput(formData.password),
+                    name: sanitizeInput(formData.fullName),
                     role: 'AGENT',
-                    agencyName: formData.companyName
+                    agencyName: sanitizeInput(formData.companyName),
+                    contact: formData.phone
                 })
             });
 
@@ -83,7 +198,7 @@ const AgentRegistrationPage = () => {
                             Your agent account has been created. You can now log in with your email and password.
                         </p>
                         <button
-                            onClick={() => navigate('/login/agent', { replace: true })}
+                            onClick={() => navigate('/agent-login', { replace: true })}
                             className="px-6 py-4 bg-teal-600 text-white rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20"
                         >
                             Go to Agent Login
@@ -167,12 +282,13 @@ const AgentRegistrationPage = () => {
                                         <input
                                             type="text"
                                             required
-                                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300"
-                                            placeholder="John Doe"
+                                            className={`w-full pl-12 pr-4 py-4 bg-slate-50 border rounded-xl focus:bg-white outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300 ${errors.fullName ? 'border-red-400 focus:border-red-500' : 'border-slate-100 focus:border-teal-600'}`}
+                                            placeholder="John Doe (letters only)"
                                             value={formData.fullName}
-                                            onChange={e => setFormData({ ...formData, fullName: e.target.value })}
+                                            onChange={handleNameChange}
                                         />
                                     </div>
+                                    {errors.fullName && <p className="text-red-500 text-xs mt-1 ml-1">{errors.fullName}</p>}
                                 </div>
 
                                 <div className="space-y-2">
@@ -182,12 +298,14 @@ const AgentRegistrationPage = () => {
                                         <input
                                             type="tel"
                                             required
-                                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300"
-                                            placeholder="+960 777-9999"
+                                            className={`w-full pl-12 pr-4 py-4 bg-slate-50 border rounded-xl focus:bg-white outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300 ${errors.phone ? 'border-red-400 focus:border-red-500' : 'border-slate-100 focus:border-teal-600'}`}
+                                            placeholder="10 digits only"
                                             value={formData.phone}
-                                            onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                                            onChange={handlePhoneChange}
+                                            maxLength={10}
                                         />
                                     </div>
+                                    {errors.phone && <p className="text-red-500 text-xs mt-1 ml-1">{errors.phone}</p>}
                                 </div>
                             </div>
 
@@ -198,12 +316,13 @@ const AgentRegistrationPage = () => {
                                     <input
                                         type="email"
                                         required
-                                        className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300"
+                                        className={`w-full pl-12 pr-4 py-4 bg-slate-50 border rounded-xl focus:bg-white outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300 ${errors.workEmail ? 'border-red-400 focus:border-red-500' : 'border-slate-100 focus:border-teal-600'}`}
                                         placeholder="agent@company.com"
                                         value={formData.workEmail}
-                                        onChange={e => setFormData({ ...formData, workEmail: e.target.value })}
+                                        onChange={handleEmailChange}
                                     />
                                 </div>
+                                {errors.workEmail && <p className="text-red-500 text-xs mt-1 ml-1">{errors.workEmail}</p>}
                             </div>
 
                             <div className="space-y-2">
@@ -213,10 +332,10 @@ const AgentRegistrationPage = () => {
                                     <input
                                         type={showPassword ? "text" : "password"}
                                         required
-                                        className="w-full pl-12 pr-12 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300"
+                                        className={`w-full pl-12 pr-12 py-4 bg-slate-50 border rounded-xl focus:bg-white outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300 ${errors.password ? 'border-red-400 focus:border-red-500' : 'border-slate-100 focus:border-teal-600'}`}
                                         placeholder="Create a password (min 6 characters)"
                                         value={formData.password}
-                                        onChange={e => setFormData({ ...formData, password: e.target.value })}
+                                        onChange={handlePasswordChange}
                                     />
                                     <button
                                         type="button"
@@ -226,6 +345,7 @@ const AgentRegistrationPage = () => {
                                         {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                     </button>
                                 </div>
+                                {errors.password && <p className="text-red-500 text-xs mt-1 ml-1">{errors.password}</p>}
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -236,12 +356,13 @@ const AgentRegistrationPage = () => {
                                         <input
                                             type="text"
                                             required
-                                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300"
-                                            placeholder="Global Recruiters Ltd"
+                                            className={`w-full pl-12 pr-4 py-4 bg-slate-50 border rounded-xl focus:bg-white outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300 ${errors.companyName ? 'border-red-400 focus:border-red-500' : 'border-slate-100 focus:border-teal-600'}`}
+                                            placeholder="Letters and numbers only"
                                             value={formData.companyName}
-                                            onChange={e => setFormData({ ...formData, companyName: e.target.value })}
+                                            onChange={handleCompanyChange}
                                         />
                                     </div>
+                                    {errors.companyName && <p className="text-red-500 text-xs mt-1 ml-1">{errors.companyName}</p>}
                                 </div>
 
                                 <div className="space-y-2">
@@ -251,12 +372,13 @@ const AgentRegistrationPage = () => {
                                         <input
                                             type="text"
                                             required
-                                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300"
-                                            placeholder="e.g. South Asia, Europe"
+                                            className={`w-full pl-12 pr-4 py-4 bg-slate-50 border rounded-xl focus:bg-white outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300 ${errors.experienceRegion ? 'border-red-400 focus:border-red-500' : 'border-slate-100 focus:border-teal-600'}`}
+                                            placeholder="Letters only (e.g. South Asia)"
                                             value={formData.experienceRegion}
-                                            onChange={e => setFormData({ ...formData, experienceRegion: e.target.value })}
+                                            onChange={handleRegionChange}
                                         />
                                     </div>
+                                    {errors.experienceRegion && <p className="text-red-500 text-xs mt-1 ml-1">{errors.experienceRegion}</p>}
                                 </div>
                             </div>
 
