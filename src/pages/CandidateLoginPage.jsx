@@ -30,45 +30,30 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
         setMode(initialMode);
     }, [initialMode]);
 
+    const [notification, setNotification] = useState(null);
+
     const handleLoginSubmit = async (e) => {
         e.preventDefault();
         setIsLoading(true);
+        setNotification(null);
 
         if (formData.password.length < 6) {
-            alert('Password must be at least 6 characters long.');
+            setNotification({ type: 'error', text: 'Password must be at least 6 characters long.' });
             setIsLoading(false);
             return;
         }
 
         try {
-            const response = await fetch('http://localhost:5000/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: formData.email,
-                    password: formData.password,
-                    role: 'CANDIDATE'
-                })
-            });
+            const { error } = await login(formData.email, formData.password);
 
-            const data = await response.json();
-
-            if (response.ok) {
-                // Store user in localStorage (matching AuthContext pattern)
-                const userData = {
-                    id: data.user._id,
-                    name: data.user.full_name,
-                    email: data.user.email,
-                    role: data.user.role
-                };
-                localStorage.setItem('user', JSON.stringify(userData));
-                window.location.href = '/dashboard'; // Force reload to update AuthContext
+            if (!error) {
+                navigate('/dashboard');
             } else {
-                alert('Invalid email or password.');
+                setNotification({ type: 'error', text: error || 'Invalid email or password.' });
             }
         } catch (err) {
             console.error('Login error:', err);
-            alert('Network error. Please try again.');
+            setNotification({ type: 'error', text: 'Network error. Please try again.' });
         } finally {
             setIsLoading(false);
         }
@@ -77,15 +62,16 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
     const handleSignupSubmit = async (e) => {
         e.preventDefault();
         setIsLoading(true);
+        setNotification(null);
 
         if (!formData.phone || formData.phone.length < 10) {
-            alert('Please enter a valid phone number');
+            setNotification({ type: 'error', text: 'Please enter a valid phone number' });
             setIsLoading(false);
             return;
         }
 
         if (formData.password.length < 6) {
-            alert('Password must be at least 6 characters long.');
+            setNotification({ type: 'error', text: 'Password must be at least 6 characters long.' });
             setIsLoading(false);
             return;
         }
@@ -98,22 +84,24 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
                     email: formData.email,
                     password: formData.password,
                     name: formData.name,
-                    role: 'CANDIDATE'
+                    phone: formData.phone,
+                    role: 'CANDIDATE',
+                    skills: []
                 })
             });
 
             const data = await response.json();
 
             if (response.ok) {
-                alert('Registration successful! Please log in.');
+                setNotification({ type: 'success', text: 'Account created!' });
                 setMode('login');
                 setFormData({ ...formData, password: '' });
             } else {
-                alert('Registration Failed: ' + data.message);
+                setNotification({ type: 'error', text: 'Registration Failed: ' + data.message });
             }
         } catch (err) {
             console.error('Signup error:', err);
-            alert('Network error. Please try again.');
+            setNotification({ type: 'error', text: 'Network error. Please try again.' });
         } finally {
             setIsLoading(false);
         }
@@ -155,14 +143,14 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
                         {isLogin ? (
                             <>
                                 <p className="text-xs font-black uppercase tracking-widest opacity-60 mb-3">New Arrival?</p>
-                                <button onClick={() => setMode('register')} className="flex items-center gap-2 font-black transition-all text-white group uppercase text-[10px] tracking-widest hover:text-maldives-300">
+                                <button onClick={() => { setMode('register'); setNotification(null); }} className="flex items-center gap-2 font-black transition-all text-white group uppercase text-[10px] tracking-widest hover:text-maldives-300">
                                     Create Profile <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                                 </button>
                             </>
                         ) : (
                             <>
                                 <p className="text-xs font-black uppercase tracking-widest opacity-60 mb-3">Already a Member?</p>
-                                <button onClick={() => setMode('login')} className="flex items-center gap-2 font-black transition-all text-white group uppercase text-[10px] tracking-widest hover:text-maldives-300">
+                                <button onClick={() => { setMode('login'); setNotification(null); }} className="flex items-center gap-2 font-black transition-all text-white group uppercase text-[10px] tracking-widest hover:text-maldives-300">
                                     Log In Now <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                                 </button>
                             </>
@@ -177,7 +165,18 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
                     {isLogin && (
                         <div className="max-w-sm mx-auto w-full animate-in fade-in slide-in-from-right-4 duration-500">
                             <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Login</h2>
-                            <p className="text-slate-500 mb-12 font-medium">Please enter your details to continue.</p>
+                            <p className="text-slate-500 mb-6 font-medium">Please enter your details to continue.</p>
+
+                            {notification && (
+                                <div className={`p-4 mb-6 rounded-xl text-sm font-bold flex items-center gap-2 animate-in slide-in-from-top-2 ${notification.type === 'success'
+                                    ? 'bg-teal-50 text-teal-700 border border-teal-100'
+                                    : 'bg-red-50 text-red-600 border border-red-100'
+                                    }`}>
+                                    {notification.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <Loader2 className="w-5 h-5 animate-spin" />}
+                                    {notification.text}
+                                </div>
+                            )}
+
                             <form onSubmit={handleLoginSubmit} className="space-y-5">
                                 <div className="relative group">
                                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />

@@ -31,7 +31,7 @@ export const AuthProvider = ({ children }) => {
                     id: data.user.id,
                     name: data.user.full_name,
                     email: data.user.email,
-                    role: data.user.role,
+                    role: data.user.role.toLowerCase(), // Ensure lowercase for consistent checks
                     avatar: ''
                 };
                 setUser(userData);
