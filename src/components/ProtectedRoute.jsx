@@ -29,13 +29,17 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     }
 
     // 2. Check if user has required role (if roles are specified)
-    if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
+    // Normalize roles to uppercase for comparison (backend uses 'AGENT', frontend may use 'agent')
+    const userRole = user.role?.toUpperCase();
+    const normalizedAllowedRoles = allowedRoles.map(r => r.toUpperCase());
+
+    if (normalizedAllowedRoles.length > 0 && !normalizedAllowedRoles.includes(userRole)) {
         // User is logged in but unauthorized for this specific route
 
         // Redirect logic based on their actual role
-        if (user.role === 'admin') return <Navigate to="/admin" replace />;
-        if (user.role === 'agent') return <Navigate to="/recruiter" replace />;
-        if (user.role === 'candidate') return <Navigate to="/dashboard" replace />;
+        if (userRole === 'ADMIN') return <Navigate to="/admin" replace />;
+        if (userRole === 'AGENT') return <Navigate to="/recruiter" replace />;
+        if (userRole === 'CANDIDATE') return <Navigate to="/dashboard" replace />;
 
         // Default fallthrough
         return <Navigate to="/" replace />;

@@ -84,7 +84,7 @@ const AppContent = () => {
                     <Route
                         path="/profile"
                         element={
-                            <ProtectedRoute allowedRoles={['candidate']}>
+                            <ProtectedRoute allowedRoles={['candidate', 'agent']}>
                                 <ProfilePage />
                             </ProtectedRoute>
                         }

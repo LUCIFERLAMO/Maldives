@@ -155,6 +155,18 @@ const CandidateProfile = ({ user, profileData, docs, handleDocAction, handleDele
 
 
 const AgentProfile = ({ user, profileData, docs, handleDocAction, setIsResettingPassword, setIsEditingPersonal, previewImage }) => {
+    // Determine agent status display
+    const getAgentStatusBadge = () => {
+        const status = user?.status || 'ACTIVE';
+        if (status === 'ACTIVE') {
+            return <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-50 text-green-700 text-xs font-bold rounded-full border border-green-200"><CheckCircle2 className="w-3.5 h-3.5" /> Active</span>;
+        } else if (status === 'INACTIVE' || status === 'Pending') {
+            return <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 text-xs font-bold rounded-full border border-amber-200"><Clock className="w-3.5 h-3.5" /> Pending Approval</span>;
+        } else {
+            return <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-50 text-red-700 text-xs font-bold rounded-full border border-red-200"><AlertTriangle className="w-3.5 h-3.5" /> Suspended</span>;
+        }
+    };
+
     return (
         <>
             {/* CORPORATE HEADER (AGENT ONLY) */}
@@ -193,14 +205,23 @@ const AgentProfile = ({ user, profileData, docs, handleDocAction, setIsResetting
                             <p className="text-slate-500 text-xs uppercase tracking-wider font-bold mt-1">Tier 1 Partner</p>
                         </div>
 
+                        {/* AGENCY DETAILS SECTION */}
                         <div className="space-y-4">
+                            <div className="pb-4 border-b border-slate-100">
+                                <label className="text-[10px] font-bold text-teal-600 uppercase tracking-widest">Agency Name</label>
+                                <div className="font-bold text-slate-900 text-lg mt-1">{user?.agencyName || user?.agency_name || 'Not Set'}</div>
+                            </div>
                             <div>
-                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Primary Contact</label>
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Contact Number</label>
+                                <div className="font-medium text-slate-900 text-sm flex items-center gap-2 mt-1"><Phone className="w-3.5 h-3.5 text-slate-400" /> {user?.contact_number || user?.phone || 'Not Set'}</div>
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Primary Email</label>
                                 <div className="font-medium text-slate-900 text-sm flex items-center gap-2 mt-1"><Mail className="w-3.5 h-3.5 text-slate-400" /> {profileData.email}</div>
                             </div>
                             <div>
-                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Headquarters</label>
-                                <div className="font-medium text-slate-900 text-sm flex items-center gap-2 mt-1"><MapPin className="w-3.5 h-3.5 text-slate-400" /> {profileData.location}</div>
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Account Status</label>
+                                <div className="mt-2">{getAgentStatusBadge()}</div>
                             </div>
                             <button onClick={() => setIsEditingPersonal(true)} className="w-full py-2 border border-slate-200 text-slate-600 text-xs font-bold uppercase tracking-wider rounded-lg hover:bg-slate-50 transition-colors mt-2">
                                 Update Info
@@ -265,7 +286,7 @@ const AgentProfile = ({ user, profileData, docs, handleDocAction, setIsResetting
 
 const ProfilePage = () => {
     const { user } = useAuth();
-    const isAgent = user?.role === 'employer';
+    const isAgent = user?.role === 'AGENT';
 
     const [isEditingPersonal, setIsEditingPersonal] = useState(false);
     const [isResettingPassword, setIsResettingPassword] = useState(false);

@@ -5,12 +5,14 @@ import { useAuth } from '../context/AuthContext';
 
 const AgentLoginPage = () => {
     const navigate = useNavigate();
-    const { login, mockLogin, logout } = useAuth();
+    const { login, mockLogin, logout, user } = useAuth();
 
-    // Clear any existing session when login page loads
+    // If agent is already logged in, redirect to dashboard
     useEffect(() => {
-        localStorage.removeItem('user');
-    }, []);
+        if (user && user.role?.toUpperCase() === 'AGENT') {
+            navigate('/recruiter', { replace: true });
+        }
+    }, [user, navigate]);
 
     const [formData, setFormData] = useState({
         email: '',
@@ -36,14 +38,18 @@ const AgentLoginPage = () => {
 
             if (response.ok) {
                 const userData = {
-                    id: data.user._id,
+                    id: data.user._id || data.user.id,
                     name: data.user.full_name,
                     email: data.user.email,
                     role: data.user.role,
-                    status: 'APPROVED'
+                    status: data.user.status || 'ACTIVE',
+                    agency_name: data.user.agency_name || null,
+                    contact_number: data.user.contact_number || null
                 };
-                localStorage.setItem('user', JSON.stringify(userData));
-                window.location.href = '/recruiter';
+                // Use mockLogin to set user in AuthContext state AND localStorage
+                mockLogin(userData);
+                // Use navigate instead of window.location.href to avoid full page reload
+                navigate('/recruiter', { replace: true });
             } else {
                 alert("Invalid email or password.");
             }

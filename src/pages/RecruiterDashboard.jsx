@@ -621,6 +621,36 @@ const RecruiterDashboard = () => {
                                     </div>
                                 </div>
 
+                                {/* Agent Profile Card */}
+                                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                                    <div className="px-8 py-6 border-b border-slate-100 bg-gradient-to-r from-teal-50/50 to-slate-50/50">
+                                        <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                            <User className="w-5 h-5 text-teal-600" /> My Account Details
+                                        </h3>
+                                        <p className="text-slate-500 text-sm mt-1">Your registered agent information</p>
+                                    </div>
+                                    <div className="p-8">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Full Name</label>
+                                                <p className="text-base font-semibold text-slate-900">{user?.name || 'Not Set'}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Email Address</label>
+                                                <p className="text-base font-semibold text-slate-900">{user?.email || 'Not Set'}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Phone Number</label>
+                                                <p className="text-base font-semibold text-slate-900">{user?.contact_number || 'Not Set'}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Agency Name</label>
+                                                <p className="text-base font-semibold text-teal-700">{user?.agency_name || 'Not Set'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {/* Recently Added Candidates (Space Filler) */}
                                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                                     <div className="px-8 py-6 border-b border-slate-100">
