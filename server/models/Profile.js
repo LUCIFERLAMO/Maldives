@@ -50,8 +50,24 @@ const profileSchema = new mongoose.Schema({
     // Status
     status: {
         type: String,
-        enum: ['ACTIVE', 'INACTIVE', 'BANNED'],
+        enum: ['ACTIVE', 'INACTIVE', 'BANNED', 'PENDING'],
         default: 'ACTIVE'
+    },
+    // First Login Detection (for agents with temp password)
+    requiresPasswordChange: {
+        type: Boolean,
+        default: false
+    },
+    // Store temporary password (admin-generated)
+    temporaryPassword: {
+        type: String,
+        required: false
+    },
+    // Link to Agency (for agents)
+    agencyId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Agency',
+        required: false
     }
 }, {
     timestamps: true

@@ -38,6 +38,24 @@ const mockAgencies = [
         status: "Pending",
         website: "https://islandcareers.mv",
         description: "Local talent acquisition specialists."
+    },
+    {
+        name: "Paradise Resort Staffing",
+        email: "hr@paradiseresort.com",
+        contact: "+960 400 8888",
+        location: "Addu City, Maldives",
+        status: "Pending",
+        website: "https://paradiseresort.com",
+        description: "Specialists in luxury resort recruitment."
+    },
+    {
+        name: "Azure Talent Partners",
+        email: "contact@azuretalent.com",
+        contact: "+971 4 555 1234",
+        location: "Dubai, UAE",
+        status: "Pending",
+        website: "https://azuretalent.com",
+        description: "International hospitality talent placement."
     }
 ];
 
