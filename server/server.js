@@ -70,6 +70,7 @@ mongoose.connect(MONGODB_URI)
 import Job from './models/Job.js';
 import Application from './models/Application.js';
 import Profile from './models/Profile.js';
+import Agency from './models/Agency.js';
 
 // --- ROUTES ---
 
@@ -85,7 +86,7 @@ app.get('/api/health', (req, res) => {
 // AUTH ROUTES
 app.post('/api/auth/register', async (req, res) => {
     try {
-        const { email, password, role, name, agencyName, skills } = req.body;
+        const { email, password, role, name, agencyName, skills, contact } = req.body;
 
         // Check if user exists
         const existingUser = await Profile.findOne({ email });
@@ -98,6 +99,7 @@ app.post('/api/auth/register', async (req, res) => {
             email,
             password, // NOTE: In production, hash this password with bcrypt!
             role,
+            contact_number: contact,
             agency_name: role === 'AGENT' ? agencyName : undefined,
             skills: role === 'CANDIDATE' ? skills : undefined
         });
@@ -119,8 +121,9 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(400).json({ message: 'User not found' });
         }
 
-        // Validate password
-        if (user.password !== password) {
+        // Validate password (check both regular and temporary password)
+        const isValidPassword = user.password === password || user.temporaryPassword === password;
+        if (!isValidPassword) {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
 
@@ -129,9 +132,153 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(403).json({ message: `Access denied. This account is not a ${role}.` });
         }
 
-        res.json({ message: 'Login successful', user });
+        // Check if agent needs to change password (first login)
+        const requiresPasswordChange = user.requiresPasswordChange || false;
+
+        res.json({
+            message: 'Login successful',
+            user: {
+                id: user.id,
+                _id: user._id,
+                full_name: user.full_name,
+                email: user.email,
+                role: user.role,
+                agency_name: user.agency_name
+            },
+            requiresPasswordChange
+        });
     } catch (err) {
         res.status(500).json({ message: 'Login failed', error: err.message });
+    }
+});
+
+// PASSWORD CHANGE ROUTE (For first-time agents)
+app.put('/api/auth/change-password', async (req, res) => {
+    try {
+        const { email, agentId, newPassword } = req.body;
+
+        // Find user by email or agentId
+        let user;
+        if (email) {
+            user = await Profile.findOne({ email });
+        } else if (agentId) {
+            user = await Profile.findById(agentId);
+        }
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Update password and clear the flag
+        user.password = newPassword; // NOTE: In production, hash this!
+        user.requiresPasswordChange = false;
+        user.temporaryPassword = undefined; // Remove temp password
+        await user.save();
+
+        res.json({ message: 'Password updated successfully' });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to update password', error: err.message });
+    }
+});
+
+// ADMIN AGENCY ROUTES
+
+// GET: Fetch agencies (with optional status filter)
+app.get('/api/admin/agencies', async (req, res) => {
+    try {
+        const { status } = req.query;
+        const filter = status ? { status } : {};
+        const agencies = await Agency.find(filter).sort({ createdAt: -1 });
+        res.json(agencies);
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to fetch agencies', error: err.message });
+    }
+});
+
+// PUT: Approve agency
+app.put('/api/admin/agencies/:id/approve', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Find agency
+        const agency = await Agency.findById(id);
+        if (!agency) {
+            return res.status(404).json({ message: 'Agency not found' });
+        }
+
+        // Update agency status
+        agency.status = 'Active';
+        await agency.save();
+
+        // Generate temporary password
+        const tempPassword = 'Temp@' + Math.random().toString(36).slice(-6).toUpperCase();
+
+        // Check if agent profile already exists
+        let agentProfile = await Profile.findOne({ email: agency.email });
+
+        if (!agentProfile) {
+            // Create new agent profile
+            agentProfile = new Profile({
+                full_name: agency.name,
+                email: agency.email,
+                password: tempPassword,
+                temporaryPassword: tempPassword,
+                role: 'AGENT',
+                agency_name: agency.name,
+                contact_number: agency.contact,
+                requiresPasswordChange: true,
+                agencyId: agency._id,
+                status: 'ACTIVE'
+            });
+            await agentProfile.save();
+        } else {
+            // Update existing profile with temp password
+            agentProfile.temporaryPassword = tempPassword;
+            agentProfile.requiresPasswordChange = true;
+            await agentProfile.save();
+        }
+
+        res.json({
+            message: 'Agency approved successfully',
+            agency: {
+                name: agency.name,
+                email: agency.email,
+                status: agency.status
+            },
+            agentCredentials: {
+                email: agency.email,
+                temporaryPassword: tempPassword
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to approve agency', error: err.message });
+    }
+});
+
+// PUT: Reject agency
+app.put('/api/admin/agencies/:id/reject', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Find agency
+        const agency = await Agency.findById(id);
+        if (!agency) {
+            return res.status(404).json({ message: 'Agency not found' });
+        }
+
+        // Update agency status
+        agency.status = 'Rejected';
+        await agency.save();
+
+        res.json({
+            message: 'Agency rejected',
+            agency: {
+                name: agency.name,
+                status: agency.status
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to reject agency', error: err.message });
     }
 });
 

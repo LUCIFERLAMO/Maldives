@@ -206,7 +206,7 @@ const RecruiterDashboard = () => {
                                 {agentProfile?.company_name || "GlobalTalent"}
                             </span>
                             <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider mt-1 block truncate w-48">
-                                {agentProfile?.full_name || "Partner Portal"}
+                                {agentProfile?.full_name || user?.name || "Partner Portal"}
                             </span>
                         </div>
                     </div>
@@ -556,7 +556,7 @@ const RecruiterDashboard = () => {
                                 {/* Welcome Header */}
                                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200 pb-6">
                                     <div>
-                                        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : 'Evening'}, Global Talent.</h2>
+                                        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : 'Evening'}, {user?.name?.split(' ')[0] || 'Partner'}.</h2>
                                         <p className="text-slate-500 text-sm mt-1">Here's what's happening with your candidates today.</p>
                                     </div>
                                     <div className="text-right">
@@ -616,6 +616,36 @@ const RecruiterDashboard = () => {
                                             </div>
                                             <div className="p-4 bg-red-50 rounded-2xl text-red-600">
                                                 <Ban className="w-8 h-8" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Agent Profile Card */}
+                                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                                    <div className="px-8 py-6 border-b border-slate-100 bg-gradient-to-r from-teal-50/50 to-slate-50/50">
+                                        <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                            <User className="w-5 h-5 text-teal-600" /> My Account Details
+                                        </h3>
+                                        <p className="text-slate-500 text-sm mt-1">Your registered agent information</p>
+                                    </div>
+                                    <div className="p-8">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Full Name</label>
+                                                <p className="text-base font-semibold text-slate-900">{user?.name || 'Not Set'}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Email Address</label>
+                                                <p className="text-base font-semibold text-slate-900">{user?.email || 'Not Set'}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Phone Number</label>
+                                                <p className="text-base font-semibold text-slate-900">{user?.contact_number || 'Not Set'}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Agency Name</label>
+                                                <p className="text-base font-semibold text-teal-700">{user?.agency_name || 'Not Set'}</p>
                                             </div>
                                         </div>
                                     </div>

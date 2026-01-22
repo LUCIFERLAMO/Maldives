@@ -32,7 +32,11 @@ export const AuthProvider = ({ children }) => {
                     name: data.user.full_name,
                     email: data.user.email,
                     role: data.user.role.toLowerCase(), // Ensure lowercase for consistent checks
-                    avatar: ''
+                    avatar: '',
+                    // Agent-specific fields
+                    agency_name: data.user.agency_name || null,
+                    contact_number: data.user.contact_number || null,
+                    status: data.user.status || 'ACTIVE'
                 };
                 setUser(userData);
                 localStorage.setItem('user', JSON.stringify(userData));

@@ -1,16 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, User, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const AgentLoginPage = () => {
     const navigate = useNavigate();
-    const { login, mockLogin } = useAuth();
+    const { login, mockLogin, logout, user } = useAuth();
+
+    // If agent is already logged in, redirect to dashboard
+    useEffect(() => {
+        if (user && user.role?.toUpperCase() === 'AGENT') {
+            navigate('/recruiter', { replace: true });
+        }
+    }, [user, navigate]);
 
     const [formData, setFormData] = useState({
         email: '',
         password: ''
     });
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleLoginSubmit = async (e) => {
         e.preventDefault();
@@ -30,14 +38,18 @@ const AgentLoginPage = () => {
 
             if (response.ok) {
                 const userData = {
-                    id: data.user._id,
+                    id: data.user._id || data.user.id,
                     name: data.user.full_name,
                     email: data.user.email,
                     role: data.user.role,
-                    status: 'APPROVED'
+                    status: data.user.status || 'ACTIVE',
+                    agency_name: data.user.agency_name || null,
+                    contact_number: data.user.contact_number || null
                 };
-                localStorage.setItem('user', JSON.stringify(userData));
-                window.location.href = '/recruiter';
+                // Use mockLogin to set user in AuthContext state AND localStorage
+                mockLogin(userData);
+                // Use navigate instead of window.location.href to avoid full page reload
+                navigate('/recruiter', { replace: true });
             } else {
                 alert("Invalid email or password.");
             }
@@ -104,7 +116,21 @@ const AgentLoginPage = () => {
                             </div>
                             <div className="relative group">
                                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
-                                <input type="password" required placeholder="Password" className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-500 outline-none transition-all font-bold text-slate-700" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    required
+                                    placeholder="Password"
+                                    className="w-full pl-12 pr-12 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-500 outline-none transition-all font-bold text-slate-700"
+                                    value={formData.password}
+                                    onChange={e => setFormData({ ...formData, password: e.target.value })}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors"
+                                >
+                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                </button>
                             </div>
                             <button type="submit" className="w-full bg-slate-900 text-white py-5 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 flex items-center justify-center gap-2 mt-4">
                                 Enter Portal <ArrowRight className="w-5 h-5" />

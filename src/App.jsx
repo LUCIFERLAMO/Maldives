@@ -40,6 +40,7 @@ const AppContent = () => {
                     <Route path="/login" element={<CandidateLoginPage initialMode="login" />} />
                     <Route path="/register" element={<CandidateLoginPage initialMode="register" />} />
                     <Route path="/login/agent" element={<AgentLoginPage />} />
+                    <Route path="/agent-login" element={<AgentLoginPage />} />
                     <Route path="/login/admin" element={<AdminLoginPage />} />
                     <Route path="/agent-registration" element={<AgentRegistrationPage />} />
 
@@ -83,7 +84,7 @@ const AppContent = () => {
                     <Route
                         path="/profile"
                         element={
-                            <ProtectedRoute allowedRoles={['candidate']}>
+                            <ProtectedRoute allowedRoles={['candidate', 'agent']}>
                                 <ProfilePage />
                             </ProtectedRoute>
                         }

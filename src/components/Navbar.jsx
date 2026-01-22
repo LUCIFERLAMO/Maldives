@@ -115,8 +115,8 @@ const Navbar = () => {
                                 <div className="absolute right-0 mt-4 w-60 bg-white rounded-2xl shadow-2xl border border-slate-100 py-3 overflow-hidden animate-in fade-in zoom-in-95 duration-200 ring-1 ring-slate-900/5 z-[120]">
                                     <Link
                                         to={
-                                            user?.role === 'candidate' ? '/dashboard' :
-                                                (user?.role === 'admin' || user?.name === 'Platform Administrator') ? '/admin' :
+                                            user?.role?.toUpperCase() === 'CANDIDATE' ? '/dashboard' :
+                                                (user?.role?.toUpperCase() === 'ADMIN' || user?.name === 'Platform Administrator') ? '/admin' :
                                                     '/recruiter'
                                         }
                                         onClick={() => setIsMenuOpen(false)}
