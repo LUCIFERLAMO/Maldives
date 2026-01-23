@@ -54,6 +54,24 @@ const BrowseJobsPage = () => {
         });
     }, [searchTerm, jobs, selectedIndustry]);
 
+    const formatPostedDate = (dateString) => {
+        if (!dateString) return 'Recently';
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffTime = Math.abs(now - date);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays > 30) {
+            const months = Math.floor(diffDays / 30);
+            return `Posted ${months} ${months === 1 ? 'month' : 'months'} ago`;
+        }
+        if (diffDays > 7) {
+            const weeks = Math.floor(diffDays / 7);
+            return `Posted ${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
+        }
+        return `Posted ${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
+    };
+
     const scrollContainerRef = useRef(null);
 
     useEffect(() => {
@@ -389,6 +407,9 @@ const BrowseJobsPage = () => {
                             <div className="flex items-center justify-between">
                                 <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">
                                     {sortBy === 'closed' ? 'Closed Roles' : 'Recent Openings'}
+                                    <span className="ml-3 text-sm font-medium text-slate-500 normal-case tracking-normal">
+                                        Showing {filteredJobs.length} jobs
+                                    </span>
                                 </h3>
                                 <div className="relative">
                                     <button
@@ -454,7 +475,8 @@ const BrowseJobsPage = () => {
                                                         <div className="flex flex-wrap items-center gap-y-2 gap-x-4 text-xs font-medium text-slate-500">
                                                             <span className="uppercase tracking-wider font-bold text-slate-400">{job.company}</span>
                                                             <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md"><MapPin className="w-3 h-3" /> {job.location}</span>
-                                                            <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md"><Clock className="w-3 h-3" /> 2d ago</span>
+                                                            <span className="flex items-center gap-1 bg-teal-50 text-teal-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase">{job.industry}</span>
+                                                            <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md"><Clock className="w-3 h-3" /> {formatPostedDate(job.postedDate)}</span>
                                                         </div>
                                                     </div>
 
@@ -511,7 +533,8 @@ const BrowseJobsPage = () => {
                                                     <div className="flex flex-wrap items-center gap-y-2 gap-x-4 text-xs font-medium text-slate-500">
                                                         <span className="uppercase tracking-wider font-bold text-slate-400">{job.company}</span>
                                                         <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md"><MapPin className="w-3 h-3" /> {job.location}</span>
-                                                        <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md"><Clock className="w-3 h-3" /> 2d ago</span>
+                                                        <span className="flex items-center gap-1 bg-teal-50 text-teal-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase">{job.industry}</span>
+                                                        <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md"><Clock className="w-3 h-3" /> {formatPostedDate(job.postedDate)}</span>
                                                     </div>
                                                 </div>
 

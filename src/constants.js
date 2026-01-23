@@ -176,9 +176,14 @@ export const MOCK_APPLICATIONS = [
 
 export const INDUSTRIES = [
     'Hospitality',
+    'Construction',
     'Healthcare',
     'IT',
-    'Finance',
-    'Construction',
-    'Transportation'
+    'Education',
+    'Retail',
+    'Manufacturing',
+    'Tourism',
+    'Fishing',
+    'Agriculture',
+    'Other'
 ];
