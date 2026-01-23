@@ -9,7 +9,7 @@ import {
     AlertTriangle, Globe, ArrowRight, UserPlus,
     MapPin, Award, User,
     AlignLeft, ChevronDown, ShieldCheck,
-    FilePlus, Clock
+    FilePlus, Clock, Settings, Key, Eye, EyeOff
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -102,6 +102,68 @@ const RecruiterDashboard = () => {
     const [showJobRequestForm, setShowJobRequestForm] = useState(false);
     const [jobRequestSearchTerm, setJobRequestSearchTerm] = useState('');
     const [expandedJobRequestId, setExpandedJobRequestId] = useState(null);
+
+    // Password Reset State
+    const [passwordData, setPasswordData] = useState({
+        oldPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+    });
+    const [showOldPassword, setShowOldPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [passwordError, setPasswordError] = useState('');
+    const [passwordSuccess, setPasswordSuccess] = useState('');
+    const [isResettingPassword, setIsResettingPassword] = useState(false);
+
+    // Handle Password Reset
+    const handlePasswordReset = async (e) => {
+        e.preventDefault();
+        setPasswordError('');
+        setPasswordSuccess('');
+
+        // Validation
+        if (!passwordData.oldPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+            setPasswordError('All fields are required');
+            return;
+        }
+
+        if (passwordData.newPassword !== passwordData.confirmPassword) {
+            setPasswordError('New passwords do not match');
+            return;
+        }
+
+        if (passwordData.newPassword.length < 6) {
+            setPasswordError('New password must be at least 6 characters');
+            return;
+        }
+
+        setIsResettingPassword(true);
+
+        try {
+            const response = await fetch('http://localhost:5000/api/auth/reset-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: user?.email,
+                    oldPassword: passwordData.oldPassword,
+                    newPassword: passwordData.newPassword
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to reset password');
+            }
+
+            setPasswordSuccess('Password updated successfully!');
+            setPasswordData({ oldPassword: '', newPassword: '', confirmPassword: '' });
+        } catch (err) {
+            setPasswordError(err.message);
+        } finally {
+            setIsResettingPassword(false);
+        }
+    };
 
     const filteredJobs = useMemo(() => {
         return jobs.filter(j =>
@@ -276,6 +338,15 @@ const RecruiterDashboard = () => {
                             }`}
                     >
                         <FilePlus className="w-5 h-5" /> Job Requests
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('settings')}
+                        className={`w-full flex items-center gap-4 px-4 py-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${activeTab === 'settings'
+                            ? 'bg-teal-600 text-white shadow-lg shadow-teal-900/20'
+                            : 'hover:bg-slate-800 hover:text-slate-200'
+                            }`}
+                    >
+                        <Settings className="w-5 h-5" /> Settings
                     </button>
                 </nav>
 
@@ -724,7 +795,123 @@ const RecruiterDashboard = () => {
 
                                 {/* Recent Activity Feed */}
                             </div>
-                        ) : (
+                        ) : activeTab === 'settings' ? (
+                            /* SETTINGS TAB - PASSWORD RESET */
+                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-200">
+                                    <div>
+                                        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Account Settings</h2>
+                                        <p className="text-slate-500 font-medium text-sm mt-1">Manage your account security and preferences</p>
+                                    </div>
+                                </div>
+
+                                {/* Password Reset Card */}
+                                <div className="max-w-xl">
+                                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                                        <div className="px-8 py-6 border-b border-slate-100 bg-gradient-to-r from-teal-50/50 to-slate-50/50">
+                                            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                                <Key className="w-5 h-5 text-teal-600" /> Change Password
+                                            </h3>
+                                            <p className="text-slate-500 text-sm mt-1">Update your account password for security</p>
+                                        </div>
+                                        <div className="p-8">
+                                            <form onSubmit={handlePasswordReset} className="space-y-6">
+                                                {/* Error Message */}
+                                                {passwordError && (
+                                                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2">
+                                                        <AlertTriangle className="w-4 h-4" />
+                                                        {passwordError}
+                                                    </div>
+                                                )}
+
+                                                {/* Success Message */}
+                                                {passwordSuccess && (
+                                                    <div className="bg-teal-50 border border-teal-200 text-teal-700 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2">
+                                                        <CheckCircle className="w-4 h-4" />
+                                                        {passwordSuccess}
+                                                    </div>
+                                                )}
+
+                                                {/* Current Password */}
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Current Password</label>
+                                                    <div className="relative">
+                                                        <input
+                                                            type={showOldPassword ? 'text' : 'password'}
+                                                            value={passwordData.oldPassword}
+                                                            onChange={(e) => setPasswordData({ ...passwordData, oldPassword: e.target.value })}
+                                                            placeholder="Enter your current password"
+                                                            className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 pr-12 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setShowOldPassword(!showOldPassword)}
+                                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                                                        >
+                                                            {showOldPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* New Password */}
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">New Password</label>
+                                                    <div className="relative">
+                                                        <input
+                                                            type={showNewPassword ? 'text' : 'password'}
+                                                            value={passwordData.newPassword}
+                                                            onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                                                            placeholder="Enter new password (min 6 characters)"
+                                                            className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 pr-12 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setShowNewPassword(!showNewPassword)}
+                                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                                                        >
+                                                            {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* Confirm New Password */}
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Confirm New Password</label>
+                                                    <input
+                                                        type="password"
+                                                        value={passwordData.confirmPassword}
+                                                        onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                                                        placeholder="Confirm your new password"
+                                                        className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all"
+                                                    />
+                                                </div>
+
+                                                {/* Submit Button */}
+                                                <div className="pt-4 border-t border-slate-100">
+                                                    <button
+                                                        type="submit"
+                                                        disabled={isResettingPassword}
+                                                        className="w-full py-3 bg-teal-600 text-white rounded-xl font-bold uppercase text-xs tracking-wider shadow-lg shadow-teal-600/20 hover:bg-teal-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                                    >
+                                                        {isResettingPassword ? (
+                                                            <>
+                                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                                Updating Password...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Key className="w-4 h-4" />
+                                                                Update Password
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : activeTab === 'blocked' ? (
                             /* PIPELINE TRACKING (EXISTING) */
                             /* PIPELINE TRACKING (REFINED) */
                             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -825,7 +1012,7 @@ const RecruiterDashboard = () => {
                                     </div>
                                 </div>
                             </div>
-                        )
+                        ) : null
                         }
                     </div >
                 </div >

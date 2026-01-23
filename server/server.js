@@ -159,6 +159,35 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
+// PASSWORD RESET ROUTE (For agents to reset their password with old password verification)
+app.post('/api/auth/reset-password', async (req, res) => {
+    try {
+        const { email, oldPassword, newPassword } = req.body;
+
+        // Find user by email
+        const user = await Profile.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Verify old password
+        const isValidOldPassword = user.password === oldPassword || user.temporaryPassword === oldPassword;
+        if (!isValidOldPassword) {
+            return res.status(400).json({ message: 'Current password is incorrect' });
+        }
+
+        // Update to new password
+        user.password = newPassword; // NOTE: In production, hash this!
+        user.temporaryPassword = undefined; // Clear any temp password
+        user.requiresPasswordChange = false;
+        await user.save();
+
+        res.json({ message: 'Password updated successfully' });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to reset password', error: err.message });
+    }
+});
+
 // PASSWORD CHANGE ROUTE (For first-time agents)
 app.put('/api/auth/change-password', async (req, res) => {
     try {
