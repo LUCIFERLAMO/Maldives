@@ -23,10 +23,16 @@ const applicationSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    resume_file_id: {
-        type: mongoose.Schema.Types.ObjectId,
-        required: true,
-        ref: 'uploads.files' // References GridFS file
+    // File stored as Base64 in MongoDB
+    resume: {
+        filename: String,
+        contentType: String,
+        data: String // Base64 encoded file data
+    },
+    certificates: {
+        filename: String,
+        contentType: String,
+        data: String // Base64 encoded file data (optional)
     },
     status: {
         type: String,

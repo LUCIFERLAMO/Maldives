@@ -137,6 +137,10 @@ const JobDetailPage = () => {
                 return;
             }
 
+            if (files.certs) {
+                formDataPayload.append('certs', files.certs);
+            }
+
             // Post Application
             const response = await fetch('http://localhost:5000/api/applications', {
                 method: 'POST',

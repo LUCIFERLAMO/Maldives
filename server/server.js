@@ -5,8 +5,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import multer from 'multer';
-import { GridFsStorage } from 'multer-gridfs-storage';
-import crypto from 'crypto';
 
 // Configure dotenv
 const __filename = fileURLToPath(import.meta.url);
@@ -18,53 +16,25 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // MongoDB Connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/maldives-career';
 
-// Global GridFS Bucket Variable
-let gfs, gridfsBucket;
-
 console.log('Attempting to connect to MongoDB...');
 
-const conn = mongoose.createConnection(MONGODB_URI);
-
-conn.once('open', () => {
-    console.log('Connected to MongoDB Cloud (Atlas)');
-    // Init GridFS
-    gridfsBucket = new mongoose.mongo.GridFSBucket(conn.db, {
-        bucketName: 'uploads'
-    });
-    gfs = gridfsBucket;
-});
-
-// Create storage engine
-const storage = new GridFsStorage({
-    url: MONGODB_URI,
-    file: (req, file) => {
-        return new Promise((resolve, reject) => {
-            crypto.randomBytes(16, (err, buf) => {
-                if (err) {
-                    return reject(err);
-                }
-                const filename = buf.toString('hex') + path.extname(file.originalname);
-                const fileInfo = {
-                    filename: filename,
-                    bucketName: 'uploads'
-                };
-                resolve(fileInfo);
-            });
-        });
-    }
-});
-
-const upload = multer({ storage });
-
-// Regular Mongoose Connection (for Models)
+// Mongoose Connection
 mongoose.connect(MONGODB_URI)
-    .then(() => console.log('Mongoose connected'))
-    .catch(err => console.log(err));
+    .then(() => console.log('Connected to MongoDB Cloud (Atlas)'))
+    .catch(err => console.log('MongoDB connection error:', err));
+
+// Use memory storage for file uploads (files stored in memory temporarily, then saved to MongoDB as Base64)
+const storage = multer.memoryStorage();
+const upload = multer({
+    storage,
+    limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit per file
+});
 
 // Import Models
 import Job from './models/Job.js';
@@ -585,46 +555,128 @@ app.put('/api/admin/job-requests/:id/reject', async (req, res) => {
     }
 });
 
-// APPLICATIONS ROUTES
-// POST: Submit Application with Resume
-app.post('/api/applications', upload.single('resume'), async (req, res) => {
+// ========================
+// APPLICATIONS ROUTES - Files stored as Base64 in MongoDB
+// ========================
+
+// POST: Submit Application with Resume and Certificates (stored as Base64 in MongoDB)
+app.post('/api/applications', upload.fields([{ name: 'resume', maxCount: 1 }, { name: 'certs', maxCount: 1 }]), async (req, res) => {
     try {
-        if (!req.file) {
+        const files = req.files || {};
+
+        if (!files.resume || files.resume.length === 0) {
             return res.status(400).json({ message: 'No resume uploaded' });
         }
 
+        const resumeFile = files.resume[0];
+        const certsFile = files.certs ? files.certs[0] : null;
+
+        // Create application with Base64-encoded files stored directly in MongoDB
         const newApplication = new Application({
             job_id: req.body.job_id,
-            candidate_name: req.body.name, // Frontend sends 'name', schema expects 'candidate_name'
+            candidate_name: req.body.name,
             email: req.body.email,
             contact_number: req.body.contact,
-            resume_file_id: req.file.id, // GridFS ID
+            resume: {
+                filename: resumeFile.originalname,
+                contentType: resumeFile.mimetype,
+                data: resumeFile.buffer.toString('base64')
+            },
+            certificates: certsFile ? {
+                filename: certsFile.originalname,
+                contentType: certsFile.mimetype,
+                data: certsFile.buffer.toString('base64')
+            } : undefined,
             status: 'PENDING'
         });
 
         const savedApp = await newApplication.save();
-        res.status(201).json(savedApp);
+
+        // Return success without the file data (to keep response small)
+        res.status(201).json({
+            message: 'Application submitted successfully!',
+            application: {
+                id: savedApp.id,
+                job_id: savedApp.job_id,
+                candidate_name: savedApp.candidate_name,
+                email: savedApp.email,
+                status: savedApp.status,
+                applied_at: savedApp.applied_at
+            }
+        });
     } catch (err) {
         console.error('Application Error:', err);
         res.status(500).json({ message: 'Failed to submit application', error: err.message });
     }
 });
 
-// GET: Download File by Filename
-app.get('/api/files/:filename', async (req, res) => {
+// GET: All applications (for Admin Dashboard)
+app.get('/api/admin/applications', async (req, res) => {
     try {
-        const file = await conn.db.collection('uploads.files').findOne({ filename: req.params.filename });
-        if (!file) {
-            return res.status(404).json({ err: 'No file exists' });
-        }
+        const { status } = req.query;
+        const filter = status ? { status } : {};
 
-        const readStream = gridfsBucket.openDownloadStreamByName(req.params.filename);
-        readStream.pipe(res);
+        // Exclude file data from list view for performance
+        const applications = await Application.find(filter)
+            .select('-resume.data -certificates.data')
+            .sort({ applied_at: -1 });
+
+        res.json(applications);
     } catch (err) {
-        res.status(500).json({ err: 'Error retrieving file' });
+        res.status(500).json({ message: 'Failed to fetch applications', error: err.message });
     }
 });
 
+// GET: Single application with file data (for downloading)
+app.get('/api/applications/:id', async (req, res) => {
+    try {
+        const application = await Application.findOne({ id: req.params.id });
+        if (!application) {
+            return res.status(404).json({ message: 'Application not found' });
+        }
+        res.json(application);
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to fetch application', error: err.message });
+    }
+});
+
+// GET: Download resume file
+app.get('/api/applications/:id/resume', async (req, res) => {
+    try {
+        const application = await Application.findOne({ id: req.params.id });
+        if (!application || !application.resume) {
+            return res.status(404).json({ message: 'Resume not found' });
+        }
+
+        const fileBuffer = Buffer.from(application.resume.data, 'base64');
+        res.set({
+            'Content-Type': application.resume.contentType,
+            'Content-Disposition': `attachment; filename="${application.resume.filename}"`
+        });
+        res.send(fileBuffer);
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to download resume', error: err.message });
+    }
+});
+
+// GET: Download certificates file
+app.get('/api/applications/:id/certificates', async (req, res) => {
+    try {
+        const application = await Application.findOne({ id: req.params.id });
+        if (!application || !application.certificates) {
+            return res.status(404).json({ message: 'Certificates not found' });
+        }
+
+        const fileBuffer = Buffer.from(application.certificates.data, 'base64');
+        res.set({
+            'Content-Type': application.certificates.contentType,
+            'Content-Disposition': `attachment; filename="${application.certificates.filename}"`
+        });
+        res.send(fileBuffer);
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to download certificates', error: err.message });
+    }
+});
 
 // Start Server
 app.listen(PORT, () => {
