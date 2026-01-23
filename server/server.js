@@ -71,6 +71,7 @@ import Job from './models/Job.js';
 import Application from './models/Application.js';
 import Profile from './models/Profile.js';
 import Agency from './models/Agency.js';
+import JobRequest from './models/JobRequest.js';
 
 // --- ROUTES ---
 
@@ -391,15 +392,32 @@ app.put('/api/admin/agencies/:id/reject', async (req, res) => {
 });
 
 // JOBS ROUTES
+// GET: All Jobs (with optional category filter)
 app.get('/api/jobs', async (req, res) => {
     try {
-        const jobs = await Job.find().sort({ posted_date: -1 });
+        const { category, status } = req.query;
+        const filter = {};
+        if (category && category !== 'All') filter.category = category;
+        if (status) filter.status = status;
+
+        const jobs = await Job.find(filter).sort({ posted_date: -1 });
         res.json(jobs);
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
 });
 
+// GET: Job Categories List
+app.get('/api/jobs/categories', async (req, res) => {
+    try {
+        const categories = ['Hospitality', 'Construction', 'Healthcare', 'IT', 'Education', 'Retail', 'Manufacturing', 'Tourism', 'Fishing', 'Agriculture', 'Other'];
+        res.json(categories);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// GET: Single Job by ID
 app.get('/api/jobs/:id', async (req, res) => {
     try {
         const job = await Job.findOne({ id: req.params.id });
@@ -412,6 +430,158 @@ app.get('/api/jobs/:id', async (req, res) => {
         res.json(job);
     } catch (err) {
         res.status(500).json({ message: err.message });
+    }
+});
+
+// ========================
+// JOB REQUEST ROUTES (For Agents/Recruiters)
+// ========================
+
+// POST: Create a new job request (Agent submits job for admin approval)
+app.post('/api/job-requests', async (req, res) => {
+    try {
+        const {
+            agent_id, agent_name, agent_email, agency_name,
+            title, company, location, category, salary_range,
+            description, requirements, vacancies
+        } = req.body;
+
+        const newJobRequest = new JobRequest({
+            agent_id,
+            agent_name,
+            agent_email,
+            agency_name,
+            title,
+            company,
+            location,
+            category,
+            salary_range,
+            description,
+            requirements: requirements || [],
+            vacancies: vacancies || 1,
+            status: 'PENDING'
+        });
+
+        await newJobRequest.save();
+        res.status(201).json({
+            message: 'Job request submitted successfully. Awaiting admin approval.',
+            jobRequest: newJobRequest
+        });
+    } catch (err) {
+        console.error('Job Request Error:', err);
+        res.status(500).json({ message: 'Failed to submit job request', error: err.message });
+    }
+});
+
+// GET: All job requests for an agent (Agent can see their submitted requests)
+app.get('/api/job-requests/agent/:agentId', async (req, res) => {
+    try {
+        const jobRequests = await JobRequest.find({ agent_id: req.params.agentId }).sort({ createdAt: -1 });
+        res.json(jobRequests);
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to fetch job requests', error: err.message });
+    }
+});
+
+// GET: All pending job requests (For Admin Dashboard)
+app.get('/api/admin/job-requests', async (req, res) => {
+    try {
+        const { status } = req.query;
+        const filter = status ? { status } : {};
+        const jobRequests = await JobRequest.find(filter).sort({ createdAt: -1 });
+        res.json(jobRequests);
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to fetch job requests', error: err.message });
+    }
+});
+
+// GET: Pending job requests count (For Admin Dashboard stats)
+app.get('/api/admin/job-requests/pending/count', async (req, res) => {
+    try {
+        const count = await JobRequest.countDocuments({ status: 'PENDING' });
+        res.json({ count });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to get pending count', error: err.message });
+    }
+});
+
+// PUT: Approve a job request (Admin approves and creates the actual job)
+app.put('/api/admin/job-requests/:id/approve', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { reviewed_by, review_notes } = req.body;
+
+        // Find the job request
+        const jobRequest = await JobRequest.findById(id);
+        if (!jobRequest) {
+            return res.status(404).json({ message: 'Job request not found' });
+        }
+
+        if (jobRequest.status !== 'PENDING') {
+            return res.status(400).json({ message: 'Job request already processed' });
+        }
+
+        // Create the actual job from the request
+        const newJob = new Job({
+            title: jobRequest.title,
+            company: jobRequest.company,
+            location: jobRequest.location,
+            category: jobRequest.category,
+            salary_range: jobRequest.salary_range,
+            description: jobRequest.description,
+            requirements: jobRequest.requirements,
+            status: 'OPEN'
+        });
+
+        await newJob.save();
+
+        // Update the job request status
+        jobRequest.status = 'APPROVED';
+        jobRequest.reviewed_by = reviewed_by || 'Admin';
+        jobRequest.review_notes = review_notes || 'Approved';
+        jobRequest.reviewed_at = new Date();
+        jobRequest.approved_job_id = newJob.id;
+        await jobRequest.save();
+
+        res.json({
+            message: 'Job request approved and job created successfully',
+            jobRequest,
+            job: newJob
+        });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to approve job request', error: err.message });
+    }
+});
+
+// PUT: Reject a job request (Admin rejects)
+app.put('/api/admin/job-requests/:id/reject', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { reviewed_by, review_notes } = req.body;
+
+        // Find the job request
+        const jobRequest = await JobRequest.findById(id);
+        if (!jobRequest) {
+            return res.status(404).json({ message: 'Job request not found' });
+        }
+
+        if (jobRequest.status !== 'PENDING') {
+            return res.status(400).json({ message: 'Job request already processed' });
+        }
+
+        // Update the job request status
+        jobRequest.status = 'REJECTED';
+        jobRequest.reviewed_by = reviewed_by || 'Admin';
+        jobRequest.review_notes = review_notes || 'Rejected';
+        jobRequest.reviewed_at = new Date();
+        await jobRequest.save();
+
+        res.json({
+            message: 'Job request rejected',
+            jobRequest
+        });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to reject job request', error: err.message });
     }
 });
 

@@ -19,6 +19,11 @@ const jobSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    category: {
+        type: String,
+        enum: ['Hospitality', 'Construction', 'Healthcare', 'IT', 'Education', 'Retail', 'Manufacturing', 'Tourism', 'Fishing', 'Agriculture', 'Other'],
+        default: 'Other'
+    },
     salary_range: {
         type: String,
         required: false
