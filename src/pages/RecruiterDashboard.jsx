@@ -191,6 +191,34 @@ const RecruiterDashboard = () => {
         fetchAgentProfile();
     }, [user?.id]);
 
+    // If agent status is PENDING, show waiting screen
+    if (user?.status === 'PENDING') {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-6">
+                <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-12 max-w-lg text-center">
+                    <div className="w-20 h-20 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center mx-auto mb-6">
+                        <Clock className="w-10 h-10" />
+                    </div>
+                    <h1 className="text-2xl font-black text-slate-900 mb-3">Application Under Review</h1>
+                    <p className="text-slate-500 font-medium leading-relaxed mb-8">
+                        Thank you for registering! Your application is currently pending admin approval.
+                        You'll receive full access to the partner portal once your account is verified.
+                    </p>
+                    <div className="bg-slate-50 rounded-xl p-4 mb-8">
+                        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1">Estimated Review Time</p>
+                        <p className="text-sm font-bold text-slate-700">24-48 hours</p>
+                    </div>
+                    <button
+                        onClick={logout}
+                        className="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-slate-800 transition-colors"
+                    >
+                        Sign Out
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-white font-sans flex overflow-hidden">
 

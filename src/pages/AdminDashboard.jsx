@@ -18,7 +18,8 @@ import {
    Calendar,
    FileText,
    Search,
-   ChevronDown
+   ChevronDown,
+   RefreshCw
 } from 'lucide-react';
 
 import { DashboardSidebar } from '../components/DashboardSidebar';
@@ -248,6 +249,12 @@ const AdminDashboard = () => {
    const [agentResumes, setAgentResumes] = useState(MOCK_AGENT_RESUMES);
    const [auditQueue, setAuditQueue] = useState(MOCK_AUDIT_QUEUE);
 
+   // Agency Approval State
+   const [pendingAgencies, setPendingAgencies] = useState([]);
+   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+   const [approvedCredentials, setApprovedCredentials] = useState(null);
+   const [isRefreshingAgents, setIsRefreshingAgents] = useState(false);
+
    // Refs for flexible dropdowns
    const blacklistSourceRef = useRef(null);
    const blacklistDurationRef = useRef(null);
@@ -264,6 +271,25 @@ const AdminDashboard = () => {
       };
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
+   }, []);
+
+   // Fetch pending agents function (reusable for refresh)
+   const fetchPendingAgents = async (showLoading = false) => {
+      if (showLoading) setIsRefreshingAgents(true);
+      try {
+         const response = await fetch('http://localhost:5000/api/admin/pending-agents');
+         const data = await response.json();
+         setPendingAgencies(data);
+      } catch (error) {
+         console.error('Error fetching pending agents:', error);
+      } finally {
+         if (showLoading) setIsRefreshingAgents(false);
+      }
+   };
+
+   // Fetch on mount
+   useEffect(() => {
+      fetchPendingAgents();
    }, []);
    const [selectedResume, setSelectedResume] = useState(null);
    const [isBlacklistReview, setIsBlacklistReview] = useState(false);
@@ -469,6 +495,46 @@ const AdminDashboard = () => {
          setApprovalStep('SUCCESS');
          handleApplicationStatusChange('SELECTED');
       }, 2000);
+   };
+
+   // Agent Approval Handlers (using Profile model)
+   const handleApproveAgency = async (agent) => {
+      try {
+         const response = await fetch(`http://localhost:5000/api/admin/agents/${agent._id}/approve`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' }
+         });
+         const data = await response.json();
+         if (response.ok) {
+            // Show success message (agent already has password from registration)
+            alert(`Agent "${agent.full_name}" approved successfully!\nThey can now login with their registered email: ${agent.email}`);
+            setPendingAgencies(prev => prev.filter(a => a._id !== agent._id));
+         } else {
+            alert('Failed to approve agent: ' + data.message);
+         }
+      } catch (error) {
+         console.error('Error approving agent:', error);
+         alert('Error approving agent');
+      }
+   };
+
+   const handleRejectAgency = async (agent) => {
+      try {
+         const response = await fetch(`http://localhost:5000/api/admin/agents/${agent._id}/reject`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' }
+         });
+         if (response.ok) {
+            setPendingAgencies(prev => prev.filter(a => a._id !== agent._id));
+            alert('Agent rejected and blocked.');
+         } else {
+            const data = await response.json();
+            alert('Failed to reject agent: ' + data.message);
+         }
+      } catch (error) {
+         console.error('Error rejecting agent:', error);
+         alert('Error rejecting agent');
+      }
    };
 
 
@@ -775,6 +841,49 @@ const AdminDashboard = () => {
                   </div>
                </div>
             )}
+
+            {/* CREDENTIALS MODAL */}
+            {showCredentialsModal && approvedCredentials && (
+               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200] animate-in fade-in duration-200">
+                  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 animate-in zoom-in-95 duration-300">
+                     <div className="flex items-center gap-3 mb-6">
+                        <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                           <CheckCircle2 className="w-6 h-6" />
+                        </div>
+                        <div>
+                           <h3 className="text-lg font-bold text-slate-900">Agency Approved!</h3>
+                           <p className="text-sm text-slate-500">Agent credentials generated</p>
+                        </div>
+                     </div>
+
+                     <div className="bg-slate-50 rounded-xl p-5 space-y-4 mb-6">
+                        <div>
+                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Email</p>
+                           <p className="text-sm font-bold text-slate-900 font-mono">{approvedCredentials.email}</p>
+                        </div>
+                        <div>
+                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Temporary Password</p>
+                           <p className="text-sm font-bold text-teal-600 font-mono">{approvedCredentials.temporaryPassword}</p>
+                        </div>
+                     </div>
+
+                     <p className="text-xs text-slate-500 mb-6">
+                        Please share these credentials with the agency. They will be prompted to change their password on first login.
+                     </p>
+
+                     <button
+                        onClick={() => {
+                           setShowCredentialsModal(false);
+                           setApprovedCredentials(null);
+                        }}
+                        className="w-full py-3 bg-slate-900 text-white text-xs font-bold uppercase tracking-wider rounded-xl hover:bg-slate-800 transition-colors"
+                     >
+                        Close
+                     </button>
+                  </div>
+               </div>
+            )}
+
             <div className="flex flex-1">
                {/* SIDEBAR */}
                <DashboardSidebar
@@ -840,9 +949,81 @@ const AdminDashboard = () => {
                                  ))}
                               </div>
 
+                              {/* PENDING AGENCY APPROVALS */}
+                              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                                 <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                       <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                                          <Globe2 className="w-5 h-5" />
+                                       </div>
+                                       <div>
+                                          <h3 className="font-bold text-slate-900 text-sm">Pending Agent Approvals</h3>
+                                          <p className="text-xs text-slate-500">{pendingAgencies.length} agents waiting for review</p>
+                                       </div>
+                                    </div>
+                                    <button
+                                       onClick={() => fetchPendingAgents(true)}
+                                       disabled={isRefreshingAgents}
+                                       className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors disabled:opacity-50"
+                                    >
+                                       <RefreshCw className={`w-4 h-4 ${isRefreshingAgents ? 'animate-spin' : ''}`} />
+                                       {isRefreshingAgents ? 'Refreshing...' : 'Refresh'}
+                                    </button>
+                                 </div>
+
+                                 {pendingAgencies.length === 0 ? (
+                                    <div className="p-12 flex flex-col items-center justify-center text-center">
+                                       <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center mb-4">
+                                          <CheckCircle2 className="w-8 h-8" />
+                                       </div>
+                                       <h4 className="font-bold text-slate-900 text-sm mb-1">All caught up! ✅</h4>
+                                       <p className="text-xs text-slate-500">No pending approvals at this time.</p>
+                                    </div>
+                                 ) : (
+                                    <div className="divide-y divide-slate-100">
+                                       {pendingAgencies.map((agency) => (
+                                          <div key={agency._id} className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/50 transition-colors">
+                                             <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
+                                                <div>
+                                                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Agent Name</p>
+                                                   <p className="text-sm font-bold text-slate-900">{agency.full_name}</p>
+                                                </div>
+                                                <div>
+                                                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Email</p>
+                                                   <p className="text-sm text-slate-600">{agency.email}</p>
+                                                </div>
+                                                <div>
+                                                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Agency</p>
+                                                   <p className="text-sm text-slate-600">{agency.agency_name || 'N/A'}</p>
+                                                </div>
+                                                <div>
+                                                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Phone</p>
+                                                   <p className="text-sm text-slate-600">{agency.contact_number || 'N/A'}</p>
+                                                </div>
+                                             </div>
+                                             <div className="flex items-center gap-2">
+                                                <button
+                                                   onClick={() => handleApproveAgency(agency)}
+                                                   className="px-4 py-2 bg-emerald-600 text-white text-xs font-bold uppercase tracking-wider rounded-lg hover:bg-emerald-700 transition-colors shadow-sm"
+                                                >
+                                                   Approve
+                                                </button>
+                                                <button
+                                                   onClick={() => handleRejectAgency(agency)}
+                                                   className="px-4 py-2 bg-red-500 text-white text-xs font-bold uppercase tracking-wider rounded-lg hover:bg-red-600 transition-colors shadow-sm"
+                                                >
+                                                   Reject
+                                                </button>
+                                             </div>
+                                          </div>
+                                       ))}
+                                    </div>
+                                 )}
+                              </div>
 
                            </div>
                         )}
+
 
                         {/* AUDIT QUEUE CONTENT */}
                         {activeTab === 'audit' && (

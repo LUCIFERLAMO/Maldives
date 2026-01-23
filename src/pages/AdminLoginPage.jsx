@@ -29,7 +29,7 @@ const AdminLoginPage = () => {
                 role: 'admin'
             });
             setIsLoading(false);
-            setStep('2fa');
+            navigate('/admin');
             return;
         }
 
@@ -50,7 +50,7 @@ const AdminLoginPage = () => {
                     name: data.user.full_name,
                     role: data.user.role
                 });
-                setStep('2fa');
+                navigate('/admin');
             } else {
                 alert('Invalid email or password.');
             }
