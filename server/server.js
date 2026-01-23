@@ -17,8 +17,19 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
+
+// Request logging middleware
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    console.log('Body:', req.body);
+    next();
+});
 
 // MongoDB Connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/maldives-career';
@@ -85,7 +96,7 @@ app.get('/api/health', (req, res) => {
 // AUTH ROUTES
 app.post('/api/auth/register', async (req, res) => {
     try {
-        const { email, password, role, name, agencyName, skills } = req.body;
+        const { email, password, role, name, agencyName, contact, skills } = req.body;
 
         // Check if user exists
         const existingUser = await Profile.findOne({ email });
@@ -99,11 +110,12 @@ app.post('/api/auth/register', async (req, res) => {
             password, // NOTE: In production, hash this password with bcrypt!
             role,
             agency_name: role === 'AGENT' ? agencyName : undefined,
+            contact_number: role === 'AGENT' ? contact : undefined,
             skills: role === 'CANDIDATE' ? skills : undefined
         });
 
         await newProfile.save();
-        res.status(201).json({ message: 'User registered successfully', user: newProfile });
+        res.status(201).json({ message: 'Account Created! Please Login.', user: newProfile });
     } catch (err) {
         res.status(500).json({ message: 'Registration failed', error: err.message });
     }

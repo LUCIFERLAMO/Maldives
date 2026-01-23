@@ -90,7 +90,7 @@ const RecruiterDashboard = () => {
         if (!user?.id) return;
         const fetchRequests = async () => {
             try {
-                const response = await fetch(`http://localhost:5000/api/job-requests?agent_id=${user.id}`);
+                const response = await fetch(`http://localhost:5000/api/job-requests/agent/${user.id}`);
                 const data = await response.json();
                 if (data) setJobRequests(data);
             } catch (error) {
@@ -398,19 +398,24 @@ const RecruiterDashboard = () => {
                                                     return;
                                                 }
                                                 try {
+                                                    const payload = {
+                                                        agent_id: user.id || user._id,
+                                                        agent_name: user.full_name || user.name || 'Unknown Agent',
+                                                        agent_email: user.email,
+                                                        agency_name: user.agency_name || 'Independent',
+                                                        title: e.target.title.value,
+                                                        company: e.target.company.value,
+                                                        location: e.target.location.value,
+                                                        category: e.target.category.value,
+                                                        salary_range: e.target.salary_range.value || '',
+                                                        description: e.target.description.value,
+                                                        requirements: e.target.requirements.value.split('\n').filter(r => r.trim()),
+                                                        vacancies: Number(e.target.vacancies.value) || 1
+                                                    };
                                                     const response = await fetch('http://localhost:5000/api/job-requests', {
                                                         method: 'POST',
                                                         headers: { 'Content-Type': 'application/json' },
-                                                        body: JSON.stringify({
-                                                            agent_id: user.id,
-                                                            title: e.target.title.value,
-                                                            field: e.target.field.value,
-                                                            salary: e.target.salary.value,
-                                                            headcount: e.target.headcount.value,
-                                                            description: e.target.description.value,
-                                                            requirements: e.target.requirements.value,
-                                                            status: 'PENDING'
-                                                        })
+                                                        body: JSON.stringify(payload)
                                                     });
 
                                                     if (!response.ok) throw new Error('Failed to submit request');
@@ -419,7 +424,7 @@ const RecruiterDashboard = () => {
                                                     setShowJobRequestForm(false);
 
                                                     // Refresh list
-                                                    const refreshResponse = await fetch(`http://localhost:5000/api/job-requests?agent_id=${user.id}`);
+                                                    const refreshResponse = await fetch(`http://localhost:5000/api/job-requests/agent/${user.id}`);
                                                     const data = await refreshResponse.json();
                                                     if (data) setJobRequests(data);
 
@@ -430,16 +435,35 @@ const RecruiterDashboard = () => {
                                             }}>
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     <div className="space-y-2">
-                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Job Title</label>
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Job Title *</label>
                                                         <input name="title" required type="text" placeholder="e.g. Senior Sous Chef" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Field / Industry</label>
-                                                        <select name="field" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all appearance-none">
-                                                            <option>Hospitality</option>
-                                                            <option>Healthcare</option>
-                                                            <option>Construction</option>
-                                                            <option>Corporate</option>
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Company Name *</label>
+                                                        <input name="company" required type="text" placeholder="e.g. Hilton Maldives" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Location *</label>
+                                                        <input name="location" required type="text" placeholder="e.g. Male, Maldives" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Category *</label>
+                                                        <select name="category" required className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all appearance-none">
+                                                            <option value="">Select a category</option>
+                                                            <option value="Hospitality">Hospitality</option>
+                                                            <option value="Construction">Construction</option>
+                                                            <option value="Healthcare">Healthcare</option>
+                                                            <option value="IT">IT</option>
+                                                            <option value="Education">Education</option>
+                                                            <option value="Retail">Retail</option>
+                                                            <option value="Manufacturing">Manufacturing</option>
+                                                            <option value="Tourism">Tourism</option>
+                                                            <option value="Fishing">Fishing</option>
+                                                            <option value="Agriculture">Agriculture</option>
+                                                            <option value="Other">Other</option>
                                                         </select>
                                                     </div>
                                                 </div>
@@ -447,22 +471,22 @@ const RecruiterDashboard = () => {
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     <div className="space-y-2">
                                                         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Salary Range</label>
-                                                        <input name="salary" required type="text" placeholder="e.g. $1200 - $1500 USD" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
+                                                        <input name="salary_range" type="text" placeholder="e.g. $2000 - $3000/month" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Headcount Required</label>
-                                                        <input name="headcount" required type="number" min="1" placeholder="e.g. 5" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Number of Vacancies</label>
+                                                        <input name="vacancies" type="number" min="1" defaultValue="1" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
                                                     </div>
                                                 </div>
 
                                                 <div className="space-y-2">
-                                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Job Description</label>
+                                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Job Description *</label>
                                                     <textarea name="description" required rows={4} className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all resize-none" placeholder="Describe the role responsibilities..."></textarea>
                                                 </div>
 
                                                 <div className="space-y-2">
-                                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Requirements</label>
-                                                    <textarea name="requirements" required rows={3} className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all resize-none" placeholder="List key requirements (one per line)..."></textarea>
+                                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Requirements (One per line)</label>
+                                                    <textarea name="requirements" rows={3} className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all resize-none" placeholder="Requirement 1&#10;Requirement 2&#10;Requirement 3"></textarea>
                                                 </div>
 
                                                 <div className="pt-4 border-t border-slate-100 flex gap-4">

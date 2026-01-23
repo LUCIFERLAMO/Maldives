@@ -45,11 +45,12 @@ const AgentRegistrationPage = () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    name: formData.fullName,
                     email: formData.workEmail,
                     password: formData.password,
-                    name: formData.fullName,
                     role: 'AGENT',
-                    agencyName: formData.companyName
+                    agencyName: formData.companyName,
+                    contact: formData.phone
                 })
             });
 
