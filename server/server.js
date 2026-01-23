@@ -101,7 +101,8 @@ app.post('/api/auth/register', async (req, res) => {
             role,
             contact_number: contact,
             agency_name: role === 'AGENT' ? agencyName : undefined,
-            skills: role === 'CANDIDATE' ? skills : undefined
+            skills: role === 'CANDIDATE' ? skills : undefined,
+            status: role === 'AGENT' ? 'PENDING' : 'ACTIVE' // Agents need admin approval
         });
 
         await newProfile.save();
@@ -132,6 +133,11 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(403).json({ message: `Access denied. This account is not a ${role}.` });
         }
 
+        // Block banned/rejected users from logging in
+        if (user.status === 'BANNED') {
+            return res.status(403).json({ message: 'Your account has been blocked. Please contact support.' });
+        }
+
         // Check if agent needs to change password (first login)
         const requiresPasswordChange = user.requiresPasswordChange || false;
 
@@ -143,7 +149,8 @@ app.post('/api/auth/login', async (req, res) => {
                 full_name: user.full_name,
                 email: user.email,
                 role: user.role,
-                agency_name: user.agency_name
+                agency_name: user.agency_name,
+                status: user.status // Include status for approval check
             },
             requiresPasswordChange
         });
@@ -181,7 +188,79 @@ app.put('/api/auth/change-password', async (req, res) => {
     }
 });
 
-// ADMIN AGENCY ROUTES
+// ADMIN AGENT ROUTES (From Profile model - for agents registered via agent-registration page)
+
+// GET: Fetch pending agents (from Profile model)
+app.get('/api/admin/pending-agents', async (req, res) => {
+    try {
+        const pendingAgents = await Profile.find({
+            role: 'AGENT',
+            status: 'PENDING'
+        }).sort({ createdAt: -1 });
+        res.json(pendingAgents);
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to fetch pending agents', error: err.message });
+    }
+});
+
+// PUT: Approve agent (update status to ACTIVE)
+app.put('/api/admin/agents/:id/approve', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Find agent profile
+        const agent = await Profile.findById(id);
+        if (!agent) {
+            return res.status(404).json({ message: 'Agent not found' });
+        }
+
+        // Update agent status to ACTIVE
+        agent.status = 'ACTIVE';
+        await agent.save();
+
+        res.json({
+            message: 'Agent approved successfully',
+            agent: {
+                name: agent.full_name,
+                email: agent.email,
+                agency_name: agent.agency_name,
+                status: agent.status
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to approve agent', error: err.message });
+    }
+});
+
+// PUT: Reject/Block agent
+app.put('/api/admin/agents/:id/reject', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Find agent profile
+        const agent = await Profile.findById(id);
+        if (!agent) {
+            return res.status(404).json({ message: 'Agent not found' });
+        }
+
+        // Update agent status to BANNED (blocked)
+        agent.status = 'BANNED';
+        await agent.save();
+
+        res.json({
+            message: 'Agent rejected/blocked',
+            agent: {
+                name: agent.full_name,
+                email: agent.email,
+                status: agent.status
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to reject agent', error: err.message });
+    }
+});
+
+// ADMIN AGENCY ROUTES (Legacy - from Agency model)
 
 // GET: Fetch agencies (with optional status filter)
 app.get('/api/admin/agencies', async (req, res) => {
