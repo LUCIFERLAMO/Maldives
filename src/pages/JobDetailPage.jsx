@@ -42,7 +42,7 @@ const JobDetailPage = () => {
                     ...data,
                     salaryRange: data.salary_range,
                     postedDate: data.posted_date,
-                    status: data.status === 'Current Opening' ? JobStatus.OPEN : JobStatus.CLOSED
+                    status: data.status === 'OPEN' ? JobStatus.OPEN : JobStatus.CLOSED
                 };
                 setJob(mappedJob);
             } catch (error) {

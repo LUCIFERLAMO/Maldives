@@ -23,6 +23,7 @@ const seedJobs = [
         title: "Luxury Resort Manager",
         company: "Paradise Island Resorts",
         location: "Malé Atoll, Maldives",
+        category: "Hospitality",
         salary_range: "$5000 - $8000",
         status: "OPEN",
         description: "Oversee daily operations of our 5-star luxury resort. Ensure guest satisfaction and manage staff performance.",
@@ -32,6 +33,7 @@ const seedJobs = [
         title: "Scuba Diving Instructor",
         company: "Deep Blue Dive Center",
         location: "Ari Atoll, Maldives",
+        category: "Tourism",
         salary_range: "$2500 - $3500",
         status: "OPEN",
         description: "Lead diving excursions and certify new divers. Must be PADI certified.",
@@ -41,10 +43,41 @@ const seedJobs = [
         title: "Executive Chef",
         company: "Sunset Villas",
         location: "Baa Atoll, Maldives",
+        category: "Hospitality",
         salary_range: "$4000 - $6000",
-        status: "CLOSED",
+        status: "OPEN",
         description: "Create world-class culinary experiences for our guests. Manage kitchen staff and inventory.",
         requirements: ["Culinary degree", "Experience in fine dining", "Creativity"]
+    },
+    {
+        title: "IT Systems Administrator",
+        company: "Maldives Tech Solutions",
+        location: "Malé, Maldives",
+        category: "IT",
+        salary_range: "$3000 - $4500",
+        status: "OPEN",
+        description: "Manage IT infrastructure for multiple resort properties.",
+        requirements: ["3+ years IT experience", "Network administration", "Cloud services"]
+    },
+    {
+        title: "Registered Nurse",
+        company: "Island Medical Center",
+        location: "Hulhumalé, Maldives",
+        category: "Healthcare",
+        salary_range: "$2800 - $3800",
+        status: "OPEN",
+        description: "Provide medical care at our island clinic.",
+        requirements: ["Valid nursing license", "Emergency care experience", "English fluency"]
+    },
+    {
+        title: "Construction Site Manager",
+        company: "Maldives Builders Ltd",
+        location: "Addu City, Maldives",
+        category: "Construction",
+        salary_range: "$4500 - $6000",
+        status: "OPEN",
+        description: "Oversee resort construction projects.",
+        requirements: ["Civil engineering degree", "Project management", "5+ years experience"]
     }
 ];
 

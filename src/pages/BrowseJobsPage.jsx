@@ -30,6 +30,7 @@ const BrowseJobsPage = () => {
 
     // MongoDB State
     const [jobs, setJobs] = useState([]);
+    const [categories, setCategories] = useState([]); // Dynamic Categories State
     const [loading, setLoading] = useState(true);
 
     const selectedIndustry = searchParams.get('category') || 'All';
@@ -39,22 +40,19 @@ const BrowseJobsPage = () => {
     };
 
     const filteredJobs = useMemo(() => {
-        const sanitizedSearch = searchTerm.replace(/[<>]/g, '').toLowerCase(); // Simple sanitizer
+        const sanitizedSearch = searchTerm.replace(/[<>]/g, '').toLowerCase();
+
         return jobs.filter(job => {
+            // Filter by Search Term
             const matchesSearch = job.title.toLowerCase().includes(sanitizedSearch) ||
                 job.company.toLowerCase().includes(sanitizedSearch);
-            const matchesIndustry = selectedIndustry === 'All' || job.industry === selectedIndustry;
 
+            // Filter by Category check
+            const matchesCategory = selectedIndustry === 'All' || job.industry === selectedIndustry;
 
-            const matchesStatus = sortBy === 'closed'
-                ? job.status === JobStatus.CLOSED
-                : job.status === JobStatus.OPEN;
-
-            return matchesSearch && matchesIndustry && matchesStatus;
-        }).sort((a, b) => {
-            return new Date(b.postedDate).getTime() - new Date(a.postedDate).getTime();
+            return matchesSearch && matchesCategory;
         });
-    }, [searchTerm, selectedIndustry, sortBy, jobs]);
+    }, [searchTerm, jobs, selectedIndustry]);
 
     const scrollContainerRef = useRef(null);
 
@@ -81,11 +79,38 @@ const BrowseJobsPage = () => {
         }
     }, [filteredJobs]);
 
+    // Fetch Categories from Backend
+    useEffect(() => {
+        async function fetchCategories() {
+            try {
+                const response = await fetch('http://localhost:5000/api/jobs/categories');
+                const data = await response.json();
+                setCategories(data || []);
+            } catch (error) {
+                console.error('Error fetching categories:', error);
+                // Fallback to constants if API fails? Or just empty.
+                // For now, let's strictly use API as requested.
+                setCategories(INDUSTRIES);
+            }
+        }
+        fetchCategories();
+    }, []);
+
     // Fetch Jobs from MongoDB Backend
     useEffect(() => {
         async function fetchJobs() {
+            setLoading(true);
             try {
-                const response = await fetch('http://localhost:5000/api/jobs');
+                const query = new URLSearchParams();
+
+                // Note: We fetch ALL categories now to ensure sidebar counts are correct.
+                // We only filter by Category on the client-side (filteredJobs).
+
+                // Map sortBy to status
+                const status = sortBy === 'closed' ? 'CLOSED' : 'OPEN';
+                query.append('status', status);
+
+                const response = await fetch(`http://localhost:5000/api/jobs?${query.toString()}`);
                 const data = await response.json();
 
                 // Map database fields to frontend structure
@@ -93,20 +118,30 @@ const BrowseJobsPage = () => {
                     ...job,
                     postedDate: job.posted_date,
                     salaryRange: job.salary_range,
-                    status: job.status === 'Current Opening' ? JobStatus.OPEN : JobStatus.CLOSED
+                    // Backend returns 'OPEN' or 'CLOSED', map to JobStatus enum
+                    status: job.status === 'OPEN' ? JobStatus.OPEN : JobStatus.CLOSED,
+                    industry: job.category // Map backend 'category' to frontend 'industry'
                 }));
 
                 setJobs(mappedJobs);
             } catch (error) {
                 console.error('Error fetching jobs:', error);
-                setJobs([]);
+
+                // Fallback to MOCK_JOBS
+                let fallbackJobs = MOCK_JOBS;
+
+                // 1. Filter by Status ONLY (Category is handled in useMemo now)
+                const targetStatus = sortBy === 'closed' ? JobStatus.CLOSED : JobStatus.OPEN;
+                fallbackJobs = fallbackJobs.filter(job => job.status === targetStatus);
+
+                setJobs(fallbackJobs);
             } finally {
                 setLoading(false);
             }
         }
 
         fetchJobs();
-    }, []);
+    }, [sortBy]);
 
 
     const handleShare = async (e, job) => {
@@ -265,7 +300,7 @@ const BrowseJobsPage = () => {
                                             >
                                                 All Categories
                                             </button>
-                                            {INDUSTRIES.map((ind) => (
+                                            {categories.map((ind) => (
                                                 <button
                                                     key={ind}
                                                     onClick={() => {
@@ -330,7 +365,7 @@ const BrowseJobsPage = () => {
                         <div>
                             <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-6">Categories</h3>
                             <div className="space-y-1">
-                                {['Hospitality', 'Engineering', 'Food & Bev', 'Management', 'Marine', 'IT'].map(cat => (
+                                {categories.map(cat => (
                                     <div
                                         key={cat}
                                         onClick={() => setSearchParams({ ...Object.fromEntries(searchParams), category: cat })}
