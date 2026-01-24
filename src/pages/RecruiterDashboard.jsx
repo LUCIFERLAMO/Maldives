@@ -90,7 +90,7 @@ const RecruiterDashboard = () => {
         if (!user?.id) return;
         const fetchRequests = async () => {
             try {
-                const response = await fetch(`http://localhost:5000/api/job-requests?agent_id=${user.id}`);
+                const response = await fetch(`http://localhost:5000/api/job-requests/agent/${user.id}`);
                 const data = await response.json();
                 if (data) setJobRequests(data);
             } catch (error) {
@@ -421,21 +421,21 @@ const RecruiterDashboard = () => {
                                                             <div className="p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                                                                 <div className="flex-1">
                                                                     <div className="flex items-center gap-3 mb-2">
-                                                                        <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider">{req.field}</span>
+                                                                        <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider">{req.category || 'Other'}</span>
                                                                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${req.status === 'APPROVED' ? 'bg-teal-50 text-teal-700 border-teal-100' :
                                                                             req.status === 'REJECTED' ? 'bg-red-50 text-red-700 border-red-100' :
-                                                                                req.status === 'REJECTED' ? 'bg-red-50 text-red-700 border-red-100' :
-                                                                                    req.status === 'PENDING' ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                                                                                        'bg-slate-50 text-slate-700 border-slate-100'
+                                                                                req.status === 'PENDING' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                                                                                    'bg-slate-50 text-slate-700 border-slate-100'
                                                                             }`}>
-                                                                            {req.status === 'PENDING' ? 'WAITING' : req.status}
+                                                                            {req.status === 'PENDING' ? 'PENDING' : req.status}
                                                                         </span>
                                                                     </div>
                                                                     <h3 className="text-lg font-bold text-slate-900 mb-1 group-hover:text-teal-700 transition-colors">{req.title}</h3>
+                                                                    <p className="text-sm text-slate-500 mb-2">{req.company} • {req.location}</p>
                                                                     <div className="flex items-center gap-4 text-xs font-medium text-slate-500">
-                                                                        <span>{req.headcount} Openings</span>
+                                                                        <span>{req.vacancies || 1} {(req.vacancies || 1) === 1 ? 'Opening' : 'Openings'}</span>
                                                                         <span>•</span>
-                                                                        <span>{req.salary}</span>
+                                                                        <span>{req.salary_range || 'Salary TBD'}</span>
                                                                     </div>
                                                                 </div>
                                                                 <div className="flex items-center gap-3">
@@ -460,10 +460,18 @@ const RecruiterDashboard = () => {
                                                                                 <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2 flex items-center gap-2">
                                                                                     <CheckCircle className="w-3 h-3 text-slate-400" /> Requirements
                                                                                 </h4>
-                                                                                <p className="text-sm text-slate-600 leading-relaxed font-medium whitespace-pre-line">
-                                                                                    {req.requirements || 'No specific requirements listed.'}
-                                                                                </p>
-                                                                            </div>
+                                                                                {Array.isArray(req.requirements) && req.requirements.length > 0 ? (
+                                                                                    <ul className="text-sm text-slate-600 leading-relaxed font-medium space-y-1">
+                                                                                        {req.requirements.map((r, i) => (
+                                                                                            <li key={i} className="flex items-start gap-2">
+                                                                                                <span className="text-teal-500 mt-1">•</span>
+                                                                                                <span>{r}</span>
+                                                                                            </li>
+                                                                                        ))}
+                                                                                    </ul>
+                                                                                ) : (
+                                                                                    <p className="text-sm text-slate-400 italic">No specific requirements listed.</p>
+                                                                                )}    </div>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -496,29 +504,135 @@ const RecruiterDashboard = () => {
                                                     alert("Session expired. Please log in again.");
                                                     return;
                                                 }
+
+                                                // ========== SECURITY: Input Sanitization Function ==========
+                                                const sanitizeInput = (str) => {
+                                                    if (!str) return '';
+                                                    return str
+                                                        .replace(/<[^>]*>/g, '') // Remove HTML tags
+                                                        .replace(/javascript:/gi, '') // Remove javascript: protocol
+                                                        .replace(/on\w+=/gi, '') // Remove event handlers (onclick=, onerror=, etc.)
+                                                        .replace(/[<>]/g, '') // Remove < and > characters
+                                                        .trim();
+                                                };
+
+                                                // ========== SECURITY: Validate Salary Format ==========
+                                                const validateSalaryFormat = (salary) => {
+                                                    if (!salary) return true; // Optional field
+                                                    // Only allow: numbers, $, €, £, /, -, spaces, commas, periods, and common words
+                                                    const salaryPattern = /^[\d\s$€£,.\-\/a-zA-Z]+$/;
+                                                    // Must contain at least one number if not empty
+                                                    const hasNumber = /\d/.test(salary);
+                                                    // Check for suspicious patterns
+                                                    const hasSuspiciousContent = /<|>|script|javascript|onclick|onerror/i.test(salary);
+                                                    return salaryPattern.test(salary) && hasNumber && !hasSuspiciousContent;
+                                                };
+
+                                                // ========== SECURITY: Validate Text Fields ==========
+                                                const validateTextField = (text, fieldName, minLen = 2, maxLen = 200) => {
+                                                    if (!text || text.length < minLen) {
+                                                        return `${fieldName} must be at least ${minLen} characters`;
+                                                    }
+                                                    if (text.length > maxLen) {
+                                                        return `${fieldName} must be less than ${maxLen} characters`;
+                                                    }
+                                                    // Check for script injection attempts
+                                                    if (/<script|javascript:|onclick|onerror|onload/i.test(text)) {
+                                                        return `${fieldName} contains invalid characters`;
+                                                    }
+                                                    return null;
+                                                };
+
                                                 try {
+                                                    // Get and sanitize all form values
+                                                    const title = sanitizeInput(e.target.title.value);
+                                                    const company = sanitizeInput(e.target.company.value);
+                                                    const location = sanitizeInput(e.target.location.value);
+                                                    const category = e.target.category.value;
+                                                    const salary_range = sanitizeInput(e.target.salary_range.value);
+                                                    const description = sanitizeInput(e.target.description.value);
+                                                    const vacancies = parseInt(e.target.vacancies.value) || 1;
+
+                                                    // Parse and sanitize requirements
+                                                    const requirementsArray = e.target.requirements.value
+                                                        .split('\n')
+                                                        .map(r => sanitizeInput(r))
+                                                        .filter(r => r.length > 0 && r.length <= 200);
+
+                                                    // ========== VALIDATION CHECKS ==========
+                                                    const errors = [];
+
+                                                    // Validate Job Title (2-100 chars, letters/numbers/spaces only)
+                                                    const titleError = validateTextField(title, 'Job Title', 2, 100);
+                                                    if (titleError) errors.push(titleError);
+
+                                                    // Validate Company Name (2-100 chars)
+                                                    const companyError = validateTextField(company, 'Company Name', 2, 100);
+                                                    if (companyError) errors.push(companyError);
+
+                                                    // Validate Location (2-100 chars)
+                                                    const locationError = validateTextField(location, 'Location', 2, 100);
+                                                    if (locationError) errors.push(locationError);
+
+                                                    // Validate Category (must be from allowed list)
+                                                    const allowedCategories = ['Hospitality', 'Construction', 'Healthcare', 'IT', 'Education', 'Retail', 'Manufacturing', 'Tourism', 'Fishing', 'Agriculture', 'Other'];
+                                                    if (!allowedCategories.includes(category)) {
+                                                        errors.push('Please select a valid category');
+                                                    }
+
+                                                    // Validate Salary Range format
+                                                    if (salary_range && !validateSalaryFormat(salary_range)) {
+                                                        errors.push('Salary Range must contain numbers and valid currency symbols (e.g., $2000 - $3000/month)');
+                                                    }
+                                                    if (salary_range && salary_range.length > 50) {
+                                                        errors.push('Salary Range must be less than 50 characters');
+                                                    }
+
+                                                    // Validate Description (10-2000 chars)
+                                                    const descError = validateTextField(description, 'Job Description', 10, 2000);
+                                                    if (descError) errors.push(descError);
+
+                                                    // Validate Vacancies (1-1000)
+                                                    if (vacancies < 1 || vacancies > 1000) {
+                                                        errors.push('Number of vacancies must be between 1 and 1000');
+                                                    }
+
+                                                    // If there are validation errors, show them and stop
+                                                    if (errors.length > 0) {
+                                                        alert('Please fix the following errors:\n\n• ' + errors.join('\n• '));
+                                                        return;
+                                                    }
+
+                                                    // ========== SUBMIT THE REQUEST ==========
                                                     const response = await fetch('http://localhost:5000/api/job-requests', {
                                                         method: 'POST',
                                                         headers: { 'Content-Type': 'application/json' },
                                                         body: JSON.stringify({
                                                             agent_id: user.id,
-                                                            title: e.target.title.value,
-                                                            field: e.target.field.value,
-                                                            salary: e.target.salary.value,
-                                                            headcount: e.target.headcount.value,
-                                                            description: e.target.description.value,
-                                                            requirements: e.target.requirements.value,
-                                                            status: 'PENDING'
+                                                            agent_name: sanitizeInput(user.name || user.full_name || ''),
+                                                            agent_email: user.email || '',
+                                                            agency_name: sanitizeInput(user.agency_name || ''),
+                                                            title,
+                                                            company,
+                                                            location,
+                                                            category,
+                                                            salary_range,
+                                                            description,
+                                                            requirements: requirementsArray,
+                                                            vacancies
                                                         })
                                                     });
 
-                                                    if (!response.ok) throw new Error('Failed to submit request');
+                                                    if (!response.ok) {
+                                                        const errorData = await response.json();
+                                                        throw new Error(errorData.message || 'Failed to submit request');
+                                                    }
 
-                                                    alert("Job Request Submitted to Admin! Status: Waiting approval.");
+                                                    alert("Job Request Submitted Successfully! Awaiting admin approval.");
                                                     setShowJobRequestForm(false);
 
                                                     // Refresh list
-                                                    const refreshResponse = await fetch(`http://localhost:5000/api/job-requests?agent_id=${user.id}`);
+                                                    const refreshResponse = await fetch(`http://localhost:5000/api/job-requests/agent/${user.id}`);
                                                     const data = await refreshResponse.json();
                                                     if (data) setJobRequests(data);
 
@@ -527,43 +641,129 @@ const RecruiterDashboard = () => {
                                                     alert("Error submitting request: " + err.message);
                                                 }
                                             }}>
+                                                {/* Row 1: Job Title & Company */}
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     <div className="space-y-2">
-                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Job Title</label>
-                                                        <input name="title" required type="text" placeholder="e.g. Senior Sous Chef" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Job Title * <span className="text-slate-400 font-normal">(2-100 chars)</span></label>
+                                                        <input
+                                                            name="title"
+                                                            required
+                                                            type="text"
+                                                            placeholder="e.g. Senior Sous Chef"
+                                                            minLength={2}
+                                                            maxLength={100}
+                                                            pattern="^[a-zA-Z0-9\s\-\.,&'()]+$"
+                                                            title="Only letters, numbers, spaces, and basic punctuation allowed"
+                                                            className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all"
+                                                        />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Field / Industry</label>
-                                                        <select name="field" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all appearance-none">
-                                                            <option>Hospitality</option>
-                                                            <option>Healthcare</option>
-                                                            <option>Construction</option>
-                                                            <option>Corporate</option>
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Company Name * <span className="text-slate-400 font-normal">(2-100 chars)</span></label>
+                                                        <input
+                                                            name="company"
+                                                            required
+                                                            type="text"
+                                                            placeholder="e.g. Grand Resort Maldives"
+                                                            minLength={2}
+                                                            maxLength={100}
+                                                            pattern="^[a-zA-Z0-9\s\-\.,&'()]+$"
+                                                            title="Only letters, numbers, spaces, and basic punctuation allowed"
+                                                            className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                {/* Row 2: Location & Category */}
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Location * <span className="text-slate-400 font-normal">(2-100 chars)</span></label>
+                                                        <input
+                                                            name="location"
+                                                            required
+                                                            type="text"
+                                                            placeholder="e.g. Male, Maldives"
+                                                            minLength={2}
+                                                            maxLength={100}
+                                                            pattern="^[a-zA-Z0-9\s\-\.,&'()]+$"
+                                                            title="Only letters, numbers, spaces, and basic punctuation allowed"
+                                                            className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Category *</label>
+                                                        <select name="category" required className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all appearance-none">
+                                                            <option value="">Select Category</option>
+                                                            <option value="Hospitality">Hospitality</option>
+                                                            <option value="Construction">Construction</option>
+                                                            <option value="Healthcare">Healthcare</option>
+                                                            <option value="IT">IT</option>
+                                                            <option value="Education">Education</option>
+                                                            <option value="Retail">Retail</option>
+                                                            <option value="Manufacturing">Manufacturing</option>
+                                                            <option value="Tourism">Tourism</option>
+                                                            <option value="Fishing">Fishing</option>
+                                                            <option value="Agriculture">Agriculture</option>
+                                                            <option value="Other">Other</option>
                                                         </select>
                                                     </div>
                                                 </div>
 
+                                                {/* Row 3: Salary Range & Vacancies */}
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     <div className="space-y-2">
-                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Salary Range</label>
-                                                        <input name="salary" required type="text" placeholder="e.g. $1200 - $1500 USD" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Salary Range <span className="text-slate-400 font-normal">(e.g. $2000-$3000)</span></label>
+                                                        <input
+                                                            name="salary_range"
+                                                            type="text"
+                                                            placeholder="e.g. $2000 - $3000/month"
+                                                            maxLength={50}
+                                                            pattern="^[\d\s$€£,.\-\/a-zA-Z]*$"
+                                                            title="Only numbers, currency symbols ($€£), and basic text allowed"
+                                                            className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all"
+                                                        />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Headcount Required</label>
-                                                        <input name="headcount" required type="number" min="1" placeholder="e.g. 5" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Number of Vacancies * <span className="text-slate-400 font-normal">(1-1000)</span></label>
+                                                        <input
+                                                            name="vacancies"
+                                                            required
+                                                            type="number"
+                                                            min="1"
+                                                            max="1000"
+                                                            defaultValue="1"
+                                                            placeholder="e.g. 5"
+                                                            className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all"
+                                                        />
                                                     </div>
                                                 </div>
 
+                                                {/* Description */}
                                                 <div className="space-y-2">
-                                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Job Description</label>
-                                                    <textarea name="description" required rows={4} className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all resize-none" placeholder="Describe the role responsibilities..."></textarea>
+                                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Job Description * <span className="text-slate-400 font-normal">(10-2000 chars)</span></label>
+                                                    <textarea
+                                                        name="description"
+                                                        required
+                                                        rows={4}
+                                                        minLength={10}
+                                                        maxLength={2000}
+                                                        className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all resize-none"
+                                                        placeholder="Describe the role responsibilities, duties, and expectations..."
+                                                    ></textarea>
                                                 </div>
 
+                                                {/* Requirements */}
                                                 <div className="space-y-2">
-                                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Requirements</label>
-                                                    <textarea name="requirements" required rows={3} className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all resize-none" placeholder="List key requirements (one per line)..."></textarea>
+                                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Requirements (one per line) <span className="text-slate-400 font-normal">(max 200 chars each)</span></label>
+                                                    <textarea
+                                                        name="requirements"
+                                                        rows={3}
+                                                        maxLength={1000}
+                                                        className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all resize-none"
+                                                        placeholder="e.g.&#10;3+ years experience&#10;Valid food safety certificate&#10;Fluent in English"
+                                                    ></textarea>
                                                 </div>
 
+                                                {/* Submit Buttons */}
                                                 <div className="pt-4 border-t border-slate-100 flex gap-4">
                                                     <button type="button" onClick={() => setShowJobRequestForm(false)} className="px-6 py-3 bg-white border border-slate-200 text-slate-500 rounded-xl font-bold uppercase text-xs tracking-wider hover:bg-slate-50 transition-all">Cancel</button>
                                                     <button type="submit" className="flex-1 py-3 bg-teal-600 text-white rounded-xl font-bold uppercase text-xs tracking-wider shadow-lg shadow-teal-600/20 hover:bg-teal-700 transition-all">Submit Request</button>

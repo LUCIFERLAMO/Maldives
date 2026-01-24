@@ -416,19 +416,78 @@ app.post('/api/job-requests', async (req, res) => {
             description, requirements, vacancies
         } = req.body;
 
+        // ========== SECURITY: Server-side Sanitization ==========
+        const sanitizeInput = (str) => {
+            if (!str) return '';
+            return String(str)
+                .replace(/<[^>]*>/g, '') // Remove HTML tags
+                .replace(/javascript:/gi, '') // Remove javascript: protocol
+                .replace(/on\w+=/gi, '') // Remove event handlers
+                .replace(/[<>]/g, '') // Remove < and > characters
+                .trim();
+        };
+
+        // ========== SECURITY: Input Validation ==========
+        const errors = [];
+
+        // Validate required fields exist
+        if (!agent_id) errors.push('Agent ID is required');
+        if (!title || sanitizeInput(title).length < 2) errors.push('Job Title must be at least 2 characters');
+        if (!company || sanitizeInput(company).length < 2) errors.push('Company Name must be at least 2 characters');
+        if (!location || sanitizeInput(location).length < 2) errors.push('Location must be at least 2 characters');
+        if (!description || sanitizeInput(description).length < 10) errors.push('Description must be at least 10 characters');
+
+        // Validate length limits
+        if (title && sanitizeInput(title).length > 100) errors.push('Job Title must be less than 100 characters');
+        if (company && sanitizeInput(company).length > 100) errors.push('Company Name must be less than 100 characters');
+        if (location && sanitizeInput(location).length > 100) errors.push('Location must be less than 100 characters');
+        if (description && sanitizeInput(description).length > 2000) errors.push('Description must be less than 2000 characters');
+        if (salary_range && sanitizeInput(salary_range).length > 50) errors.push('Salary Range must be less than 50 characters');
+
+        // Validate category is from allowed list
+        const allowedCategories = ['Hospitality', 'Construction', 'Healthcare', 'IT', 'Education', 'Retail', 'Manufacturing', 'Tourism', 'Fishing', 'Agriculture', 'Other'];
+        if (!category || !allowedCategories.includes(category)) {
+            errors.push('Invalid category selected');
+        }
+
+        // Validate salary_range format (if provided)
+        if (salary_range) {
+            const salaryPattern = /^[\d\s$€£,.\-\/a-zA-Z]+$/;
+            const hasSuspiciousContent = /<|>|script|javascript|onclick|onerror/i.test(salary_range);
+            if (!salaryPattern.test(salary_range) || hasSuspiciousContent) {
+                errors.push('Salary Range contains invalid characters');
+            }
+        }
+
+        // Validate vacancies
+        const vacancyNum = parseInt(vacancies) || 1;
+        if (vacancyNum < 1 || vacancyNum > 1000) {
+            errors.push('Vacancies must be between 1 and 1000');
+        }
+
+        // Return validation errors
+        if (errors.length > 0) {
+            return res.status(400).json({ message: errors.join(', '), errors });
+        }
+
+        // ========== Sanitize all inputs before saving ==========
+        const sanitizedRequirements = Array.isArray(requirements)
+            ? requirements.map(r => sanitizeInput(r)).filter(r => r.length > 0 && r.length <= 200)
+            : [];
+
         const newJobRequest = new JobRequest({
-            agent_id,
-            agent_name,
-            agent_email,
-            agency_name,
-            title,
-            company,
-            location,
+            agent_id: sanitizeInput(agent_id),
+            agent_name: sanitizeInput(agent_name),
+            agent_email: sanitizeInput(agent_email),
+            agency_name: sanitizeInput(agency_name),
+            title: sanitizeInput(title),
+            company: sanitizeInput(company),
+            location: sanitizeInput(location),
             category,
-            salary_range,
-            description,
-            requirements: requirements || [],
-            vacancies: vacancies || 1,
+            salary_range: sanitizeInput(salary_range),
+            description: sanitizeInput(description),
+            requirements: sanitizedRequirements,
+            vacancies: vacancyNum,
             status: 'PENDING'
         });
 
