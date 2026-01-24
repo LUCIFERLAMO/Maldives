@@ -21,17 +21,20 @@ const CandidateDashboard = () => {
 
     useEffect(() => {
         async function fetchDashboardData() {
-            if (!user) return;
+            if (!user || !user.email) {
+                setLoading(false);
+                return;
+            }
 
             try {
-                const response = await fetch(`http://localhost:5000/api/applications?candidate_id=${user.id}`);
+                const response = await fetch(`http://localhost:5000/api/applications/candidate/${encodeURIComponent(user.email)}`);
                 const data = await response.json();
 
                 const transformedApps = (data || []).map(app => ({
                     id: app._id || app.id,
                     jobId: app.job_id,
                     status: app.status,
-                    appliedDate: new Date(app.applied_date || app.createdAt).toLocaleDateString(),
+                    appliedDate: new Date(app.applied_at || app.applied_date || app.createdAt).toLocaleDateString(),
                     adminFeedback: app.admin_feedback,
                     title: app.job?.title || app.jobs?.title || 'Unknown Role',
                     company: app.job?.company || app.jobs?.company || 'Unknown Company'
@@ -40,6 +43,7 @@ const CandidateDashboard = () => {
                 setApplications(transformedApps);
             } catch (error) {
                 console.error('Error fetching dashboard data:', error);
+                setApplications([]);
             } finally {
                 setLoading(false);
             }
@@ -49,6 +53,7 @@ const CandidateDashboard = () => {
     }, [user]);
 
     const activeAppsCount = applications.length;
+    const pendingCount = applications.filter(a => a.status === 'PENDING' || a.status === 'Pending').length;
     const actionRequiredCount = applications.filter(a => a.status === 'Action Required').length;
 
     const foundJobAlert = {
@@ -92,18 +97,18 @@ const CandidateDashboard = () => {
                         {/* STATUS SUMMARY CARDS */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-                                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Active Apps</div>
+                                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Total Apps</div>
                                 <div className="text-3xl font-bold text-slate-900">{activeAppsCount}</div>
                                 <div className="mt-2 text-xs text-green-600 font-medium bg-green-50 inline-block px-2 py-1 rounded-md">
-                                    On Track
+                                    Active
                                 </div>
                             </div>
-                            <div className={`p-5 rounded-2xl border shadow-sm transition-shadow ${actionRequiredCount > 0 ? 'bg-amber-50 border-amber-100' : 'bg-white border-slate-100'}`}>
-                                <div className={`text-xs font-semibold uppercase tracking-wider mb-3 ${actionRequiredCount > 0 ? 'text-amber-700' : 'text-slate-400'}`}>Action Needed</div>
-                                <div className={`text-3xl font-bold ${actionRequiredCount > 0 ? 'text-amber-700' : 'text-slate-900'}`}>{actionRequiredCount}</div>
-                                {actionRequiredCount > 0 && (
-                                    <div className="mt-2 text-xs text-amber-700 font-medium bg-amber-100/50 inline-block px-2 py-1 rounded-md">
-                                        Review Now
+                            <div className={`p-5 rounded-2xl border shadow-sm transition-shadow ${pendingCount > 0 ? 'bg-yellow-50 border-yellow-100' : 'bg-white border-slate-100'}`}>
+                                <div className={`text-xs font-semibold uppercase tracking-wider mb-3 ${pendingCount > 0 ? 'text-yellow-700' : 'text-slate-400'}`}>Pending</div>
+                                <div className={`text-3xl font-bold ${pendingCount > 0 ? 'text-yellow-700' : 'text-slate-900'}`}>{pendingCount}</div>
+                                {pendingCount > 0 && (
+                                    <div className="mt-2 text-xs text-yellow-700 font-medium bg-yellow-100/50 inline-block px-2 py-1 rounded-md">
+                                        Awaiting Review
                                     </div>
                                 )}
                             </div>

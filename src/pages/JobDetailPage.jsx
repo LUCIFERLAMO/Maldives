@@ -124,10 +124,15 @@ const JobDetailPage = () => {
 
         try {
             const formDataPayload = new FormData();
-            formDataPayload.append('job_id', job.id);
+            formDataPayload.append('job_id', job._id || job.id);
             formDataPayload.append('name', formData.name);
             formDataPayload.append('email', formData.email);
             formDataPayload.append('contact', formData.contact);
+
+            // Add Agent ID if user is logged in as an Agent
+            if (user && user.role === 'AGENT') {
+                formDataPayload.append('agent_id', user._id);
+            }
 
             if (files.resume) {
                 formDataPayload.append('resume', files.resume);

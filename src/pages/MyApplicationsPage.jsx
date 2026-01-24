@@ -27,13 +27,13 @@ const MyApplicationsPage = () => {
 
     useEffect(() => {
         async function fetchApplications() {
-            if (!user) {
+            if (!user || !user.email) {
                 setLoading(false);
                 return;
             }
 
             try {
-                const response = await fetch(`http://localhost:5000/api/applications?candidate_id=${user.id}`);
+                const response = await fetch(`http://localhost:5000/api/applications/candidate/${encodeURIComponent(user.email)}`);
                 const data = await response.json();
 
                 // Transform data to match expected format
@@ -44,7 +44,7 @@ const MyApplicationsPage = () => {
                     email: app.email,
                     contactNumber: app.contact_number || app.contact,
                     status: app.status,
-                    appliedDate: new Date(app.applied_date || app.createdAt).toLocaleDateString(),
+                    appliedDate: new Date(app.applied_at || app.applied_date || app.createdAt).toLocaleDateString(),
                     adminFeedback: app.admin_feedback,
                     documentFeedbacks: app.document_feedbacks,
                     jobTitle: app.job?.title || app.jobs?.title || 'Unknown Role',
@@ -164,7 +164,13 @@ const MyApplicationsPage = () => {
                     ) : (
                         <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
                             <Briefcase className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-                            <p className="text-slate-500 font-medium text-sm">No matching applications found.</p>
+                            <p className="text-slate-500 font-medium text-sm mb-4">No applications yet.</p>
+                            <Link
+                                to="/jobs"
+                                className="inline-flex items-center gap-2 px-6 py-3 bg-teal-600 text-white rounded-xl font-bold text-sm hover:bg-teal-700 transition-colors shadow-lg"
+                            >
+                                Browse Jobs <ChevronRight className="w-4 h-4" />
+                            </Link>
                         </div>
                     )}
                 </div>

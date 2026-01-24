@@ -8,6 +8,7 @@ import {
    UserPlus,
    Filter,
    ArrowRight,
+   ArrowLeft,
    Globe2,
    X,
    MapPin,
@@ -245,6 +246,7 @@ const AdminDashboard = () => {
    const [activeTab, setActiveTab] = useState('overview');
    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
    const [selectedIndustry, setSelectedIndustry] = useState(null);
+   const [selectedJob, setSelectedJob] = useState(null); // Selected job within a category for hierarchical navigation
    const [agentSubTab, setAgentSubTab] = useState('vacancies');
    const [agentResumes, setAgentResumes] = useState(MOCK_AGENT_RESUMES);
    const [auditQueue, setAuditQueue] = useState(MOCK_AUDIT_QUEUE);
@@ -254,6 +256,26 @@ const AdminDashboard = () => {
    const [showCredentialsModal, setShowCredentialsModal] = useState(false);
    const [approvedCredentials, setApprovedCredentials] = useState(null);
    const [isRefreshingAgents, setIsRefreshingAgents] = useState(false);
+
+   // Job Requests State (Approval/Rejection)
+   const [pendingJobRequests, setPendingJobRequests] = useState([]);
+   const [pendingJobRequestsCount, setPendingJobRequestsCount] = useState(0);
+   const [isRefreshingJobRequests, setIsRefreshingJobRequests] = useState(false);
+   const [selectedJobRequest, setSelectedJobRequest] = useState(null);
+   const [showRejectModal, setShowRejectModal] = useState(false);
+   const [rejectReason, setRejectReason] = useState('');
+   const [isApprovingJob, setIsApprovingJob] = useState(false);
+   const [isRejectingJob, setIsRejectingJob] = useState(false);
+
+   // Category Filter State
+   const [selectedCategory, setSelectedCategory] = useState('All');
+   const [liveJobs, setLiveJobs] = useState([]);
+   const [isLoadingJobs, setIsLoadingJobs] = useState(false);
+   const CATEGORIES = ['Hospitality', 'Construction', 'Healthcare', 'IT', 'Education', 'Retail', 'Manufacturing', 'Tourism', 'Fishing', 'Agriculture', 'Other'];
+
+   // Job Applications State (Real applications from database)
+   const [jobApplications, setJobApplications] = useState([]);
+   const [isLoadingApplications, setIsLoadingApplications] = useState(false);
 
    // Refs for flexible dropdowns
    const blacklistSourceRef = useRef(null);
@@ -290,7 +312,158 @@ const AdminDashboard = () => {
    // Fetch on mount
    useEffect(() => {
       fetchPendingAgents();
+      fetchPendingJobRequests();
+      fetchPendingJobRequestsCount();
+      fetchLiveJobs();
    }, []);
+
+   // Fetch pending job requests (reusable for refresh)
+   const fetchPendingJobRequests = async (showLoading = false) => {
+      if (showLoading) setIsRefreshingJobRequests(true);
+      try {
+         const response = await fetch('http://localhost:5000/api/admin/job-requests?status=PENDING');
+         const data = await response.json();
+         setPendingJobRequests(data);
+      } catch (error) {
+         console.error('Error fetching pending job requests:', error);
+      } finally {
+         if (showLoading) setIsRefreshingJobRequests(false);
+      }
+   };
+
+   // Fetch pending job requests count
+   const fetchPendingJobRequestsCount = async () => {
+      try {
+         const response = await fetch('http://localhost:5000/api/admin/job-requests/pending/count');
+         const data = await response.json();
+         setPendingJobRequestsCount(data.count);
+      } catch (error) {
+         console.error('Error fetching pending count:', error);
+      }
+   };
+
+   // Fetch live jobs (with optional category filter)
+   const fetchLiveJobs = async (category = 'All') => {
+      setIsLoadingJobs(true);
+      try {
+         const url = category && category !== 'All'
+            ? `http://localhost:5000/api/jobs?category=${category}`
+            : 'http://localhost:5000/api/jobs';
+         const response = await fetch(url);
+         const data = await response.json();
+         setLiveJobs(data);
+      } catch (error) {
+         console.error('Error fetching jobs:', error);
+      } finally {
+         setIsLoadingJobs(false);
+      }
+   };
+
+   // Fetch applications for a specific job
+   const fetchJobApplications = async (jobId) => {
+      setIsLoadingApplications(true);
+      try {
+         const response = await fetch('http://localhost:5000/api/admin/applications');
+         const data = await response.json();
+         // Filter applications for this specific job
+         const jobApps = (data || []).filter(app =>
+            app.job_id === jobId || app.job_id === String(jobId)
+         ).map(app => ({
+            id: app._id || app.id,
+            jobId: app.job_id,
+            candidateName: app.candidate_name || 'Unknown',
+            email: app.email,
+            contactNumber: app.contact_number,
+            status: app.status || 'PENDING',
+            appliedDate: app.applied_at ? new Date(app.applied_at).toLocaleDateString() : 'N/A',
+            source: app.agent_id ? 'Agency' : 'Direct',
+            agentId: app.agent_id,
+            hasResume: !!app.resume,
+            hasCerts: !!app.certificates,
+            resumeFilename: app.resume?.filename,
+            certsFilename: app.certificates?.filename
+         }));
+         setJobApplications(jobApps);
+      } catch (error) {
+         console.error('Error fetching applications:', error);
+         setJobApplications([]);
+      } finally {
+         setIsLoadingApplications(false);
+      }
+   };
+
+   // Handle category change
+   const handleCategoryChange = (category) => {
+      setSelectedCategory(category);
+      fetchLiveJobs(category);
+   };
+
+   // Handle job selection (fetch applications for the job)
+   const handleJobSelect = (job) => {
+      setSelectedJob(job);
+      fetchJobApplications(job.id || job._id);
+   };
+
+   // Approve job request handler
+   const handleApproveJobRequest = async (request) => {
+      setIsApprovingJob(true);
+      try {
+         const response = await fetch(`http://localhost:5000/api/admin/job-requests/${request._id}/approve`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+               reviewed_by: 'Admin',
+               review_notes: 'Approved'
+            })
+         });
+         const data = await response.json();
+         if (response.ok) {
+            alert(`✅ Job request approved! "${request.title}" is now live.`);
+            setPendingJobRequests(prev => prev.filter(r => r._id !== request._id));
+            setPendingJobRequestsCount(prev => prev - 1);
+            fetchLiveJobs(selectedCategory);
+         } else {
+            alert('Failed to approve: ' + data.message);
+         }
+      } catch (error) {
+         console.error('Error approving job request:', error);
+         alert('Error approving job request');
+      } finally {
+         setIsApprovingJob(false);
+      }
+   };
+
+   // Reject job request handler
+   const handleRejectJobRequest = async () => {
+      if (!selectedJobRequest) return;
+      setIsRejectingJob(true);
+      try {
+         const response = await fetch(`http://localhost:5000/api/admin/job-requests/${selectedJobRequest._id}/reject`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+               reviewed_by: 'Admin',
+               review_notes: rejectReason || 'Rejected by admin'
+            })
+         });
+         const data = await response.json();
+         if (response.ok) {
+            alert(`❌ Job request "${selectedJobRequest.title}" has been rejected.`);
+            setPendingJobRequests(prev => prev.filter(r => r._id !== selectedJobRequest._id));
+            setPendingJobRequestsCount(prev => prev - 1);
+            setShowRejectModal(false);
+            setSelectedJobRequest(null);
+            setRejectReason('');
+         } else {
+            alert('Failed to reject: ' + data.message);
+         }
+      } catch (error) {
+         console.error('Error rejecting job request:', error);
+         alert('Error rejecting job request');
+      } finally {
+         setIsRejectingJob(false);
+      }
+   };
    const [selectedResume, setSelectedResume] = useState(null);
    const [isBlacklistReview, setIsBlacklistReview] = useState(false);
    const [allApplications, setAllApplications] = useState(MOCK_APPLICATIONS);
@@ -715,8 +888,8 @@ const AdminDashboard = () => {
    const toggleAppFilter = (val) => setAppFilters(prev => ({ ...prev, status: prev.status.includes(val) ? prev.status.filter(s => s !== val) : [...prev.status, val] }));
 
 
-   // Vacancy Logic
-   const getJobsByIndustry = (industry) => jobs.filter(j => j.industry === industry);
+   // Vacancy Logic - Use liveJobs from API and filter by category field
+   const getJobsByIndustry = (industry) => liveJobs.filter(j => j.category === industry);
 
    const getCandidatesForIndustry = (industry) => {
       const jobs = getJobsByIndustry(industry);
@@ -818,7 +991,8 @@ const AdminDashboard = () => {
       switch (activeTab) {
          case 'overview': return 'Dashboard Overview';
          case 'audit': return 'Audit Queue';
-         case 'vacancies': return selectedIndustry ? selectedIndustry : 'Vacancy Management';
+         case 'job_requests': return 'Job Requests';
+         case 'vacancies': return selectedJob ? selectedJob.title : (selectedIndustry ? selectedIndustry : 'Vacancy Management');
          case 'agents': return 'Agent Ecosystem';
          case 'create_profile': return 'Account Provisioning';
          case 'blacklisted': return 'Blacklisted Candidates';
@@ -913,8 +1087,17 @@ const AdminDashboard = () => {
                            )}
 
                            {activeTab === 'vacancies' && selectedIndustry && (
-                              <button onClick={() => setSelectedIndustry(null)} className="text-sm font-bold text-slate-500 hover:text-slate-900 mb-6">
-                                 Back to Categories
+                              <button
+                                 onClick={() => {
+                                    if (selectedJob) {
+                                       setSelectedJob(null); // Go back to jobs list
+                                    } else {
+                                       setSelectedIndustry(null); // Go back to categories
+                                    }
+                                 }}
+                                 className="text-sm font-bold text-slate-500 hover:text-slate-900 mb-6"
+                              >
+                                 {selectedJob ? '← Back to Jobs' : '← Back to Categories'}
                               </button>
                            )}
                         </div>
@@ -923,11 +1106,12 @@ const AdminDashboard = () => {
                         {activeTab === 'overview' && (
                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
                               {/* Custom Stats Grid - GOVERNANCE HUB */}
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                                  {[
                                     { label: "AUDIT QUEUE", value: "2", icon: null, action: () => setActiveTab('audit') },
-                                    { label: "VACANCIES", value: "0", icon: null, action: () => setActiveTab('vacancies') },
-                                    { label: "AGENT FLOW", value: "3", icon: null, action: () => setActiveTab('agents') },
+                                    { label: "JOB REQUESTS", value: pendingJobRequestsCount.toString(), icon: null, textAmber: true, action: () => setActiveTab('job_requests') },
+                                    { label: "VACANCIES", value: liveJobs.length.toString(), icon: null, action: () => setActiveTab('vacancies') },
+                                    { label: "AGENT FLOW", value: pendingAgencies.length.toString(), icon: null, action: () => setActiveTab('agents') },
                                     { label: "BLACKLISTED", value: "1", icon: null, textRed: true, action: () => setActiveTab('blacklisted') },
                                  ].map((stat, idx) => (
                                     <div
@@ -936,10 +1120,10 @@ const AdminDashboard = () => {
                                        className="bg-white rounded-3xl p-8 shadow-[0_2px_20px_rgba(0,0,0,0.02)] border border-slate-100 flex flex-col justify-center h-48 relative overflow-hidden group hover:shadow-lg hover:border-emerald-500 cursor-pointer transition-all"
                                     >
                                        <div className="absolute right-0 top-0 h-full w-24 bg-slate-50/50 skew-x-12 translate-x-12"></div>
-                                       <p className={`text-[10px] font-black uppercase tracking-[0.2em] mb-4 ${stat.textRed ? 'text-red-500' : 'text-slate-400'}`}>
+                                       <p className={`text-[10px] font-black uppercase tracking-[0.2em] mb-4 ${stat.textRed ? 'text-red-500' : stat.textAmber ? 'text-amber-500' : 'text-slate-400'}`}>
                                           {stat.label}
                                        </p>
-                                       <h2 className={`text-6xl font-black tracking-tight z-10 ${stat.textRed ? 'text-red-500' : 'text-slate-900'} ${idx === 1 ? 'text-teal-600' : ''} ${idx === 2 ? 'text-amber-500' : ''}`}>
+                                       <h2 className={`text-6xl font-black tracking-tight z-10 ${stat.textRed ? 'text-red-500' : stat.textAmber ? 'text-amber-500' : 'text-slate-900'}`}>
                                           {stat.value}
                                        </h2>
                                        <div className="absolute right-6 bottom-6 opacity-5">
@@ -1024,6 +1208,253 @@ const AdminDashboard = () => {
                            </div>
                         )}
 
+
+                        {/* JOB REQUESTS CONTENT */}
+                        {activeTab === 'job_requests' && (
+                           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                              {/* Stats Cards */}
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                 <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Pending Requests</p>
+                                    <h2 className="text-4xl font-black text-amber-500">{pendingJobRequestsCount}</h2>
+                                 </div>
+                                 <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Live Jobs</p>
+                                    <h2 className="text-4xl font-black text-emerald-600">{liveJobs.length}</h2>
+                                 </div>
+                                 <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                                    <div className="flex items-center gap-2 mb-2">
+                                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Filter by Category</p>
+                                    </div>
+                                    <select
+                                       value={selectedCategory}
+                                       onChange={(e) => handleCategoryChange(e.target.value)}
+                                       className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                                    >
+                                       <option value="All">All Categories</option>
+                                       {CATEGORIES.map(cat => (
+                                          <option key={cat} value={cat}>{cat}</option>
+                                       ))}
+                                    </select>
+                                 </div>
+                              </div>
+
+                              {/* Pending Job Requests Section */}
+                              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                                 <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                       <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                                          <AlertCircle className="w-5 h-5" />
+                                       </div>
+                                       <div>
+                                          <h3 className="font-bold text-slate-900 text-sm">Pending Job Requests</h3>
+                                          <p className="text-xs text-slate-500">{pendingJobRequests.length} requests awaiting review</p>
+                                       </div>
+                                    </div>
+                                    <button
+                                       onClick={() => fetchPendingJobRequests(true)}
+                                       disabled={isRefreshingJobRequests}
+                                       className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors disabled:opacity-50"
+                                    >
+                                       <RefreshCw className={`w-4 h-4 ${isRefreshingJobRequests ? 'animate-spin' : ''}`} />
+                                       {isRefreshingJobRequests ? 'Refreshing...' : 'Refresh'}
+                                    </button>
+                                 </div>
+
+                                 {pendingJobRequests.length === 0 ? (
+                                    <div className="p-12 flex flex-col items-center justify-center text-center">
+                                       <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center mb-4">
+                                          <CheckCircle2 className="w-8 h-8" />
+                                       </div>
+                                       <h4 className="font-bold text-slate-900 text-sm mb-1">All caught up! ✅</h4>
+                                       <p className="text-xs text-slate-500">No pending job requests at this time.</p>
+                                    </div>
+                                 ) : (
+                                    <div className="divide-y divide-slate-100">
+                                       {pendingJobRequests.map((request) => (
+                                          <div key={request._id} className="p-6 hover:bg-slate-50/50 transition-colors">
+                                             <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                                                {/* Request Details */}
+                                                <div className="flex-1 space-y-4">
+                                                   <div className="flex items-center gap-3 flex-wrap">
+                                                      <h4 className="text-lg font-bold text-slate-900">{request.title}</h4>
+                                                      <span className="px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full bg-amber-50 text-amber-600 border border-amber-100">
+                                                         PENDING
+                                                      </span>
+                                                      <span className="px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full bg-teal-50 text-teal-600 border border-teal-100">
+                                                         {request.category}
+                                                      </span>
+                                                   </div>
+
+                                                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                                      <div>
+                                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Company</p>
+                                                         <p className="text-sm font-bold text-slate-900">{request.company}</p>
+                                                      </div>
+                                                      <div>
+                                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Location</p>
+                                                         <p className="text-sm text-slate-600 flex items-center gap-1">
+                                                            <MapPin className="w-3 h-3" />
+                                                            {request.location}
+                                                         </p>
+                                                      </div>
+                                                      <div>
+                                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Salary Range</p>
+                                                         <p className="text-sm text-slate-600">{request.salary_range || 'Not specified'}</p>
+                                                      </div>
+                                                      <div>
+                                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Vacancies</p>
+                                                         <p className="text-sm text-slate-600">{request.vacancies}</p>
+                                                      </div>
+                                                   </div>
+
+                                                   <div>
+                                                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Description</p>
+                                                      <p className="text-sm text-slate-600 line-clamp-2">{request.description}</p>
+                                                   </div>
+
+                                                   {request.requirements && request.requirements.length > 0 && (
+                                                      <div>
+                                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Requirements</p>
+                                                         <div className="flex flex-wrap gap-2">
+                                                            {request.requirements.slice(0, 5).map((req, idx) => (
+                                                               <span key={idx} className="px-2 py-1 text-xs font-medium text-slate-600 bg-slate-100 rounded-lg">
+                                                                  {req}
+                                                               </span>
+                                                            ))}
+                                                            {request.requirements.length > 5 && (
+                                                               <span className="px-2 py-1 text-xs font-medium text-slate-400">
+                                                                  +{request.requirements.length - 5} more
+                                                               </span>
+                                                            )}
+                                                         </div>
+                                                      </div>
+                                                   )}
+
+                                                   <div className="flex items-center gap-4 pt-2 border-t border-slate-100">
+                                                      <div>
+                                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Agent</p>
+                                                         <p className="text-sm text-slate-700">{request.agent_name}</p>
+                                                      </div>
+                                                      <div>
+                                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Agency</p>
+                                                         <p className="text-sm text-slate-700">{request.agency_name || 'N/A'}</p>
+                                                      </div>
+                                                      <div>
+                                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Submitted</p>
+                                                         <p className="text-sm text-slate-700">{new Date(request.createdAt).toLocaleDateString()}</p>
+                                                      </div>
+                                                   </div>
+                                                </div>
+
+                                                {/* Actions */}
+                                                <div className="flex lg:flex-col items-center gap-2">
+                                                   <button
+                                                      onClick={() => handleApproveJobRequest(request)}
+                                                      disabled={isApprovingJob}
+                                                      className="px-5 py-2.5 bg-emerald-600 text-white text-xs font-bold uppercase tracking-wider rounded-lg hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
+                                                   >
+                                                      {isApprovingJob ? (
+                                                         <Loader2 className="w-4 h-4 animate-spin" />
+                                                      ) : (
+                                                         <CheckCircle2 className="w-4 h-4" />
+                                                      )}
+                                                      Approve
+                                                   </button>
+                                                   <button
+                                                      onClick={() => {
+                                                         setSelectedJobRequest(request);
+                                                         setShowRejectModal(true);
+                                                      }}
+                                                      className="px-5 py-2.5 bg-red-500 text-white text-xs font-bold uppercase tracking-wider rounded-lg hover:bg-red-600 transition-colors shadow-sm flex items-center gap-2"
+                                                   >
+                                                      <X className="w-4 h-4" />
+                                                      Reject
+                                                   </button>
+                                                </div>
+                                             </div>
+                                          </div>
+                                       ))}
+                                    </div>
+                                 )}
+                              </div>
+
+                              {/* Live Jobs Section */}
+                              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                                 <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                       <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                                          <Briefcase className="w-5 h-5" />
+                                       </div>
+                                       <div>
+                                          <h3 className="font-bold text-slate-900 text-sm">Live Jobs</h3>
+                                          <p className="text-xs text-slate-500">
+                                             {selectedCategory === 'All' ? 'All categories' : selectedCategory} • {liveJobs.length} jobs
+                                          </p>
+                                       </div>
+                                    </div>
+                                    <button
+                                       onClick={() => fetchLiveJobs(selectedCategory)}
+                                       disabled={isLoadingJobs}
+                                       className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors disabled:opacity-50"
+                                    >
+                                       <RefreshCw className={`w-4 h-4 ${isLoadingJobs ? 'animate-spin' : ''}`} />
+                                       {isLoadingJobs ? 'Loading...' : 'Refresh'}
+                                    </button>
+                                 </div>
+
+                                 {isLoadingJobs ? (
+                                    <div className="p-12 flex flex-col items-center justify-center text-center">
+                                       <Loader2 className="w-8 h-8 text-teal-600 animate-spin mb-4" />
+                                       <p className="text-sm text-slate-500">Loading jobs...</p>
+                                    </div>
+                                 ) : liveJobs.length === 0 ? (
+                                    <div className="p-12 flex flex-col items-center justify-center text-center">
+                                       <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mb-4">
+                                          <Briefcase className="w-8 h-8" />
+                                       </div>
+                                       <h4 className="font-bold text-slate-900 text-sm mb-1">No jobs found</h4>
+                                       <p className="text-xs text-slate-500">
+                                          {selectedCategory === 'All' ? 'No live jobs at this time.' : `No jobs in ${selectedCategory} category.`}
+                                       </p>
+                                    </div>
+                                 ) : (
+                                    <div className="divide-y divide-slate-100">
+                                       {liveJobs.slice(0, 10).map((job) => (
+                                          <div key={job._id || job.id} className="p-5 hover:bg-slate-50/50 transition-colors">
+                                             <div className="flex items-center justify-between gap-4">
+                                                <div className="flex-1">
+                                                   <div className="flex items-center gap-2 mb-2">
+                                                      <h4 className="font-bold text-slate-900">{job.title}</h4>
+                                                      <span className="px-2 py-0.5 text-xs font-bold uppercase tracking-wider rounded-full bg-teal-50 text-teal-600 border border-teal-100">
+                                                         {job.category || 'Other'}
+                                                      </span>
+                                                   </div>
+                                                   <div className="flex items-center gap-4 text-sm text-slate-500">
+                                                      <span className="font-medium">{job.company}</span>
+                                                      <span className="flex items-center gap-1">
+                                                         <MapPin className="w-3 h-3" />
+                                                         {job.location}
+                                                      </span>
+                                                      <span>{job.salary_range || 'Salary TBD'}</span>
+                                                   </div>
+                                                </div>
+                                                <span className="px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">
+                                                   {job.status || 'OPEN'}
+                                                </span>
+                                             </div>
+                                          </div>
+                                       ))}
+                                       {liveJobs.length > 10 && (
+                                          <div className="p-4 text-center">
+                                             <p className="text-xs text-slate-500">Showing 10 of {liveJobs.length} jobs</p>
+                                          </div>
+                                       )}
+                                    </div>
+                                 )}
+                              </div>
+                           </div>
+                        )}
 
                         {/* AUDIT QUEUE CONTENT */}
                         {activeTab === 'audit' && (
@@ -1235,7 +1666,11 @@ const AdminDashboard = () => {
                                           return (
                                              <button
                                                 key={industry}
-                                                onClick={() => setSelectedIndustry(industry)}
+                                                onClick={() => {
+                                                   setSelectedIndustry(industry);
+                                                   setSelectedJob(null);
+                                                   setJobApplications([]);
+                                                }}
                                                 className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-teal-200 transition-all text-left group"
                                              >
                                                 <div className="w-12 h-12 bg-slate-50 rounded-lg flex items-center justify-center mb-6 group-hover:bg-teal-50 transition-colors">
@@ -1251,21 +1686,97 @@ const AdminDashboard = () => {
                                        })}
                                     </div>
                                  </>
-                              ) : (
-                                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm relative">
-                                    <div className="p-6 border-b border-slate-100 flex justify-between items-center relative rounded-t-xl">
-                                       <h3 className="font-bold text-slate-900 text-sm uppercase tracking-widest">Candidate Moderation Stream</h3>
-                                       <div className="flex items-center gap-3">
+                              ) : selectedIndustry && !selectedJob ? (
+                                 // JOBS LIST VIEW - Show jobs in selected category
+                                 <>
+                                    <div className="flex justify-between items-center mb-6">
+                                       <div className="flex items-center gap-4">
+                                          <button
+                                             onClick={() => setSelectedIndustry(null)}
+                                             className="w-10 h-10 rounded-lg flex items-center justify-center bg-white border border-slate-200 text-slate-400 hover:text-slate-600 hover:border-teal-500 hover:shadow-md transition-all"
+                                          >
+                                             <ArrowLeft className="w-5 h-5" />
+                                          </button>
+                                          <div>
+                                             <h2 className="text-2xl font-bold text-slate-900">{selectedIndustry} Jobs</h2>
+                                             <p className="text-sm text-slate-500 mt-1">{getJobsByIndustry(selectedIndustry).length} Active Jobs</p>
+                                          </div>
+                                       </div>
+                                       <button
+                                          onClick={() => {
+                                             setNewVacancy(prev => ({ ...prev, industry: selectedIndustry }));
+                                             setIsAddVacancyOpen(true);
+                                          }}
+                                          className="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-bold shadow-lg shadow-teal-600/20 hover:bg-teal-700 transition-all flex items-center gap-2"
+                                       >
+                                          <Plus className="w-4 h-4" /> Add Job
+                                       </button>
+                                    </div>
+
+                                    {getJobsByIndustry(selectedIndustry).length > 0 ? (
+                                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                          {getJobsByIndustry(selectedIndustry).map((job) => (
+                                             <button
+                                                key={job._id || job.id}
+                                                onClick={() => handleJobSelect(job)}
+                                                className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-teal-200 transition-all text-left group"
+                                             >
+                                                <div className="flex items-start justify-between mb-4">
+                                                   <div className="w-10 h-10 bg-teal-50 rounded-lg flex items-center justify-center group-hover:bg-teal-100 transition-colors">
+                                                      <Briefcase className="w-5 h-5 text-teal-600" />
+                                                   </div>
+                                                   <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${job.status === 'OPEN' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+                                                      {job.status || 'OPEN'}
+                                                   </span>
+                                                </div>
+                                                <h3 className="text-lg font-bold text-slate-900 mb-2">{job.title}</h3>
+                                                <p className="text-sm text-slate-500 mb-1">{job.company}</p>
+                                                <p className="text-xs text-slate-400 mb-4">{job.location}</p>
+                                                {job.salary_range && (
+                                                   <p className="text-sm font-bold text-teal-600 mb-4">{job.salary_range}</p>
+                                                )}
+                                                <div className="flex items-center text-xs font-bold text-teal-600 uppercase tracking-wider opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all">
+                                                   View Candidates <ArrowRight className="w-3 h-3 ml-2" />
+                                                </div>
+                                             </button>
+                                          ))}
+                                       </div>
+                                    ) : (
+                                       <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+                                          <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mx-auto mb-4">
+                                             <Briefcase className="w-8 h-8 text-slate-300" />
+                                          </div>
+                                          <h3 className="text-lg font-bold text-slate-900 mb-2">No Jobs Yet</h3>
+                                          <p className="text-sm text-slate-500 mb-4">No jobs have been created in the {selectedIndustry} category.</p>
                                           <button
                                              onClick={() => {
                                                 setNewVacancy(prev => ({ ...prev, industry: selectedIndustry }));
                                                 setIsAddVacancyOpen(true);
                                              }}
-                                             className="px-4 py-2 rounded-lg bg-teal-600 text-white text-xs font-bold uppercase tracking-wider shadow-lg shadow-teal-600/20 hover:bg-teal-700 transition-all flex items-center gap-2"
+                                             className="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-bold shadow-lg shadow-teal-600/20 hover:bg-teal-700 transition-all inline-flex items-center gap-2"
                                           >
-                                             <Plus className="w-4 h-4" /> Add Job Vacancy
+                                             <Plus className="w-4 h-4" /> Add First Job
                                           </button>
-
+                                       </div>
+                                    )}
+                                 </>
+                              ) : (
+                                 // CANDIDATES VIEW - Show candidates for selected job
+                                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm relative">
+                                    <div className="p-6 border-b border-slate-100 flex justify-between items-center relative rounded-t-xl">
+                                       <div className="flex items-center gap-4">
+                                          <button
+                                             onClick={() => { setSelectedJob(null); setJobApplications([]); }}
+                                             className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all border border-transparent hover:border-slate-200"
+                                          >
+                                             <ArrowLeft className="w-5 h-5" />
+                                          </button>
+                                          <div>
+                                             <h3 className="font-bold text-slate-900 text-sm uppercase tracking-widest">Candidates for {selectedJob?.title}</h3>
+                                             <p className="text-xs text-slate-500 mt-1">{selectedJob?.company} • {selectedJob?.location}</p>
+                                          </div>
+                                       </div>
+                                       <div className="flex items-center gap-3">
                                           <div className="relative">
                                              <input
                                                 type="text"
@@ -1337,27 +1848,6 @@ const AdminDashboard = () => {
                                                             ))}
                                                          </div>
                                                       </div>
-
-                                                      {/* 3. Duration */}
-                                                      <div className="space-y-2">
-                                                         <h4 className="text-[9px] font-black uppercase text-slate-400 tracking-widest">3. Duration</h4>
-                                                         <div className="space-y-1.5">
-                                                            {['Since 1 hr', 'Since 1 week', 'Since 1 month', 'Since 3 months', 'All'].map(duration => (
-                                                               <label key={duration} className="flex items-center gap-2 cursor-pointer group">
-                                                                  <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${candidateFilters.duration === duration ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
-                                                                     {candidateFilters.duration === duration && <div className="w-1.5 h-1.5 rounded-full bg-teal-600" />}
-                                                                  </div>
-                                                                  <input
-                                                                     type="radio"
-                                                                     className="hidden"
-                                                                     checked={candidateFilters.duration === duration}
-                                                                     onChange={() => setCandidateFilters({ ...candidateFilters, duration })}
-                                                                  />
-                                                                  <span className="text-xs font-bold text-slate-700">{duration}</span>
-                                                               </label>
-                                                            ))}
-                                                         </div>
-                                                      </div>
                                                    </div>
 
                                                    <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
@@ -1384,47 +1874,52 @@ const AdminDashboard = () => {
                                           <thead>
                                              <tr className="bg-slate-50 border-b border-slate-100">
                                                 <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Applicant Profile</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Job Role</th>
                                                 <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Source</th>
                                                 <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Application State</th>
                                                 <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Review</th>
                                              </tr>
                                           </thead>
                                           <tbody className="divide-y divide-slate-50">
-                                             {getFilteredCandidates(selectedIndustry).length > 0 ? (
-                                                getFilteredCandidates(selectedIndustry).map((app) => (
+                                             {isLoadingApplications ? (
+                                                <tr>
+                                                   <td colSpan="4" className="px-6 py-12 text-center">
+                                                      <div className="flex flex-col items-center justify-center gap-2">
+                                                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
+                                                         <p className="text-sm text-slate-500">Loading applications...</p>
+                                                      </div>
+                                                   </td>
+                                                </tr>
+                                             ) : jobApplications.length > 0 ? (
+                                                jobApplications.map((app) => (
                                                    <tr key={app.id} className="hover:bg-slate-50/50 transition-colors">
                                                       <td className="px-6 py-4">
                                                          <div>
                                                             <p className="text-sm font-bold text-slate-900">{app.candidateName}</p>
                                                             <p className="text-xs text-slate-400 font-medium">{app.email}</p>
+                                                            {app.contactNumber && (
+                                                               <p className="text-xs text-slate-400 font-medium">{app.contactNumber}</p>
+                                                            )}
                                                          </div>
-                                                      </td>
-                                                      <td className="px-6 py-4">
-                                                         <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full uppercase tracking-wider">
-                                                            {app.jobTitle}
-                                                         </span>
                                                       </td>
                                                       <td className="px-6 py-4">
                                                          <div className="flex flex-col">
                                                             <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 flex items-center gap-1.5">
                                                                <span className={`w-1.5 h-1.5 rounded-full ${app.source === 'Direct' ? 'bg-blue-400' : 'bg-amber-400'}`}></span>
-                                                               {app.source === 'Direct' ? 'Direct' : 'Broker'}
+                                                               {app.source === 'Direct' ? 'Direct' : 'Agent'}
                                                             </span>
                                                             <span className="text-[10px] font-medium text-slate-400 pl-3">
-                                                               {app.source === 'Direct' ? 'Portal Application' : 'Global Talent Ltd'}
+                                                               {app.source === 'Direct' ? 'Portal Application' : 'Agent Submitted'}
                                                             </span>
                                                          </div>
                                                       </td>
                                                       <td className="px-6 py-4">
                                                          <span className={`
                                                       px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest
+                                                      ${app.status === 'PENDING' ? 'bg-amber-50 text-amber-600' : ''}
                                                       ${app.status === 'Applied' ? 'bg-blue-50 text-blue-600' : ''}
                                                       ${app.status === 'Processing' ? 'bg-purple-50 text-purple-600' : ''}
-                                                      ${app.status === 'On Hold' ? 'bg-amber-50 text-amber-600' : ''}
-                                                      ${app.status === 'Selected' ? 'bg-teal-50 text-teal-600' : ''}
-                                                      ${app.status === 'Rejected' ? 'bg-red-50 text-red-600' : ''}
-                                                      ${app.status === 'Blacklisted' ? 'bg-red-50 text-red-600' : ''}
+                                                      ${app.status === 'APPROVED' || app.status === 'Selected' ? 'bg-teal-50 text-teal-600' : ''}
+                                                      ${app.status === 'REJECTED' || app.status === 'Rejected' ? 'bg-red-50 text-red-600' : ''}
                                                    `}>
                                                             {app.status}
                                                          </span>
@@ -1434,18 +1929,14 @@ const AdminDashboard = () => {
                                                             onClick={() => setSelectedResume({
                                                                ...app,
                                                                name: app.candidateName,
-                                                               role: app.jobTitle,
-                                                               // Mock data for resume view compatibility since MOCK_APPLICATIONS structure differs slightly
+                                                               role: selectedJob?.title || 'Unknown Role',
                                                                whatsapp: app.contactNumber,
-                                                               nationality: 'Maldivian', // Mock
-                                                               agency: app.source === 'Direct' ? 'Direct Application' : 'Agency',
+                                                               nationality: 'Applicant',
+                                                               agency: app.source === 'Direct' ? 'Direct Application' : 'Agent Submission',
                                                                statusColor: '',
                                                                documents: {
-                                                                  resume: 'Resume.pdf',
-                                                                  passport: 'Passport.pdf',
-                                                                  education: 'Certificates.pdf',
-                                                                  pcc: 'PCC.pdf',
-                                                                  goodStanding: 'GoodStanding.pdf'
+                                                                  resume: app.resumeFilename || 'Resume.pdf',
+                                                                  certificates: app.certsFilename || null
                                                                }
                                                             })}
                                                             className="w-8 h-8 rounded-lg bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-900 flex items-center justify-center transition-all ml-auto"
@@ -1457,12 +1948,13 @@ const AdminDashboard = () => {
                                                 ))
                                              ) : (
                                                 <tr>
-                                                   <td colSpan="5" className="px-6 py-12 text-center">
+                                                   <td colSpan="4" className="px-6 py-12 text-center">
                                                       <div className="flex flex-col items-center justify-center gap-2">
                                                          <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400">
-                                                            <Search className="w-6 h-6 opacity-40" />
+                                                            <Users className="w-6 h-6 opacity-40" />
                                                          </div>
-                                                         <p className="text-slate-500 font-bold">No record exist !!</p>
+                                                         <p className="text-slate-500 font-bold">No candidates yet</p>
+                                                         <p className="text-xs text-slate-400">No one has applied for this position yet.</p>
                                                       </div>
                                                    </td>
                                                 </tr>
@@ -2768,6 +3260,59 @@ const AdminDashboard = () => {
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
       `}</style>
+
+            {/* REJECT JOB REQUEST MODAL */}
+            {showRejectModal && selectedJobRequest && (
+               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200] animate-in fade-in duration-200">
+                  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 animate-in zoom-in-95 duration-300">
+                     <div className="flex items-center gap-3 mb-6">
+                        <div className="w-12 h-12 rounded-xl bg-red-100 text-red-600 flex items-center justify-center">
+                           <X className="w-6 h-6" />
+                        </div>
+                        <div>
+                           <h3 className="text-lg font-bold text-slate-900">Reject Job Request</h3>
+                           <p className="text-sm text-slate-500">{selectedJobRequest.title}</p>
+                        </div>
+                     </div>
+
+                     <div className="mb-6">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">
+                           Rejection Reason
+                        </label>
+                        <textarea
+                           value={rejectReason}
+                           onChange={(e) => setRejectReason(e.target.value)}
+                           placeholder="Please provide a reason for rejection..."
+                           className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 resize-none"
+                           rows={4}
+                        />
+                     </div>
+
+                     <div className="flex gap-3">
+                        <button
+                           onClick={() => {
+                              setShowRejectModal(false);
+                              setSelectedJobRequest(null);
+                              setRejectReason('');
+                           }}
+                           className="flex-1 py-3 bg-slate-100 text-slate-600 text-xs font-bold uppercase tracking-wider rounded-xl hover:bg-slate-200 transition-colors"
+                        >
+                           Cancel
+                        </button>
+                        <button
+                           onClick={handleRejectJobRequest}
+                           disabled={isRejectingJob}
+                           className="flex-1 py-3 bg-red-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                           {isRejectingJob ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                           ) : null}
+                           Reject
+                        </button>
+                     </div>
+                  </div>
+               </div>
+            )}
          </div>
       </>
    );

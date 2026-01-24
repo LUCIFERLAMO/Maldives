@@ -636,6 +636,7 @@ app.post('/api/applications', upload.fields([{ name: 'resume', maxCount: 1 }, { 
             candidate_name: req.body.name,
             email: req.body.email,
             contact_number: req.body.contact,
+            agent_id: req.body.agent_id || null, // Capture agent ID if provided
             resume: {
                 filename: resumeFile.originalname,
                 contentType: resumeFile.mimetype,
@@ -669,6 +670,105 @@ app.post('/api/applications', upload.fields([{ name: 'resume', maxCount: 1 }, { 
     }
 });
 
+// GET: Applications by Candidate Email (For Candidate Dashboard "My Applications")
+app.get('/api/applications/candidate/:email', async (req, res) => {
+    try {
+        const applications = await Application.find({ email: req.params.email })
+            .select('-resume.data -certificates.data') // Exclude heavy file data
+            .sort({ applied_at: -1 });
+
+        // Enhance with Job details - fetch job info for each application
+        const enhancedApplications = await Promise.all(
+            applications.map(async (app) => {
+                const appObj = app.toObject();
+
+                // Try to find the job by job_id
+                let job = null;
+                if (app.job_id) {
+                    // Try finding by custom 'id' field first
+                    job = await Job.findOne({ id: app.job_id }).select('title company location category');
+
+                    // If not found and job_id looks like a MongoDB ObjectId, try findById
+                    if (!job && mongoose.Types.ObjectId.isValid(app.job_id)) {
+                        job = await Job.findById(app.job_id).select('title company location category');
+                    }
+                }
+
+                // Attach job details to the application
+                appObj.job = job ? {
+                    title: job.title,
+                    company: job.company,
+                    location: job.location,
+                    category: job.category
+                } : null;
+
+                return appObj;
+            })
+        );
+
+        res.json(enhancedApplications);
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to fetch candidate applications', error: err.message });
+    }
+});
+
+// GET: Applications by Agent ID and Job ID (For Agent Vacancy View)
+app.get('/api/applications/agent/:agentId/job/:jobId', async (req, res) => {
+    try {
+        const { agentId, jobId } = req.params;
+
+        const applications = await Application.find({
+            agent_id: agentId,
+            job_id: jobId
+        })
+            .select('-resume.data -certificates.data') // Exclude heavy file data
+            .sort({ applied_at: -1 });
+
+        res.json(applications);
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to fetch agent applications', error: err.message });
+    }
+});
+
+// GET: All applications by Agent ID (For Agent Pipeline/Dashboard)
+app.get('/api/applications/agent/:agentId/all', async (req, res) => {
+    try {
+        const { agentId } = req.params;
+
+        const applications = await Application.find({ agent_id: agentId })
+            .select('-resume.data -certificates.data')
+            .sort({ applied_at: -1 });
+
+        // Enhance with job details
+        const enhancedApplications = await Promise.all(
+            applications.map(async (app) => {
+                const appObj = app.toObject();
+                let job = null;
+
+                if (app.job_id) {
+                    job = await Job.findOne({ id: app.job_id }).select('title company location category');
+                    if (!job && mongoose.Types.ObjectId.isValid(app.job_id)) {
+                        job = await Job.findById(app.job_id).select('title company location category');
+                    }
+                }
+
+                appObj.jobs = job ? {
+                    title: job.title,
+                    company: job.company,
+                    location: job.location,
+                    category: job.category
+                } : null;
+
+                return appObj;
+            })
+        );
+
+        res.json(enhancedApplications);
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to fetch agent applications', error: err.message });
+    }
+});
+
 // GET: All applications (for Admin Dashboard)
 app.get('/api/admin/applications', async (req, res) => {
     try {
@@ -683,6 +783,34 @@ app.get('/api/admin/applications', async (req, res) => {
         res.json(applications);
     } catch (err) {
         res.status(500).json({ message: 'Failed to fetch applications', error: err.message });
+    }
+});
+
+// PUT: Update application status (for Admin to approve/reject)
+app.put('/api/admin/applications/:id/status', async (req, res) => {
+    try {
+        const { status, reviewed_by, review_notes } = req.body;
+
+        // Find by MongoDB _id or custom id field
+        let application = await Application.findById(req.params.id);
+        if (!application) {
+            application = await Application.findOne({ id: req.params.id });
+        }
+
+        if (!application) {
+            return res.status(404).json({ message: 'Application not found' });
+        }
+
+        application.status = status;
+        if (reviewed_by) application.reviewed_by = reviewed_by;
+        if (review_notes) application.review_notes = review_notes;
+        application.reviewed_at = new Date();
+
+        await application.save();
+
+        res.json({ message: 'Application status updated', application });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to update application status', error: err.message });
     }
 });
 

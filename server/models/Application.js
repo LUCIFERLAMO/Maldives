@@ -23,6 +23,11 @@ const applicationSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    // Optional: if submitted by an agent
+    agent_id: {
+        type: String,
+        required: false
+    },
     // File stored as Base64 in MongoDB
     resume: {
         filename: String,

@@ -1,56 +1,123 @@
-# 🟦 DAY 5 TASK - RAKSHITA
+# 🟪 DAY 5 TASK - RAKSHITA
 
-## 📋 Task: BrowseJobsPage.jsx & JobDetailPage.jsx
+## 📋 Task: AdminDashboard.jsx - Job Approval + Category View
 
 ### ⏱️ Estimated Time: 2-3 hours
 
 ---
 
-## 🎯 OBJECTIVES
+## 🎯 OBJECTIVE
 
-1. **BrowseJobsPage.jsx** - Display all jobs with category filter
-2. **JobDetailPage.jsx** - Show complete job details with Apply button
+Add functionality to the AdminDashboard that allows admins to:
+1. View pending job requests submitted by agents
+2. Approve or Reject job requests
+3. When APPROVED → job request becomes a live job
+4. Filter/view jobs by category
 
 ---
 
 ## 📚 WHAT'S ALREADY DONE (By Rithik - Database Head)
 
-✅ **Jobs Table** created with categories  
-✅ **15 Sample Jobs** seeded in database  
-✅ **API Routes** ready for fetching jobs  
+✅ **JobRequest Model** created with all necessary fields  
+✅ **Job Model** with `category` field added  
+✅ **API Routes** ready for approval/rejection  
+✅ **Sample Data** seeded in database:
+   - 4 pending job requests ready for review
+   - 1 approved example, 1 rejected example  
 ✅ **Categories**: Hospitality, Construction, Healthcare, IT, Education, Retail, Manufacturing, Tourism, Fishing, Agriculture, Other
 
 ---
 
 ## 🔌 API ENDPOINTS TO USE
 
-### 1. Get All Jobs (with optional category filter)
+### 1. Get All Pending Job Requests (Admin View)
 ```
-GET http://localhost:5000/api/jobs
-GET http://localhost:5000/api/jobs?category=Hospitality
-GET http://localhost:5000/api/jobs?status=OPEN
+GET http://localhost:5000/api/admin/job-requests?status=PENDING
 ```
 
 **Response:**
 ```json
 [
     {
-        "_id": "...",
-        "id": "uuid-string",
-        "title": "Hotel Front Desk Manager",
-        "company": "Paradise Resort Maldives",
-        "location": "Malé, Maldives",
+        "id": "uuid-here",
+        "_id": "mongodb-id",
+        "agent_id": "agent-uuid",
+        "agent_name": "Rakshita Agent",
+        "agent_email": "rakshita.agent@example.com",
+        "agency_name": "Maldives Elite Staffing",
+        "title": "Senior Sous Chef",
+        "company": "Grand Resort Maldives",
+        "location": "Male, Maldives",
         "category": "Hospitality",
-        "salary_range": "$2,500 - $3,500/month",
-        "description": "We are looking for...",
-        "requirements": ["3+ years experience", "Fluent English"],
-        "status": "OPEN",
-        "posted_date": "2026-01-23T..."
+        "salary_range": "$2000 - $3000/month",
+        "description": "Looking for an experienced chef...",
+        "requirements": ["5+ years experience", "Culinary degree"],
+        "vacancies": 2,
+        "status": "PENDING",
+        "createdAt": "2026-01-24T10:18:26.661Z"
     }
 ]
 ```
 
-### 2. Get Job Categories List
+### 2. Get Pending Count (for dashboard stats)
+```
+GET http://localhost:5000/api/admin/job-requests/pending/count
+```
+
+**Response:**
+```json
+{ "count": 4 }
+```
+
+### 3. ✅ Approve a Job Request (Creates Live Job!)
+```
+PUT http://localhost:5000/api/admin/job-requests/{_id}/approve
+```
+
+**Request Body (JSON):**
+```json
+{
+    "reviewed_by": "Admin Name",
+    "review_notes": "Approved - looks great!"
+}
+```
+
+**Response:**
+```json
+{
+    "message": "Job request approved and job created successfully",
+    "jobRequest": { ... status: "APPROVED" ... },
+    "job": { ... newly created live job ... }
+}
+```
+
+### 4. ❌ Reject a Job Request
+```
+PUT http://localhost:5000/api/admin/job-requests/{_id}/reject
+```
+
+**Request Body (JSON):**
+```json
+{
+    "reviewed_by": "Admin Name",
+    "review_notes": "Rejected - incomplete information"
+}
+```
+
+**Response:**
+```json
+{
+    "message": "Job request rejected",
+    "jobRequest": { ... status: "REJECTED" ... }
+}
+```
+
+### 5. Get Jobs by Category
+```
+GET http://localhost:5000/api/jobs?category=Hospitality
+```
+
+### 6. Get All Categories
 ```
 GET http://localhost:5000/api/jobs/categories
 ```
@@ -60,154 +127,121 @@ GET http://localhost:5000/api/jobs/categories
 ["Hospitality", "Construction", "Healthcare", "IT", "Education", "Retail", "Manufacturing", "Tourism", "Fishing", "Agriculture", "Other"]
 ```
 
-### 3. Get Single Job by ID
-```
-GET http://localhost:5000/api/jobs/{id}
-```
-
 ---
 
-## 📝 COPY-PASTE AI PROMPT FOR BrowseJobsPage.jsx
+## 📝 COPY-PASTE AI PROMPT
+
+Copy and paste this entire prompt into your AI assistant:
 
 ```
-I need to update BrowseJobsPage.jsx to fetch and display real jobs from the database. Here's what I need:
+I need to add Job Approval functionality and Category filtering to AdminDashboard.jsx. Here's what I need:
 
 ## CURRENT FILE
-The file is at: src/pages/BrowseJobsPage.jsx
+The file is at: src/pages/AdminDashboard.jsx
 
-## WHAT TO IMPLEMENT
+## WHAT TO ADD
 
-1. **Fetch jobs from API on page load:**
-   ```javascript
-   useEffect(() => {
-       fetch('http://localhost:5000/api/jobs')
-           .then(res => res.json())
-           .then(data => setJobs(data))
-           .catch(err => console.error(err));
-   }, []);
-   ```
+### PART 1: JOB REQUESTS SECTION (Approval/Rejection)
 
-2. **Add Category Filter dropdown:**
-   - Options: All, Hospitality, Construction, Healthcare, IT, Education, Retail, Manufacturing, Tourism, Fishing, Agriculture, Other
-   - When category changes, refetch:
-     ```javascript
-     fetch(`http://localhost:5000/api/jobs?category=${selectedCategory}`)
-     ```
+1. Add a new section/tab called "Job Requests" that shows pending requests from agents
 
-3. **Display Job Cards with these fields:**
-   - job.title (bold header)
-   - job.company
-   - job.location
-   - job.category (as a badge/tag)
-   - job.salary_range
-   - job.posted_date (formatted as "Posted X days ago")
-   - "View Details" button → navigates to /jobs/{job.id}
+2. Fetch pending requests on component mount:
+   GET http://localhost:5000/api/admin/job-requests?status=PENDING
+   
+3. Display each job request as a card showing:
+   - Job Title
+   - Company Name
+   - Agent Name + Agency Name
+   - Category badge
+   - Location
+   - Salary Range
+   - Description (collapsible)
+   - Requirements list
+   - Vacancies count
+   - Date submitted
+   - APPROVE button (green)
+   - REJECT button (red)
 
-4. **Add Loading state** while fetching
+4. On APPROVE click, call:
+   PUT http://localhost:5000/api/admin/job-requests/{request._id}/approve
+   Body: { "reviewed_by": "Admin", "review_notes": "Approved" }
+   
+   This automatically creates a new live job! Show success message.
+   Remove the request from the pending list.
 
-5. **Add Search functionality** (filter by title or company)
+5. On REJECT click, show a modal/prompt for rejection reason, then call:
+   PUT http://localhost:5000/api/admin/job-requests/{request._id}/reject
+   Body: { "reviewed_by": "Admin", "review_notes": userInputReason }
+   
+   Remove from pending list, show confirmation.
 
-6. **Show job count** (e.g., "Showing 15 jobs")
+6. Add a count badge next to "Job Requests" tab showing pending count:
+   GET http://localhost:5000/api/admin/job-requests/pending/count
 
-## STYLING
-- Use card grid layout (2-3 cards per row)
-- Category badge with colored background
-- Hover effect on cards
-- Professional and clean look
+### PART 2: CATEGORY FILTER FOR JOBS
 
-## NAVIGATION
-Use react-router-dom:
-```javascript
-import { useNavigate } from 'react-router-dom';
-const navigate = useNavigate();
-// On card click:
-navigate(`/jobs/${job.id}`);
-```
-```
+1. Add a category dropdown filter to the existing Jobs section
 
----
+2. Categories to show: Hospitality, Construction, Healthcare, IT, Education, Retail, Manufacturing, Tourism, Fishing, Agriculture, Other
 
-## 📝 COPY-PASTE AI PROMPT FOR JobDetailPage.jsx
+3. When category is selected, filter jobs:
+   GET http://localhost:5000/api/jobs?category=Hospitality
+   
+4. Add an "All Categories" option that shows all jobs
 
-```
-I need to update JobDetailPage.jsx to display complete job details. Here's what I need:
-
-## CURRENT FILE
-The file is at: src/pages/JobDetailPage.jsx
-
-## WHAT TO IMPLEMENT
-
-1. **Get job ID from URL params:**
-   ```javascript
-   import { useParams } from 'react-router-dom';
-   const { id } = useParams();
-   ```
-
-2. **Fetch job details on load:**
-   ```javascript
-   useEffect(() => {
-       fetch(`http://localhost:5000/api/jobs/${id}`)
-           .then(res => res.json())
-           .then(data => setJob(data))
-           .catch(err => console.error(err));
-   }, [id]);
-   ```
-
-3. **Display all job information:**
-   - job.title (large heading)
-   - job.company (with icon)
-   - job.location (with map pin icon)
-   - job.category (badge)
-   - job.salary_range (highlighted)
-   - job.posted_date (formatted)
-   - job.status (OPEN = green, CLOSED = red)
-   - job.description (paragraph)
-   - job.requirements (as bullet list)
-
-4. **Add "Apply Now" button:**
-   - If user is logged in as CANDIDATE, show Apply button
-   - If not logged in, show "Login to Apply" → redirect to /candidate-login
-   - Check: `const user = JSON.parse(localStorage.getItem('user'));`
-
-5. **Add "Back to Jobs" link** → navigates to /browse-jobs
-
-6. **Handle "Job not found" error** gracefully
+## STATUS BADGES STYLING
+- PENDING: Yellow/Amber background
+- APPROVED: Green background  
+- REJECTED: Red background
 
 ## STYLING
-- Clean, professional layout
-- Two-column layout on desktop (details left, apply box right)
-- Requirements as checkmarks or bullet points
-- Salary should stand out (maybe in a highlight box)
+- Match existing AdminDashboard UI theme
+- Use cards for job requests
+- Add hover effects on Approve/Reject buttons
+- Make it responsive
+
+## IMPORTANT
+- Use _id (MongoDB ObjectId) for API calls, not the uuid id field
+- Refresh the requests list after each approve/reject action
+- Show loading states during API calls
 ```
 
 ---
 
 ## ✅ VERIFICATION STEPS
 
-### For BrowseJobsPage:
-1. Go to `/browse-jobs`
-2. Check if jobs are loading from database
-3. Test category filter - select "Hospitality", should show only hospitality jobs
-4. Click on a job card, should navigate to `/jobs/{job.id}`
+1. **Start the server** (if not running):
+   ```bash
+   cd server
+   npm run dev
+   ```
 
-### For JobDetailPage:
-1. Go to `/jobs/{any-job-id}` 
-2. Check if all job details display correctly
-3. Check Apply button behavior (logged in vs not logged in)
+2. **Login as Admin** at `/admin` or your admin login page
 
-### Quick Test in Browser Console:
-```javascript
-// Test jobs API
-fetch('http://localhost:5000/api/jobs').then(r=>r.json()).then(console.log)
+3. **Go to Admin Dashboard**
 
-// Test single job
-fetch('http://localhost:5000/api/jobs').then(r=>r.json()).then(jobs => {
-    if(jobs[0]) {
-        console.log('First job ID:', jobs[0].id);
-        fetch(`http://localhost:5000/api/jobs/${jobs[0].id}`).then(r=>r.json()).then(console.log)
-    }
-})
-```
+4. **Check "Job Requests" section** - you should see 4 pending requests from the seeded data
+
+5. **Click APPROVE on one request** - verify:
+   - Success message appears
+   - Request disappears from pending list
+   - New job appears in Jobs section
+
+6. **Click REJECT on another request** - verify:
+   - Modal asks for rejection reason
+   - Request disappears from pending list
+
+7. **Test Category Filter**:
+   - Select "Hospitality" → only hospitality jobs shown
+   - Select "All" → all jobs shown
+
+8. **Test API directly** (optional):
+   ```javascript
+   // In browser console:
+   fetch('http://localhost:5000/api/admin/job-requests?status=PENDING')
+     .then(r=>r.json())
+     .then(console.log)
+   ```
 
 ---
 
@@ -215,17 +249,60 @@ fetch('http://localhost:5000/api/jobs').then(r=>r.json()).then(jobs => {
 
 | Issue | Fix |
 |-------|-----|
-| Jobs not loading | Make sure server is running: `cd server && node server.js` |
-| Empty job list | Run seed script: `cd server && node seedJobs.js` |
-| Job details 404 | Use `job.id` (UUID string), not `job._id` (MongoDB ObjectId) |
-| Category filter not working | Check API call includes query param: `?category=Hospitality` |
+| "Failed to approve" | Use `request._id` not `request.id` for the API URL |
+| No pending requests shown | Run the seed script: `cd server && node seed_approval_data.js` |
+| Server not running | Run `cd server && npm run dev` |
+| Categories not loading | Use hardcoded array: `['Hospitality', 'Construction', 'Healthcare', 'IT', 'Education', 'Retail', 'Manufacturing', 'Tourism', 'Fishing', 'Agriculture', 'Other']` |
+| CORS error | Make sure backend runs on port 5000 |
+
+---
+
+## 🧪 TEST ACCOUNTS
+
+| Role | Email | Password |
+|------|-------|----------|
+| Test Agent | rakshita.agent@example.com | password123 |
+| Admin | (use your existing admin account) | |
+
+---
+
+## 📊 DATABASE COLLECTIONS (Already Set Up)
+
+| Collection | Description |
+|------------|-------------|
+| `jobrequests` | Agent-submitted requests (PENDING/APPROVED/REJECTED) |
+| `jobs` | Live job listings (created when request is approved) |
+| `profiles` | User accounts |
 
 ---
 
 ## 📂 FILES TO EDIT
 
-- `src/pages/BrowseJobsPage.jsx`
-- `src/pages/JobDetailPage.jsx`
+* `src/pages/AdminDashboard.jsx` (main file)
+
+---
+
+## 🔄 APPROVAL FLOW DIAGRAM
+
+```
+Agent submits job request
+         ↓
+   Status: PENDING
+   (stored in jobrequests collection)
+         ↓
+Admin sees in Dashboard
+         ↓
+    ┌────┴────┐
+    ↓         ↓
+ APPROVE   REJECT
+    ↓         ↓
+Creates new  Status: REJECTED
+job in jobs  (stays in jobrequests)
+collection
+    ↓
+Job is now LIVE
+on Browse Jobs page!
+```
 
 ---
 

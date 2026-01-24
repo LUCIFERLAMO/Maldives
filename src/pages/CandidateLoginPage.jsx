@@ -198,7 +198,17 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
                         <div className="max-w-[400px] mx-auto w-full animate-in fade-in slide-in-from-right-4 duration-500">
 
                             <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Create Account</h2>
-                            <p className="text-slate-500 mb-8 font-medium">Join the professional Maldivian workforce.</p>
+                            <p className="text-slate-500 mb-6 font-medium">Join the professional Maldivian workforce.</p>
+
+                            {notification && (
+                                <div className={`p-4 mb-6 rounded-xl text-sm font-bold flex items-center gap-2 animate-in slide-in-from-top-2 ${notification.type === 'success'
+                                    ? 'bg-teal-50 text-teal-700 border border-teal-100'
+                                    : 'bg-red-50 text-red-600 border border-red-100'
+                                    }`}>
+                                    {notification.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <Loader2 className="w-5 h-5" />}
+                                    {notification.text}
+                                </div>
+                            )}
 
                             <form onSubmit={handleSignupSubmit} className="space-y-4">
                                 <div>
