@@ -188,6 +188,56 @@ app.put('/api/auth/change-password', async (req, res) => {
     }
 });
 
+// USER PROFILE ROUTES
+// GET: Get Profile Details
+app.get('/api/profile/:id', async (req, res) => {
+    try {
+        let profile = await Profile.findById(req.params.id);
+        if (!profile) {
+            profile = await Profile.findOne({ id: req.params.id });
+        }
+        if (!profile) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        res.json(profile);
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to fetch profile', error: err.message });
+    }
+});
+
+// PUT: Update Profile Details
+app.put('/api/profile/:id', async (req, res) => {
+    try {
+        const { full_name, contact_number, skills, experience_years } = req.body;
+
+        // Find by MongoDB _id or custom id field
+        let profile = await Profile.findById(req.params.id);
+        if (!profile) {
+            profile = await Profile.findOne({ id: req.params.id });
+        }
+
+        if (!profile) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Update fields
+        if (full_name) profile.full_name = full_name;
+        if (contact_number) profile.contact_number = contact_number;
+
+        // Update Candidate specific fields
+        if (profile.role === 'CANDIDATE') {
+            if (skills) profile.skills = skills;
+            if (experience_years !== undefined) profile.experience_years = experience_years;
+        }
+
+        await profile.save();
+
+        res.json({ message: 'Profile updated successfully', profile });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to update profile', error: err.message });
+    }
+});
+
 // ADMIN AGENT ROUTES (From Profile model - for agents registered via agent-registration page)
 
 // GET: Fetch pending agents (from Profile model)
@@ -772,8 +822,10 @@ app.get('/api/applications/agent/:agentId/all', async (req, res) => {
 // GET: All applications (for Admin Dashboard)
 app.get('/api/admin/applications', async (req, res) => {
     try {
-        const { status } = req.query;
-        const filter = status ? { status } : {};
+        const { status, job_id } = req.query;
+        const filter = {};
+        if (status) filter.status = status;
+        if (job_id) filter.job_id = job_id;
 
         // Exclude file data from list view for performance
         const applications = await Application.find(filter)

@@ -40,7 +40,7 @@ const RecruiterDashboard = () => {
 
         const fetchPipeline = async () => {
             try {
-                const response = await fetch(`http://localhost:5000/api/applications?agent_id=${user.id}`);
+                const response = await fetch(`http://localhost:5000/api/applications/agent/${user.id}/all`);
                 const data = await response.json();
                 if (data) {
                     setPipelineData(data);
@@ -407,8 +407,8 @@ const RecruiterDashboard = () => {
                         <Briefcase className="w-5 h-5" /> Active Vacancies
                     </button>
                     <button
-                        onClick={() => setActiveTab('blocked')}
-                        className={`w-full flex items-center gap-4 px-4 py-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${activeTab === 'blocked'
+                        onClick={() => setActiveTab('pipeline')}
+                        className={`w-full flex items-center gap-4 px-4 py-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${activeTab === 'pipeline'
                             ? 'bg-teal-600 text-white shadow-lg shadow-teal-900/20'
                             : 'hover:bg-slate-800 hover:text-slate-200'
                             }`}
@@ -1367,9 +1367,8 @@ const RecruiterDashboard = () => {
                                     </div>
                                 </div>
                             </div>
-                        ) : activeTab === 'blocked' ? (
-                            /* PIPELINE TRACKING (EXISTING) */
-                            /* PIPELINE TRACKING (REFINED) */
+                        ) : activeTab === 'pipeline' ? (
+                            /* PIPELINE TRACKING */
                             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                                     <div>

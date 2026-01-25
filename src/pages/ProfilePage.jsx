@@ -18,7 +18,8 @@ import {
     Sparkles,
     Building2,
     Download,
-    AlertTriangle
+    AlertTriangle,
+    Briefcase
 } from 'lucide-react';
 
 
@@ -39,7 +40,7 @@ const AGENT_DOCS = [
 ];
 
 
-const CandidateProfile = ({ user, profileData, docs, handleDocAction, handleDeleteItem, setIsResettingPassword, setIsEditingPersonal, previewImage, isAddingDoc, setIsAddingDoc, newDocName, setNewDocName, handleAddDoc }) => {
+const CandidateProfile = ({ user, profileData, docs, handleDocAction, handleDeleteItem, setIsResettingPassword, setIsEditingPersonal, previewImage, isAddingDoc, setIsAddingDoc, newDocName, setNewDocName, handleAddDoc, applications }) => {
     return (
         <>
             {/* MALDIVES GRADIENT HEADER (CLIENT ONLY) */}
@@ -99,7 +100,65 @@ const CandidateProfile = ({ user, profileData, docs, handleDocAction, handleDele
                                     <div className="flex items-center gap-2 text-slate-900 font-medium"><MapPin className="w-4 h-4 text-slate-400" /> {profileData.location}</div>
                                 </div>
                             </div>
+                            {/* Skills Section */}
+                            {profileData.skills && (
+                                <div className="pt-6 border-t border-slate-200/60">
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-3">Skills</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {profileData.skills.split(',').map((skill, index) => (
+                                            <span key={index} className="px-3 py-1 bg-slate-100 text-slate-700 text-xs font-bold rounded-full border border-slate-200">
+                                                {skill.trim()}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
+                    </div>
+                </div>
+
+                {/* MY APPLICATIONS SECTION */}
+                <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div className="px-8 py-8 border-b border-slate-100 bg-slate-50/30">
+                        <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2"><Briefcase className="w-6 h-6 text-teal-600" /> My Applications</h3>
+                        <p className="text-slate-500 text-sm mt-1">Track the status of your job applications.</p>
+                    </div>
+                    <div className="p-8">
+                        {applications && applications.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {applications.map((app) => (
+                                    <div key={app._id || app.id} className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow relative overflow-hidden group">
+                                        <div className="absolute top-0 left-0 w-1 h-full bg-teal-500"></div>
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div>
+                                                <h4 className="font-bold text-slate-900 text-lg leading-tight group-hover:text-teal-700 transition-colors">{app.job?.title || 'Job Title'}</h4>
+                                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-1">{app.job?.company || 'Company Name'}</p>
+                                            </div>
+                                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${app.status === 'APPROVED' || app.status === 'ACCEPTED' ? 'bg-teal-50 text-teal-700 border-teal-100' :
+                                                app.status === 'REJECTED' ? 'bg-red-50 text-red-700 border-red-100' :
+                                                    app.status === 'PENDING' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                                                        'bg-slate-50 text-slate-700 border-slate-100'
+                                                }`}>
+                                                {app.status}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-xs text-slate-500 mb-4">
+                                            <MapPin className="w-3.5 h-3.5" /> {app.job?.location || 'Location'}
+                                        </div>
+                                        <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
+                                            <span className="text-xs font-medium text-slate-400">Applied: {new Date(app.applied_at).toLocaleDateString()}</span>
+                                            <span className="text-xs font-bold text-teal-600">View Details &rarr;</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                                <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                                <h3 className="text-slate-900 font-bold text-sm">No Applications Yet</h3>
+                                <p className="text-slate-500 text-xs mt-1">Start applying for jobs to see them here.</p>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -148,7 +207,7 @@ const CandidateProfile = ({ user, profileData, docs, handleDocAction, handleDele
                         ))}
                     </div>
                 </div>
-            </div>
+            </div >
         </>
     );
 };
@@ -312,6 +371,7 @@ const ProfilePage = () => {
     const [newDocName, setNewDocName] = useState('');
     const [isAddingDoc, setIsAddingDoc] = useState(false);
     const [previewImage, setPreviewImage] = useState(null);
+    const [applications, setApplications] = useState([]);
 
     useEffect(() => {
         if (user) {
@@ -321,7 +381,8 @@ const ProfilePage = () => {
                 name: user.name || '',
                 email: user.email || '',
                 phone: user.phone || '',
-                role: user.role || ''
+                role: user.role || '',
+                skills: user.skills || 'Hospitality, Management, Customer Service' // Default or fetch
             }));
 
             setPreviewImage(user.avatar || null);
@@ -348,6 +409,23 @@ const ProfilePage = () => {
                 }
             }
             fetchDocuments();
+
+            // Fetch Candidate Applications
+            if (!isAgent) {
+                async function fetchApplications() {
+                    try {
+                        const response = await fetch(`http://localhost:5000/api/applications/candidate/${user.email}`);
+                        if (response.ok) {
+                            const data = await response.json();
+                            setApplications(data);
+                        }
+                    } catch (err) {
+                        console.error('Error fetching applications:', err);
+                    }
+                }
+                fetchApplications();
+            }
+
             setDocs(isAgent ? AGENT_DOCS : CANDIDATE_DOCS); // Keep defaults for now to show UI structure
         }
     }, [user, isAgent]);
@@ -473,6 +551,7 @@ const ProfilePage = () => {
                     newDocName={newDocName}
                     setNewDocName={setNewDocName}
                     handleAddDoc={handleAddDoc}
+                    applications={applications}
                 />
             )}
 
