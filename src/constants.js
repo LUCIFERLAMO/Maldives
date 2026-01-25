@@ -161,7 +161,7 @@ export const MOCK_APPLICATIONS = [
         candidateName: 'John Fraudster',
         contactNumber: '+1 234567890',
         email: 'john.f@fake.com',
-        status: ApplicationStatus.BLACKLISTED,
+        status: ApplicationStatus.APPLIED,
         appliedDate: '2023-11-05',
         source: 'Direct',
         hasResume: true,
