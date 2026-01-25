@@ -68,6 +68,14 @@ export const AuthProvider = ({ children }) => {
         window.location.href = '/';
     };
 
+    const updateUser = (updatedData) => {
+        setUser((prevUser) => {
+            const newUser = { ...prevUser, ...updatedData };
+            localStorage.setItem('user', JSON.stringify(newUser));
+            return newUser;
+        });
+    };
+
     return (
         <AuthContext.Provider value={{
             user,
@@ -75,6 +83,7 @@ export const AuthProvider = ({ children }) => {
             mockLogin,
             signup,
             logout,
+            updateUser,
             isAuthenticated: !!user,
             loading
         }}>

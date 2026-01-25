@@ -42,6 +42,7 @@ import Application from './models/Application.js';
 import Profile from './models/Profile.js';
 import Agency from './models/Agency.js';
 import JobRequest from './models/JobRequest.js';
+import Document from './models/Document.js';
 
 // --- ROUTES ---
 
@@ -180,6 +181,41 @@ app.put('/api/auth/change-password', async (req, res) => {
         user.password = newPassword; // NOTE: In production, hash this!
         user.requiresPasswordChange = false;
         user.temporaryPassword = undefined; // Remove temp password
+        await user.save();
+
+        res.json({ message: 'Password updated successfully' });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to update password', error: err.message });
+    }
+});
+
+// PASSWORD UPDATE ROUTE (Authenticated User from Profile)
+app.put('/api/auth/password', async (req, res) => {
+    try {
+        const { userId, currentPassword, newPassword } = req.body;
+
+        // Find user
+        let user = await Profile.findById(userId);
+        if (!user) {
+            user = await Profile.findOne({ id: userId });
+        }
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Verify current password
+        // Limit checks to prevent timing attacks slightly, though plain text comparison is the real issue here (should use bcrypt)
+        const isMatch = user.password === currentPassword || user.temporaryPassword === currentPassword;
+        if (!isMatch) {
+            return res.status(400).json({ message: 'Current password is incorrect' });
+        }
+
+        // Update password
+        user.password = newPassword;
+        user.temporaryPassword = undefined; // Clear temp password if any
+        user.requiresPasswordChange = false;
+
         await user.save();
 
         res.json({ message: 'Password updated successfully' });
@@ -921,6 +957,71 @@ app.get('/api/applications/:id/certificates', async (req, res) => {
         res.send(fileBuffer);
     } catch (err) {
         res.status(500).json({ message: 'Failed to download certificates', error: err.message });
+    }
+});
+
+// ========================
+// DOCUMENTS ROUTES (For Profile Page)
+// ========================
+
+// GET: Fetch user's documents (Metadata only, for list view)
+app.get('/api/documents', async (req, res) => {
+    try {
+        const { user_id } = req.query;
+        if (!user_id) return res.status(400).json({ message: 'User ID is required' });
+
+        // Exclude file_data for performance
+        const documents = await Document.find({ user_id }).select('-file_data').sort({ created_at: -1 });
+        res.json(documents);
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to fetch documents', error: err.message });
+    }
+});
+
+// POST: Upload a document
+app.post('/api/documents', upload.single('file'), async (req, res) => {
+    try {
+        const { user_id, document_type } = req.body;
+        const file = req.file;
+
+        if (!file) return res.status(400).json({ message: 'No file uploaded' });
+        if (!user_id) return res.status(400).json({ message: 'User ID is required' });
+        if (!document_type) return res.status(400).json({ message: 'Document type is required' });
+
+        const newDoc = new Document({
+            user_id,
+            document_type,
+            filename: file.originalname,
+            content_type: file.mimetype,
+            file_data: file.buffer.toString('base64')
+        });
+
+        await newDoc.save();
+
+        res.status(201).json({
+            message: 'Document uploaded successfully',
+            document: {
+                id: newDoc._id,
+                document_type: newDoc.document_type,
+                filename: newDoc.filename,
+                created_at: newDoc.created_at
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to upload document', error: err.message });
+    }
+});
+
+// DELETE: Remove a document
+app.delete('/api/documents/:id', async (req, res) => {
+    try {
+        const document = await Document.findByIdAndDelete(req.params.id);
+        if (!document) {
+            return res.status(404).json({ message: 'Document not found' });
+        }
+        res.json({ message: 'Document deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to delete document', error: err.message });
     }
 });
 

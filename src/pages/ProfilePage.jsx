@@ -385,7 +385,7 @@ const AgentProfile = ({ user, profileData, docs, handleDocAction, setIsResetting
 
 
 const ProfilePage = () => {
-    const { user } = useAuth();
+    const { user, updateUser } = useAuth();
     console.log("ProfilePage Rendered. User:", user);
 
     // AuthContext sets role to lowercase, but we check defensively
@@ -425,8 +425,10 @@ const ProfilePage = () => {
             setProfileData(prev => ({
                 ...prev,
                 name: user.name || user.full_name || '',
+                title: user.title || (isAgent ? 'Global Talent Ltd' : 'Senior Guest Relations Officer'), // Added fallback persistence
                 email: user.email || '',
                 phone: user.phone || user.contact_number || '',
+                location: user.location || (isAgent ? 'Business District, Mumbai' : 'Mumbai, India'),
                 role: user.role || '',
                 skills: Array.isArray(user.skills) ? user.skills.join(', ') : (user.skills || ''),
                 experience: user.experience_years || 0
@@ -448,7 +450,7 @@ const ProfilePage = () => {
                             type: d.mime_type?.includes('pdf') ? 'PDF' : 'IMG',
                             required: false,
                             status: 'uploaded',
-                            date: new Date(d.created_at).toISOString().split('T')[0],
+                            date: d.created_at ? new Date(d.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
                             filePath: d.file_path
                         }));
                         // Merge logic would go here, for now we just log or use if needed
@@ -493,8 +495,9 @@ const ProfilePage = () => {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    full_name: profileData.name,
+                    full_name: profileData.name, // Usually read-only but sending for consistency
                     contact_number: profileData.phone,
+                    location: profileData.location, // Added location update
                     skills: profileData.skills.split(',').map(s => s.trim()).filter(Boolean),
                     experience_years: Number(profileData.experience)
                 })
@@ -506,6 +509,19 @@ const ProfilePage = () => {
                 // Show the specific error message from the server (data.error)
                 throw new Error(data.error || data.message || 'Failed to update profile');
             }
+
+            // Update AuthContext to persist changes locally
+            if (updateUser) {
+                updateUser({
+                    name: profileData.name,
+                    phone: profileData.phone,
+                    contact_number: profileData.phone,
+                    location: profileData.location,
+                    skills: profileData.skills.split(',').map(s => s.trim()).filter(Boolean),
+                    experience_years: Number(profileData.experience)
+                });
+            }
+
             alert('Profile updated successfully');
             setIsEditingPersonal(false);
         } catch (error) {
@@ -658,27 +674,25 @@ const ProfilePage = () => {
                                     <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
                                     <input
                                         type="text"
-                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                                        readOnly
+                                        className="w-full px-3 py-2 border border-slate-200 bg-slate-50 text-slate-500 rounded-lg outline-none cursor-not-allowed"
                                         value={profileData.name}
-                                        onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
                                     />
                                 </div>
+                                {/* Title removed as per user request */}
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Title / Role</label>
-                                    <input
-                                        type="text"
-                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
-                                        value={profileData.title}
-                                        onChange={(e) => setProfileData({ ...profileData, title: e.target.value })}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number (Numbers only)</label>
                                     <input
                                         type="tel"
                                         className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                                         value={profileData.phone}
-                                        onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            if (/^[\d\s+\-]*$/.test(val)) {
+                                                setProfileData({ ...profileData, phone: val });
+                                            }
+                                        }}
+                                        placeholder="+960 1234567"
                                     />
                                 </div>
                                 <div>
@@ -697,7 +711,13 @@ const ProfilePage = () => {
                                         min="0"
                                         className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                                         value={profileData.experience}
-                                        onChange={(e) => setProfileData({ ...profileData, experience: e.target.value })}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            // Allow empty string or digits
+                                            if (val === '' || /^\d+$/.test(val)) {
+                                                setProfileData({ ...profileData, experience: val });
+                                            }
+                                        }}
                                     />
                                 </div>
                                 <div>
