@@ -277,16 +277,6 @@ const AdminDashboard = () => {
    const [isApprovingJob, setIsApprovingJob] = useState(false);
    const [isRejectingJob, setIsRejectingJob] = useState(false);
 
-   // Category Filter State
-   const [selectedCategory, setSelectedCategory] = useState('All');
-   const [liveJobs, setLiveJobs] = useState([]);
-   const [isLoadingJobs, setIsLoadingJobs] = useState(false);
-   const CATEGORIES = ['Hospitality', 'Construction', 'Healthcare', 'IT', 'Education', 'Retail', 'Manufacturing', 'Tourism', 'Fishing', 'Agriculture', 'Other'];
-
-   // Job Applications State (Real applications from database)
-   const [jobApplications, setJobApplications] = useState([]);
-   const [isLoadingApplications, setIsLoadingApplications] = useState(false);
-
    // Refs for flexible dropdowns
    const blacklistSourceRef = useRef(null);
    const blacklistDurationRef = useRef(null);
