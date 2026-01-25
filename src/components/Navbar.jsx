@@ -124,6 +124,13 @@ const Navbar = () => {
                                     >
                                         <LayoutDashboard className="w-4 h-4 text-slate-400" /> Dashboard
                                     </Link>
+                                    <Link
+                                        to="/profile"
+                                        onClick={() => setIsMenuOpen(false)}
+                                        className="flex items-center gap-3 px-6 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+                                    >
+                                        <Briefcase className="w-4 h-4 text-slate-400" /> My Profile
+                                    </Link>
                                     <div className="h-px bg-slate-50 my-2"></div>
                                     <button
                                         onClick={() => { logout(); setIsMenuOpen(false); }}
