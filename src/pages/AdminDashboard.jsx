@@ -433,6 +433,33 @@ const AdminDashboard = () => {
       }
    };
 
+   // Handle Application Status Update (Approve/Reject Candidate)
+   const handleApplicationAction = async (appId, newStatus, candidateName) => {
+      // Confirmation
+      if (!window.confirm(`Are you sure you want to mark ${candidateName} as ${newStatus}?`)) return;
+
+      try {
+         const response = await fetch(`http://localhost:5000/api/admin/applications/${appId}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus, reviewed_by: 'Admin' })
+         });
+
+         if (response.ok) {
+            // Optimistic Update
+            setJobApplications(prev => prev.map(app =>
+               app.id === appId ? { ...app, status: newStatus } : app
+            ));
+            alert(`Candidate ${newStatus === 'APPROVED' ? 'Approved' : 'Rejected'} successfully.`);
+         } else {
+            alert('Failed to update application status.');
+         }
+      } catch (error) {
+         console.error('Error updating application status:', error);
+         alert('Network error. Failed to update status.');
+      }
+   };
+
    // Reject job request handler
    const handleRejectJobRequest = async () => {
       if (!selectedJobRequest) return;
@@ -1876,7 +1903,7 @@ const AdminDashboard = () => {
                                                 <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Applicant Profile</th>
                                                 <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Source</th>
                                                 <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Application State</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Review</th>
+                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Actions</th>
                                              </tr>
                                           </thead>
                                           <tbody className="divide-y divide-slate-50">
@@ -1917,7 +1944,7 @@ const AdminDashboard = () => {
                                                       px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest
                                                       ${app.status === 'PENDING' ? 'bg-amber-50 text-amber-600' : ''}
                                                       ${app.status === 'Applied' ? 'bg-blue-50 text-blue-600' : ''}
-                                                      ${app.status === 'Processing' ? 'bg-purple-50 text-purple-600' : ''}
+                                                      ${app.status === 'Processing' || app.status === 'ON HOLD' ? 'bg-purple-50 text-purple-600' : ''}
                                                       ${app.status === 'APPROVED' || app.status === 'Selected' ? 'bg-teal-50 text-teal-600' : ''}
                                                       ${app.status === 'REJECTED' || app.status === 'Rejected' ? 'bg-red-50 text-red-600' : ''}
                                                    `}>
@@ -1925,24 +1952,52 @@ const AdminDashboard = () => {
                                                          </span>
                                                       </td>
                                                       <td className="px-6 py-4 text-right">
-                                                         <button
-                                                            onClick={() => setSelectedResume({
-                                                               ...app,
-                                                               name: app.candidateName,
-                                                               role: selectedJob?.title || 'Unknown Role',
-                                                               whatsapp: app.contactNumber,
-                                                               nationality: 'Applicant',
-                                                               agency: app.source === 'Direct' ? 'Direct Application' : 'Agent Submission',
-                                                               statusColor: '',
-                                                               documents: {
-                                                                  resume: app.resumeFilename || 'Resume.pdf',
-                                                                  certificates: app.certsFilename || null
-                                                               }
-                                                            })}
-                                                            className="w-8 h-8 rounded-lg bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-900 flex items-center justify-center transition-all ml-auto"
-                                                         >
-                                                            <Eye className="w-4 h-4" />
-                                                         </button>
+                                                         <div className="flex items-center justify-end gap-2">
+
+                                                            {/* View Resume Button */}
+                                                            <button
+                                                               onClick={() => setSelectedResume({
+                                                                  ...app,
+                                                                  name: app.candidateName,
+                                                                  role: selectedJob?.title || 'Unknown Role',
+                                                                  whatsapp: app.contactNumber,
+                                                                  nationality: 'Applicant',
+                                                                  agency: app.source === 'Direct' ? 'Direct Application' : 'Agent Submission',
+                                                                  statusColor: '',
+                                                                  documents: {
+                                                                     resume: app.resumeFilename || 'Resume.pdf',
+                                                                     certificates: app.certsFilename || null
+                                                                  }
+                                                               })}
+                                                               className="px-3 py-1.5 rounded-lg bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900 text-[10px] font-bold uppercase tracking-widest transition-all"
+                                                            >
+                                                               View
+                                                            </button>
+
+                                                            {/* Action Buttons - Only show if pending or processing */}
+                                                            {(app.status === 'PENDING' || app.status === 'PROCESSING' || app.status === 'Applied' || app.status === 'ON HOLD') && (
+                                                               <>
+                                                                  <button
+                                                                     onClick={() => handleApplicationAction(app.id, 'APPROVED', app.candidateName)}
+                                                                     className="px-4 py-1.5 rounded-lg bg-teal-600 text-white hover:bg-teal-700 text-[10px] font-black uppercase tracking-widest transition-all shadow-md shadow-teal-500/20"
+                                                                  >
+                                                                     Approve
+                                                                  </button>
+                                                                  <button
+                                                                     onClick={() => handleApplicationAction(app.id, 'ON HOLD', app.candidateName)}
+                                                                     className="px-4 py-1.5 rounded-lg bg-amber-400 text-white hover:bg-amber-500 text-[10px] font-black uppercase tracking-widest transition-all shadow-md shadow-amber-500/20"
+                                                                  >
+                                                                     Hold
+                                                                  </button>
+                                                                  <button
+                                                                     onClick={() => handleApplicationAction(app.id, 'REJECTED', app.candidateName)}
+                                                                     className="px-4 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 text-[10px] font-black uppercase tracking-widest transition-all shadow-md shadow-red-500/20"
+                                                                  >
+                                                                     Reject
+                                                                  </button>
+                                                               </>
+                                                            )}
+                                                         </div>
                                                       </td>
                                                    </tr>
                                                 ))
@@ -3043,51 +3098,12 @@ const AdminDashboard = () => {
 
                         {/* Actions Footer */}
                         <div className="p-8 bg-slate-50/50 border-t border-slate-100 flex items-center justify-end gap-4">
-                           {isBlacklistReview || (selectedResume && selectedResume.status === 'REJECTED') ? (
-                              <>
-                                 <button
-                                    onClick={() => { setSelectedResume(null); setIsBlacklistReview(false); }}
-                                    className="px-8 py-4 rounded-xl bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors"
-                                 >
-                                    Cancel
-                                 </button>
-                                 <button
-                                    onClick={() => handleResumeStatusChange('On Hold')}
-                                    className="px-8 py-4 rounded-xl bg-amber-50 text-amber-600 text-[10px] font-black uppercase tracking-widest hover:bg-amber-100 transition-colors"
-                                 >
-                                    Keep on Hold
-                                 </button>
-                                 <button
-                                    onClick={() => handleResumeStatusChange('Selected')}
-                                    className="px-8 py-4 rounded-xl bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500 shadow-lg shadow-emerald-500/30 transition-colors flex items-center gap-2"
-                                 >
-                                    <CheckCircle2 className="w-5 h-5" /> Accept & Approve
-                                 </button>
-                              </>
-                           ) : (
-                              <>
-                                 <button
-                                    onClick={() => handleResumeStatusChange('Rejected')}
-                                    className="px-8 py-4 rounded-xl bg-red-50 text-red-600 text-[10px] font-black uppercase tracking-widest hover:bg-red-100 transition-colors"
-                                 >
-                                    Reject
-                                 </button>
-
-                                 <button
-                                    onClick={() => handleResumeStatusChange('On Hold')}
-                                    className="px-8 py-4 rounded-xl bg-amber-50 text-amber-600 text-[10px] font-black uppercase tracking-widest hover:bg-amber-100 transition-colors"
-                                 >
-                                    Keep on Hold
-                                 </button>
-
-                                 <button
-                                    onClick={() => handleResumeStatusChange('Selected')}
-                                    className="px-8 py-4 rounded-xl bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-500/20"
-                                 >
-                                    Approve
-                                 </button>
-                              </>
-                           )}
+                           <button
+                              onClick={() => { setSelectedResume(null); setIsBlacklistReview(false); }}
+                              className="px-8 py-4 rounded-xl bg-white border border-slate-200 text-slate-500 text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-colors"
+                           >
+                              Close View
+                           </button>
                         </div>
                      </div>
                   </div>
