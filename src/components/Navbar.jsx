@@ -90,7 +90,7 @@ const Navbar = () => {
                 {/* RIGHT: PORTALS & AUTH */}
                 <div className="flex items-center gap-4 lg:gap-6">
                     {!isAuthenticated && (
-                        <div className="hidden xl:flex items-center gap-6 border-r border-slate-100 pr-6 mr-2">
+                        <div className="hidden lg:flex items-center gap-6 border-r border-slate-100 pr-6 mr-2">
                             <Link to="/login/agent" className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors">Agent Portal</Link>
                             <Link to="/login/admin" className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors">Admin Portal</Link>
                         </div>
