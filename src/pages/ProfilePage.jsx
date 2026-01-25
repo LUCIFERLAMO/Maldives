@@ -23,6 +23,40 @@ import {
 } from 'lucide-react';
 
 
+// Error Boundary Component to catch crashes
+class ErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false, error: null, errorInfo: null };
+    }
+
+    static getDerivedStateFromError(error) {
+        return { hasError: true };
+    }
+
+    componentDidCatch(error, errorInfo) {
+        console.error("ProfilePage Error:", error, errorInfo);
+        this.setState({ error, errorInfo });
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="p-10 text-red-600">
+                    <h2 className="font-bold text-2xl mb-4">Something went wrong!</h2>
+                    <pre className="bg-red-50 p-4 rounded border border-red-200 text-sm overflow-auto">
+                        {this.state.error && this.state.error.toString()}
+                        <br />
+                        {this.state.errorInfo && this.state.errorInfo.componentStack}
+                    </pre>
+                </div>
+            );
+        }
+
+        return this.props.children;
+    }
+}
+
 const CANDIDATE_DOCS = [
     { id: 'resume', label: 'Resume / CV', type: 'PDF', required: true, status: 'missing' },
     { id: 'passport', label: 'Passport Front', type: 'IMG', required: true, status: 'missing' },
@@ -82,6 +116,11 @@ const CandidateProfile = ({ user, profileData, docs, handleDocAction, handleDele
                                     <div className="flex items-center gap-2 mt-2 text-sm text-teal-700 font-bold bg-teal-50 px-3 py-1 rounded-full inline-flex border border-teal-100">
                                         <ShieldCheck className="w-4 h-4" /> Verified Candidate
                                     </div>
+                                    {profileData.experience > 0 && (
+                                        <div className="flex items-center gap-2 mt-2 text-sm text-blue-700 font-bold bg-blue-50 px-3 py-1 rounded-full inline-flex border border-blue-100 ml-2">
+                                            <Briefcase className="w-4 h-4" /> {profileData.experience} Years Exp
+                                        </div>
+                                    )}
                                 </div>
                                 <button onClick={() => setIsEditingPersonal(true)} className="px-5 py-2.5 text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-colors shadow-lg shadow-slate-900/10">Edit Details</button>
                             </div>
@@ -105,10 +144,12 @@ const CandidateProfile = ({ user, profileData, docs, handleDocAction, handleDele
                                 <div className="pt-6 border-t border-slate-200/60">
                                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-3">Skills</label>
                                     <div className="flex flex-wrap gap-2">
-                                        {profileData.skills.split(',').map((skill, index) => (
-                                            <span key={index} className="px-3 py-1 bg-slate-100 text-slate-700 text-xs font-bold rounded-full border border-slate-200">
-                                                {skill.trim()}
-                                            </span>
+                                        {(typeof profileData.skills === 'string' ? profileData.skills : '').split(',').map((skill, index) => (
+                                            skill.trim() && (
+                                                <span key={index} className="px-3 py-1 bg-slate-100 text-slate-700 text-xs font-bold rounded-full border border-slate-200">
+                                                    {skill.trim()}
+                                                </span>
+                                            )
                                         ))}
                                     </div>
                                 </div>
@@ -345,7 +386,10 @@ const AgentProfile = ({ user, profileData, docs, handleDocAction, setIsResetting
 
 const ProfilePage = () => {
     const { user } = useAuth();
-    const isAgent = user?.role === 'AGENT';
+    console.log("ProfilePage Rendered. User:", user);
+
+    // AuthContext sets role to lowercase, but we check defensively
+    const isAgent = user?.role?.toUpperCase() === 'AGENT';
 
     const [isEditingPersonal, setIsEditingPersonal] = useState(false);
     const [isResettingPassword, setIsResettingPassword] = useState(false);
@@ -358,7 +402,9 @@ const ProfilePage = () => {
         phone: isAgent ? '+1 (115) 555-0198' : '+91 98765 43110',
         location: isAgent ? 'Business District, Mumbai' : 'Mumbai, India',
         founded: '2016',
-        sectors: isAgent ? 'Hospitality, Healthcare, Construction' : ''
+        sectors: isAgent ? 'Hospitality, Healthcare, Construction' : '',
+        skills: '',
+        experience: 0
     });
 
     const [passwords, setPasswords] = useState({
@@ -378,11 +424,12 @@ const ProfilePage = () => {
             // Load initial profile data from AuthContext user object (which comes from 'profiles' table)
             setProfileData(prev => ({
                 ...prev,
-                name: user.name || '',
+                name: user.name || user.full_name || '',
                 email: user.email || '',
-                phone: user.phone || '',
+                phone: user.phone || user.contact_number || '',
                 role: user.role || '',
-                skills: user.skills || 'Hospitality, Management, Customer Service' // Default or fetch
+                skills: Array.isArray(user.skills) ? user.skills.join(', ') : (user.skills || ''),
+                experience: user.experience_years || 0
             }));
 
             setPreviewImage(user.avatar || null);
@@ -393,7 +440,9 @@ const ProfilePage = () => {
                     const response = await fetch(`http://localhost:5000/api/documents?user_id=${user.id}`);
                     if (response.ok) {
                         const data = await response.json();
-                        const userDocs = (data || []).map(d => ({
+                        // Ensure data is array
+                        const docArray = Array.isArray(data) ? data : [];
+                        const userDocs = docArray.map(d => ({
                             id: d._id,
                             label: d.document_type?.toUpperCase() || 'DOCUMENT',
                             type: d.mime_type?.includes('pdf') ? 'PDF' : 'IMG',
@@ -402,7 +451,7 @@ const ProfilePage = () => {
                             date: new Date(d.created_at).toISOString().split('T')[0],
                             filePath: d.file_path
                         }));
-                        // Merge fetched docs with default structure if needed
+                        // Merge logic would go here, for now we just log or use if needed
                     }
                 } catch (err) {
                     console.error('Error fetching documents:', err);
@@ -417,37 +466,51 @@ const ProfilePage = () => {
                         const response = await fetch(`http://localhost:5000/api/applications/candidate/${user.email}`);
                         if (response.ok) {
                             const data = await response.json();
-                            setApplications(data);
+                            // Ensure data is array
+                            if (Array.isArray(data)) {
+                                setApplications(data);
+                            } else {
+                                console.warn("Applications API returned non-array:", data);
+                                setApplications([]);
+                            }
                         }
                     } catch (err) {
                         console.error('Error fetching applications:', err);
+                        setApplications([]);
                     }
                 }
                 fetchApplications();
             }
 
-            setDocs(isAgent ? AGENT_DOCS : CANDIDATE_DOCS); // Keep defaults for now to show UI structure
+            setDocs(isAgent ? AGENT_DOCS : CANDIDATE_DOCS);
         }
     }, [user, isAgent]);
 
     const handlePersonalSubmit = async (e) => {
         e.preventDefault();
         try {
-            const response = await fetch(`http://localhost:5000/api/profiles/${user.id}`, {
+            const response = await fetch(`http://localhost:5000/api/profile/${user.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    name: profileData.name,
-                    phone: profileData.phone,
+                    full_name: profileData.name,
+                    contact_number: profileData.phone,
+                    skills: profileData.skills.split(',').map(s => s.trim()).filter(Boolean),
+                    experience_years: Number(profileData.experience)
                 })
             });
 
-            if (!response.ok) throw new Error('Failed to update profile');
+            const data = await response.json();
+
+            if (!response.ok) {
+                // Show the specific error message from the server (data.error)
+                throw new Error(data.error || data.message || 'Failed to update profile');
+            }
             alert('Profile updated successfully');
             setIsEditingPersonal(false);
         } catch (error) {
             console.error('Error updating profile:', error);
-            alert('Failed to update profile');
+            alert(`Failed: ${error.message}`);
         }
     };
 
@@ -524,115 +587,136 @@ const ProfilePage = () => {
 
 
     return (
-        <div className="min-h-screen bg-slate-50/50 pb-24 font-sans text-slate-800">
+        <ErrorBoundary>
+            <div className="min-h-screen bg-slate-50/50 pb-24 font-sans text-slate-800">
 
-            {isAgent ? (
-                <AgentProfile
-                    user={user}
-                    profileData={profileData}
-                    docs={docs}
-                    handleDocAction={handleDocAction}
-                    setIsResettingPassword={setIsResettingPassword}
-                    setIsEditingPersonal={setIsEditingPersonal}
-                    previewImage={previewImage}
-                />
-            ) : (
-                <CandidateProfile
-                    user={user}
-                    profileData={profileData}
-                    docs={docs}
-                    handleDocAction={handleDocAction}
-                    handleDeleteItem={handleDeleteItem}
-                    setIsResettingPassword={setIsResettingPassword}
-                    setIsEditingPersonal={setIsEditingPersonal}
-                    previewImage={previewImage}
-                    isAddingDoc={isAddingDoc}
-                    setIsAddingDoc={setIsAddingDoc}
-                    newDocName={newDocName}
-                    setNewDocName={setNewDocName}
-                    handleAddDoc={handleAddDoc}
-                    applications={applications}
-                />
-            )}
+                {isAgent ? (
+                    <AgentProfile
+                        user={user}
+                        profileData={profileData}
+                        docs={docs}
+                        handleDocAction={handleDocAction}
+                        setIsResettingPassword={setIsResettingPassword}
+                        setIsEditingPersonal={setIsEditingPersonal}
+                        previewImage={previewImage}
+                    />
+                ) : (
+                    <CandidateProfile
+                        user={user}
+                        profileData={profileData}
+                        docs={docs}
+                        handleDocAction={handleDocAction}
+                        handleDeleteItem={handleDeleteItem}
+                        setIsResettingPassword={setIsResettingPassword}
+                        setIsEditingPersonal={setIsEditingPersonal}
+                        previewImage={previewImage}
+                        isAddingDoc={isAddingDoc}
+                        setIsAddingDoc={setIsAddingDoc}
+                        newDocName={newDocName}
+                        setNewDocName={setNewDocName}
+                        handleAddDoc={handleAddDoc}
+                        applications={applications}
+                    />
+                )}
 
-            {/* MODALS (Shared Logic, Visuals Neutral) */}
-            {isResettingPassword && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-                            <h3 className="font-bold text-slate-900">Security Settings</h3>
-                            <button onClick={() => setIsResettingPassword(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                {/* MODALS (Shared Logic, Visuals Neutral) */}
+                {isResettingPassword && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
+                        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+                            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                                <h3 className="font-bold text-slate-900">Security Settings</h3>
+                                <button onClick={() => setIsResettingPassword(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                            </div>
+                            <form onSubmit={handlePasswordReset} className="p-6 space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Current Password</label>
+                                    <input type="password" required className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500" value={passwords.current} onChange={e => setPasswords({ ...passwords, current: e.target.value })} />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">New Password</label>
+                                    <input type="password" required className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500" value={passwords.new} onChange={e => setPasswords({ ...passwords, new: e.target.value })} />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Confirm Password</label>
+                                    <input type="password" required className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500" value={passwords.confirm} onChange={e => setPasswords({ ...passwords, confirm: e.target.value })} />
+                                </div>
+                                <button type="submit" className="w-full py-2.5 bg-slate-900 text-white rounded-lg font-medium text-sm hover:bg-slate-800">Update Password</button>
+                            </form>
                         </div>
-                        <form onSubmit={handlePasswordReset} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Current Password</label>
-                                <input type="password" required className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500" value={passwords.current} onChange={e => setPasswords({ ...passwords, current: e.target.value })} />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">New Password</label>
-                                <input type="password" required className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500" value={passwords.new} onChange={e => setPasswords({ ...passwords, new: e.target.value })} />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Confirm Password</label>
-                                <input type="password" required className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500" value={passwords.confirm} onChange={e => setPasswords({ ...passwords, confirm: e.target.value })} />
-                            </div>
-                            <button type="submit" className="w-full py-2.5 bg-slate-900 text-white rounded-lg font-medium text-sm hover:bg-slate-800">Update Password</button>
-                        </form>
                     </div>
-                </div>
-            )}
+                )}
 
-            {isEditingPersonal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-                            <h3 className="font-bold text-slate-900">Edit Details</h3>
-                            <button onClick={() => setIsEditingPersonal(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                {isEditingPersonal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
+                        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+                            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                                <h3 className="font-bold text-slate-900">Edit Details</h3>
+                                <button onClick={() => setIsEditingPersonal(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                            </div>
+                            <form onSubmit={handlePersonalSubmit} className="p-6 space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                                        value={profileData.name}
+                                        onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Title / Role</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                                        value={profileData.title}
+                                        onChange={(e) => setProfileData({ ...profileData, title: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
+                                    <input
+                                        type="tel"
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                                        value={profileData.phone}
+                                        onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Location</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                                        value={profileData.location}
+                                        onChange={(e) => setProfileData({ ...profileData, location: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Experience (Years)</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                                        value={profileData.experience}
+                                        onChange={(e) => setProfileData({ ...profileData, experience: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Skills (Comma separated)</label>
+                                    <textarea
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                                        value={profileData.skills}
+                                        onChange={(e) => setProfileData({ ...profileData, skills: e.target.value })}
+                                        rows="3"
+                                    />
+                                </div>
+                                <button type="submit" className="w-full py-2.5 bg-slate-900 text-white rounded-lg font-medium text-sm hover:bg-slate-800">Save Changes</button>
+                            </form>
                         </div>
-                        <form onSubmit={handlePersonalSubmit} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
-                                <input
-                                    type="text"
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
-                                    value={profileData.name}
-                                    onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Title / Role</label>
-                                <input
-                                    type="text"
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
-                                    value={profileData.title}
-                                    onChange={(e) => setProfileData({ ...profileData, title: e.target.value })}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
-                                <input
-                                    type="tel"
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
-                                    value={profileData.phone}
-                                    onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Location</label>
-                                <input
-                                    type="text"
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
-                                    value={profileData.location}
-                                    onChange={(e) => setProfileData({ ...profileData, location: e.target.value })}
-                                />
-                            </div>
-                            <button type="submit" className="w-full py-2.5 bg-slate-900 text-white rounded-lg font-medium text-sm hover:bg-slate-800">Save Changes</button>
-                        </form>
                     </div>
-                </div>
-            )}
+                )}
 
-        </div>
+            </div>
+        </ErrorBoundary>
     );
 };
 

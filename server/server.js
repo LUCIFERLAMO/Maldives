@@ -211,7 +211,14 @@ app.put('/api/profile/:id', async (req, res) => {
         const { full_name, contact_number, skills, experience_years } = req.body;
 
         // Find by MongoDB _id or custom id field
-        let profile = await Profile.findById(req.params.id);
+        let profile;
+        // Check if the ID is a valid MongoDB ObjectID format (24 hex chars)
+        const isMongoId = /^[0-9a-fA-F]{24}$/.test(req.params.id);
+
+        if (isMongoId) {
+            profile = await Profile.findById(req.params.id);
+        }
+
         if (!profile) {
             profile = await Profile.findOne({ id: req.params.id });
         }
