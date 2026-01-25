@@ -20,8 +20,7 @@ import {
    FileText,
    Search,
    ChevronDown,
-   RefreshCw,
-   Trash2
+   RefreshCw
 } from 'lucide-react';
 
 import { DashboardSidebar } from '../components/DashboardSidebar';
@@ -247,16 +246,7 @@ const AdminDashboard = () => {
    const [activeTab, setActiveTab] = useState('overview');
    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
    const [selectedIndustry, setSelectedIndustry] = useState(null);
-
-   // Hierarchical Vacancy Management View State
-   const [vacancyViewMode, setVacancyViewMode] = useState('CATEGORIES'); // 'CATEGORIES', 'JOBS', 'CANDIDATES'
-   const [selectedCategory, setSelectedCategory] = useState(null);
-   const [selectedJobId, setSelectedJobId] = useState(null);
-   const [selectedJobTitle, setSelectedJobTitle] = useState('');
-   const [categoryJobs, setCategoryJobs] = useState([]);
-   const [jobApplications, setJobApplications] = useState([]);
-   const [isLoadingJobs, setIsLoadingJobs] = useState(false);
-   const [isLoadingApplications, setIsLoadingApplications] = useState(false);
+   const [selectedJob, setSelectedJob] = useState(null); // Selected job within a category for hierarchical navigation
    const [agentSubTab, setAgentSubTab] = useState('vacancies');
    const [agentResumes, setAgentResumes] = useState(MOCK_AGENT_RESUMES);
    const [auditQueue, setAuditQueue] = useState(MOCK_AUDIT_QUEUE);
@@ -276,6 +266,16 @@ const AdminDashboard = () => {
    const [rejectReason, setRejectReason] = useState('');
    const [isApprovingJob, setIsApprovingJob] = useState(false);
    const [isRejectingJob, setIsRejectingJob] = useState(false);
+
+   // Category Filter State
+   const [selectedCategory, setSelectedCategory] = useState('All');
+   const [liveJobs, setLiveJobs] = useState([]);
+   const [isLoadingJobs, setIsLoadingJobs] = useState(false);
+   const CATEGORIES = ['Hospitality', 'Construction', 'Healthcare', 'IT', 'Education', 'Retail', 'Manufacturing', 'Tourism', 'Fishing', 'Agriculture', 'Other'];
+
+   // Job Applications State (Real applications from database)
+   const [jobApplications, setJobApplications] = useState([]);
+   const [isLoadingApplications, setIsLoadingApplications] = useState(false);
 
    // Refs for flexible dropdowns
    const blacklistSourceRef = useRef(null);
@@ -317,121 +317,151 @@ const AdminDashboard = () => {
       fetchLiveJobs();
    }, []);
 
-   // Handle Delete Vacancy
-   const handleDeleteVacancy = (jobId) => {
-      if (window.confirm('Are you sure you want to delete this vacancy?')) {
-         // Update local state
-         setJobs(prevJobs => prevJobs.filter(job => job.id !== jobId && job._id !== jobId));
-         // Update filtering state if active
-         setCategoryJobs(prev => prev.filter(job => job.id !== jobId && job._id !== jobId));
-
-         // In a real app, you would also call API to delete
-         // fetch(`http://localhost:5000/api/jobs/${jobId}`, { method: 'DELETE' });
+   // Fetch pending job requests (reusable for refresh)
+   const fetchPendingJobRequests = async (showLoading = false) => {
+      if (showLoading) setIsRefreshingJobRequests(true);
+      try {
+         const response = await fetch('http://localhost:5000/api/admin/job-requests?status=PENDING');
+         const data = await response.json();
+         setPendingJobRequests(data);
+      } catch (error) {
+         console.error('Error fetching pending job requests:', error);
+      } finally {
+         if (showLoading) setIsRefreshingJobRequests(false);
       }
    };
 
-   // Fetch jobs by category for hierarchical view
-   const fetchJobsByCategory = async (category) => {
+   // Fetch pending job requests count
+   const fetchPendingJobRequestsCount = async () => {
+      try {
+         const response = await fetch('http://localhost:5000/api/admin/job-requests/pending/count');
+         const data = await response.json();
+         setPendingJobRequestsCount(data.count);
+      } catch (error) {
+         console.error('Error fetching pending count:', error);
+      }
+   };
+
+   // Fetch live jobs (with optional category filter)
+   const fetchLiveJobs = async (category = 'All') => {
       setIsLoadingJobs(true);
       try {
-         // Using local state for consistency
-         // In a real app with working backend, we would fetch here
-
-         // Simulate network delay
-         setTimeout(() => {
-            const filteredJobs = jobs.filter(j => j.industry === category);
-            setCategoryJobs(filteredJobs);
-            setIsLoadingJobs(false);
-         }, 500);
+         const url = category && category !== 'All'
+            ? `http://localhost:5000/api/jobs?category=${category}`
+            : 'http://localhost:5000/api/jobs';
+         const response = await fetch(url);
+         const data = await response.json();
+         setLiveJobs(data);
       } catch (error) {
-         console.error('Error fetching jobs by category:', error);
-         const filteredJobs = jobs.filter(j => j.industry === category);
-         setCategoryJobs(filteredJobs);
+         console.error('Error fetching jobs:', error);
+      } finally {
          setIsLoadingJobs(false);
       }
    };
 
-   // Fetch applications by job ID for hierarchical view
-   const fetchApplicationsByJob = async (jobId) => {
+   // Fetch applications for a specific job
+   const fetchJobApplications = async (jobId) => {
       setIsLoadingApplications(true);
       try {
-         const response = await fetch(`http://localhost:5000/api/applications?job_id=${encodeURIComponent(jobId)}`);
-         if (response.ok) {
-            const data = await response.json();
-            setJobApplications(data);
-         } else {
-            // Fallback to mock data filtered by jobId
-            const filteredApps = MOCK_APPLICATIONS.filter(app => app.jobId === jobId);
-            setJobApplications(filteredApps);
-         }
+         const response = await fetch('http://localhost:5000/api/admin/applications');
+         const data = await response.json();
+         // Filter applications for this specific job
+         const jobApps = (data || []).filter(app =>
+            app.job_id === jobId || app.job_id === String(jobId)
+         ).map(app => ({
+            id: app._id || app.id,
+            jobId: app.job_id,
+            candidateName: app.candidate_name || 'Unknown',
+            email: app.email,
+            contactNumber: app.contact_number,
+            status: app.status || 'PENDING',
+            appliedDate: app.applied_at ? new Date(app.applied_at).toLocaleDateString() : 'N/A',
+            source: app.agent_id ? 'Agency' : 'Direct',
+            agentId: app.agent_id,
+            hasResume: !!app.resume,
+            hasCerts: !!app.certificates,
+            resumeFilename: app.resume?.filename,
+            certsFilename: app.certificates?.filename
+         }));
+         setJobApplications(jobApps);
       } catch (error) {
-         console.error('Error fetching applications by job:', error);
-         // Fallback to mock data
-         const filteredApps = MOCK_APPLICATIONS.filter(app => app.jobId === jobId);
-         setJobApplications(filteredApps);
+         console.error('Error fetching applications:', error);
+         setJobApplications([]);
       } finally {
          setIsLoadingApplications(false);
       }
    };
 
-   // Handle category click - navigate to JOBS view
-   const handleCategoryClick = (category) => {
+   // Handle category change
+   const handleCategoryChange = (category) => {
       setSelectedCategory(category);
-      setVacancyViewMode('JOBS');
-      fetchJobsByCategory(category);
+      fetchLiveJobs(category);
    };
 
-   // Handle job click - navigate to CANDIDATES view
-   const handleJobClick = (job) => {
-      setSelectedJobId(job.id);
-      setSelectedJobTitle(job.title);
-      setVacancyViewMode('CANDIDATES');
-      fetchApplicationsByJob(job.id);
+   // Handle job selection (fetch applications for the job)
+   const handleJobSelect = (job) => {
+      setSelectedJob(job);
+      fetchJobApplications(job.id || job._id);
    };
 
-   // Handle back to categories
-   const handleBackToCategories = () => {
-      setVacancyViewMode('CATEGORIES');
-      setSelectedCategory(null);
-      setCategoryJobs([]);
-   };
-
-   // Handle back to jobs
-   const handleBackToJobs = () => {
-      setVacancyViewMode('JOBS');
-      setSelectedJobId(null);
-      setSelectedJobTitle('');
-      setJobApplications([]);
-   };
-
-   // Handle application status update (Approve/Reject)
-   const handleApplicationAction = async (appId, action) => {
+   // Approve job request handler
+   const handleApproveJobRequest = async (request) => {
+      setIsApprovingJob(true);
       try {
-         const response = await fetch(`http://localhost:5000/api/applications/${appId}/${action}`, {
+         const response = await fetch(`http://localhost:5000/api/admin/job-requests/${request._id}/approve`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+               reviewed_by: 'Admin',
+               review_notes: 'Approved'
+            })
          });
+         const data = await response.json();
          if (response.ok) {
-            // Refresh applications list
-            fetchApplicationsByJob(selectedJobId);
+            alert(`✅ Job request approved! "${request.title}" is now live.`);
+            setPendingJobRequests(prev => prev.filter(r => r._id !== request._id));
+            setPendingJobRequestsCount(prev => prev - 1);
+            fetchLiveJobs(selectedCategory);
          } else {
-            // Local fallback update
-            setJobApplications(prev => prev.map(app => {
-               if (app.id === appId || app._id === appId) {
-                  return { ...app, status: action === 'approve' ? 'Selected' : 'Rejected' };
-               }
-               return app;
-            }));
+            alert('Failed to approve: ' + data.message);
          }
       } catch (error) {
-         console.error(`Error ${action}ing application:`, error);
-         // Fallback local update
-         setJobApplications(prev => prev.map(app => {
-            if (app.id === appId || app._id === appId) {
-               return { ...app, status: action === 'approve' ? 'Selected' : 'Rejected' };
-            }
-            return app;
-         }));
+         console.error('Error approving job request:', error);
+         alert('Error approving job request');
+      } finally {
+         setIsApprovingJob(false);
+      }
+   };
+
+   // Reject job request handler
+   const handleRejectJobRequest = async () => {
+      if (!selectedJobRequest) return;
+      setIsRejectingJob(true);
+      try {
+         const response = await fetch(`http://localhost:5000/api/admin/job-requests/${selectedJobRequest._id}/reject`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+               reviewed_by: 'Admin',
+               review_notes: rejectReason || 'Rejected by admin'
+            })
+         });
+         const data = await response.json();
+         if (response.ok) {
+            alert(`❌ Job request "${selectedJobRequest.title}" has been rejected.`);
+            setPendingJobRequests(prev => prev.filter(r => r._id !== selectedJobRequest._id));
+            setPendingJobRequestsCount(prev => prev - 1);
+            setShowRejectModal(false);
+            setSelectedJobRequest(null);
+            setRejectReason('');
+         } else {
+            alert('Failed to reject: ' + data.message);
+         }
+      } catch (error) {
+         console.error('Error rejecting job request:', error);
+         alert('Error rejecting job request');
+      } finally {
+         setIsRejectingJob(false);
       }
    };
    const [selectedResume, setSelectedResume] = useState(null);
@@ -1616,15 +1646,13 @@ const AdminDashboard = () => {
                            </div>
                         )}
 
-                        {/* VACANCIES CONTENT - HIERARCHICAL VIEW */}
+                        {/* VACANCIES CONTENT */}
                         {activeTab === 'vacancies' && (
                            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-
-                              {/* VIEW 1: CATEGORIES (Default) */}
-                              {vacancyViewMode === 'CATEGORIES' && (
+                              {!selectedIndustry ? (
                                  <>
                                     <div className="flex justify-between items-center mb-6">
-                                       <h2 className="text-2xl font-bold text-slate-900">Vacancy Management</h2>
+                                       <h2 className="text-2xl font-bold text-slate-900">Vacancy Categories</h2>
                                        <button
                                           onClick={() => setIsAddCategoryOpen(true)}
                                           className="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-bold shadow-lg shadow-teal-600/20 hover:bg-teal-700 transition-all flex items-center gap-2"
@@ -1634,11 +1662,15 @@ const AdminDashboard = () => {
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                        {industries.map((industry) => {
-                                          const jobCount = jobs.filter(j => j.industry === industry).length;
+                                          const jobCount = getJobsByIndustry(industry).length;
                                           return (
                                              <button
                                                 key={industry}
-                                                onClick={() => handleCategoryClick(industry)}
+                                                onClick={() => {
+                                                   setSelectedIndustry(industry);
+                                                   setSelectedJob(null);
+                                                   setJobApplications([]);
+                                                }}
                                                 className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-teal-200 transition-all text-left group"
                                              >
                                                 <div className="w-12 h-12 bg-slate-50 rounded-lg flex items-center justify-center mb-6 group-hover:bg-teal-50 transition-colors">
@@ -1647,223 +1679,291 @@ const AdminDashboard = () => {
                                                 <h3 className="text-lg font-bold text-slate-900 mb-1">{industry}</h3>
                                                 <p className="text-sm text-slate-500 font-medium">{jobCount} Active Jobs</p>
                                                 <div className="mt-6 flex items-center text-xs font-bold text-teal-600 uppercase tracking-wider opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all">
-                                                   View Jobs <ArrowRight className="w-3 h-3 ml-2" />
+                                                   View Candidates <ArrowRight className="w-3 h-3 ml-2" />
                                                 </div>
                                              </button>
                                           );
                                        })}
                                     </div>
                                  </>
-                              )}
-
-                              {/* VIEW 2: JOBS LIST */}
-                              {vacancyViewMode === 'JOBS' && (
-                                 <div className="space-y-6">
-                                    {/* Back Button & Header */}
-                                    <div className="flex items-center justify-between">
+                              ) : selectedIndustry && !selectedJob ? (
+                                 // JOBS LIST VIEW - Show jobs in selected category
+                                 <>
+                                    <div className="flex justify-between items-center mb-6">
                                        <div className="flex items-center gap-4">
                                           <button
-                                             onClick={handleBackToCategories}
-                                             className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors"
+                                             onClick={() => setSelectedIndustry(null)}
+                                             className="w-10 h-10 rounded-lg flex items-center justify-center bg-white border border-slate-200 text-slate-400 hover:text-slate-600 hover:border-teal-500 hover:shadow-md transition-all"
                                           >
-                                             <ArrowLeft className="w-4 h-4" /> Back to Categories
+                                             <ArrowLeft className="w-5 h-5" />
                                           </button>
-                                          <span className="text-slate-300">|</span>
-                                          <h2 className="text-xl font-bold text-slate-900">{selectedCategory} Jobs</h2>
+                                          <div>
+                                             <h2 className="text-2xl font-bold text-slate-900">{selectedIndustry} Jobs</h2>
+                                             <p className="text-sm text-slate-500 mt-1">{getJobsByIndustry(selectedIndustry).length} Active Jobs</p>
+                                          </div>
                                        </div>
                                        <button
                                           onClick={() => {
-                                             setNewVacancy(prev => ({ ...prev, industry: selectedCategory }));
+                                             setNewVacancy(prev => ({ ...prev, industry: selectedIndustry }));
                                              setIsAddVacancyOpen(true);
                                           }}
-                                          className="px-4 py-2 rounded-lg bg-teal-600 text-white text-xs font-bold uppercase tracking-wider shadow-lg shadow-teal-600/20 hover:bg-teal-700 transition-all flex items-center gap-2"
+                                          className="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-bold shadow-lg shadow-teal-600/20 hover:bg-teal-700 transition-all flex items-center gap-2"
                                        >
-                                          <Plus className="w-4 h-4" /> Add Job Vacancy
+                                          <Plus className="w-4 h-4" /> Add Job
                                        </button>
                                     </div>
 
-                                    {/* Jobs Table */}
-                                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                                       {isLoadingJobs ? (
-                                          <div className="p-12 flex flex-col items-center justify-center">
-                                             <Loader2 className="w-8 h-8 text-teal-600 animate-spin mb-4" />
-                                             <p className="text-slate-500 font-medium">Loading jobs...</p>
+                                    {getJobsByIndustry(selectedIndustry).length > 0 ? (
+                                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                          {getJobsByIndustry(selectedIndustry).map((job) => (
+                                             <button
+                                                key={job._id || job.id}
+                                                onClick={() => handleJobSelect(job)}
+                                                className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-teal-200 transition-all text-left group"
+                                             >
+                                                <div className="flex items-start justify-between mb-4">
+                                                   <div className="w-10 h-10 bg-teal-50 rounded-lg flex items-center justify-center group-hover:bg-teal-100 transition-colors">
+                                                      <Briefcase className="w-5 h-5 text-teal-600" />
+                                                   </div>
+                                                   <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${job.status === 'OPEN' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+                                                      {job.status || 'OPEN'}
+                                                   </span>
+                                                </div>
+                                                <h3 className="text-lg font-bold text-slate-900 mb-2">{job.title}</h3>
+                                                <p className="text-sm text-slate-500 mb-1">{job.company}</p>
+                                                <p className="text-xs text-slate-400 mb-4">{job.location}</p>
+                                                {job.salary_range && (
+                                                   <p className="text-sm font-bold text-teal-600 mb-4">{job.salary_range}</p>
+                                                )}
+                                                <div className="flex items-center text-xs font-bold text-teal-600 uppercase tracking-wider opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all">
+                                                   View Candidates <ArrowRight className="w-3 h-3 ml-2" />
+                                                </div>
+                                             </button>
+                                          ))}
+                                       </div>
+                                    ) : (
+                                       <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+                                          <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mx-auto mb-4">
+                                             <Briefcase className="w-8 h-8 text-slate-300" />
                                           </div>
-                                       ) : categoryJobs.length > 0 ? (
-                                          <table className="w-full text-left">
-                                             <thead>
-                                                <tr className="bg-slate-50 border-b border-slate-100">
-                                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Job Title</th>
-                                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Company</th>
-                                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Location</th>
-                                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Salary</th>
-                                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Status</th>
-                                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Action</th>
+                                          <h3 className="text-lg font-bold text-slate-900 mb-2">No Jobs Yet</h3>
+                                          <p className="text-sm text-slate-500 mb-4">No jobs have been created in the {selectedIndustry} category.</p>
+                                          <button
+                                             onClick={() => {
+                                                setNewVacancy(prev => ({ ...prev, industry: selectedIndustry }));
+                                                setIsAddVacancyOpen(true);
+                                             }}
+                                             className="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-bold shadow-lg shadow-teal-600/20 hover:bg-teal-700 transition-all inline-flex items-center gap-2"
+                                          >
+                                             <Plus className="w-4 h-4" /> Add First Job
+                                          </button>
+                                       </div>
+                                    )}
+                                 </>
+                              ) : (
+                                 // CANDIDATES VIEW - Show candidates for selected job
+                                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm relative">
+                                    <div className="p-6 border-b border-slate-100 flex justify-between items-center relative rounded-t-xl">
+                                       <div className="flex items-center gap-4">
+                                          <button
+                                             onClick={() => { setSelectedJob(null); setJobApplications([]); }}
+                                             className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all border border-transparent hover:border-slate-200"
+                                          >
+                                             <ArrowLeft className="w-5 h-5" />
+                                          </button>
+                                          <div>
+                                             <h3 className="font-bold text-slate-900 text-sm uppercase tracking-widest">Candidates for {selectedJob?.title}</h3>
+                                             <p className="text-xs text-slate-500 mt-1">{selectedJob?.company} • {selectedJob?.location}</p>
+                                          </div>
+                                       </div>
+                                       <div className="flex items-center gap-3">
+                                          <div className="relative">
+                                             <input
+                                                type="text"
+                                                placeholder="Search candidates..."
+                                                className="pl-4 pr-10 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 w-64"
+                                                value={candidateSearchInput}
+                                                onChange={(e) => setCandidateSearchInput(e.target.value)}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleCandidateSearch()}
+                                             />
+                                             <button
+                                                onClick={handleCandidateSearch}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors"
+                                             >
+                                                <Search className="w-4 h-4" />
+                                             </button>
+                                          </div>
+
+                                          <div className="relative">
+                                             <button
+                                                onClick={() => setIsCandidateFilterOpen(!isCandidateFilterOpen)}
+                                                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isCandidateFilterOpen ? 'bg-teal-50 text-teal-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                                             >
+                                                <Filter className="w-4 h-4" />
+                                             </button>
+
+                                             {/* FILTER DROPDOWN */}
+                                             {isCandidateFilterOpen && (
+                                                <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                                   <div className="max-h-[60vh] overflow-y-auto custom-scrollbar p-3 space-y-3">
+
+                                                      {/* 1. Status */}
+                                                      <div className="space-y-2">
+                                                         <h4 className="text-[9px] font-black uppercase text-slate-400 tracking-widest">1. Status</h4>
+                                                         <div className="space-y-1.5">
+                                                            {['Processing', 'On Hold', 'Rejected', 'Selected'].map(status => (
+                                                               <label key={status} className="flex items-center gap-2 cursor-pointer group">
+                                                                  <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all ${candidateFilters.status.includes(status.toUpperCase()) ? 'bg-teal-600 border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                     {candidateFilters.status.includes(status.toUpperCase()) && <CheckCircle2 className="w-2.5 h-2.5 text-white" />}
+                                                                  </div>
+                                                                  <input
+                                                                     type="checkbox"
+                                                                     className="hidden"
+                                                                     checked={candidateFilters.status.includes(status.toUpperCase())}
+                                                                     onChange={() => toggleCandidateStatusFilter(status.toUpperCase())}
+                                                                  />
+                                                                  <span className="text-xs font-bold text-slate-700">{status}</span>
+                                                               </label>
+                                                            ))}
+                                                         </div>
+                                                      </div>
+
+                                                      {/* 2. Source */}
+                                                      <div className="space-y-2">
+                                                         <h4 className="text-[9px] font-black uppercase text-slate-400 tracking-widest">2. Source</h4>
+                                                         <div className="space-y-1.5">
+                                                            {['Direct Application', 'Agency Ref'].map(source => (
+                                                               <label key={source} className="flex items-center gap-2 cursor-pointer group">
+                                                                  <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${candidateFilters.source === source ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                     {candidateFilters.source === source && <div className="w-1.5 h-1.5 rounded-full bg-teal-600" />}
+                                                                  </div>
+                                                                  <input
+                                                                     type="radio"
+                                                                     className="hidden"
+                                                                     checked={candidateFilters.source === source}
+                                                                     onChange={() => setCandidateFilters({ ...candidateFilters, source })}
+                                                                  />
+                                                                  <span className="text-xs font-bold text-slate-700">{source}</span>
+                                                               </label>
+                                                            ))}
+                                                         </div>
+                                                      </div>
+                                                   </div>
+
+                                                   <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
+                                                      <button
+                                                         onClick={() => setCandidateFilters({ status: [], source: 'All', duration: 'All' })}
+                                                         className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors"
+                                                      >
+                                                         Clear
+                                                      </button>
+                                                      <button
+                                                         onClick={() => setIsCandidateFilterOpen(false)}
+                                                         className="flex-1 py-2 rounded-lg bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20"
+                                                      >
+                                                         Apply
+                                                      </button>
+                                                   </div>
+                                                </div>
+                                             )}
+                                          </div>
+                                       </div>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                       <table className="w-full text-left">
+                                          <thead>
+                                             <tr className="bg-slate-50 border-b border-slate-100">
+                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Applicant Profile</th>
+                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Source</th>
+                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Application State</th>
+                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Review</th>
+                                             </tr>
+                                          </thead>
+                                          <tbody className="divide-y divide-slate-50">
+                                             {isLoadingApplications ? (
+                                                <tr>
+                                                   <td colSpan="4" className="px-6 py-12 text-center">
+                                                      <div className="flex flex-col items-center justify-center gap-2">
+                                                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
+                                                         <p className="text-sm text-slate-500">Loading applications...</p>
+                                                      </div>
+                                                   </td>
                                                 </tr>
-                                             </thead>
-                                             <tbody className="divide-y divide-slate-50">
-                                                {categoryJobs.map((job) => (
-                                                   <tr key={job.id || job._id} className="hover:bg-slate-50/50 transition-colors">
+                                             ) : jobApplications.length > 0 ? (
+                                                jobApplications.map((app) => (
+                                                   <tr key={app.id} className="hover:bg-slate-50/50 transition-colors">
                                                       <td className="px-6 py-4">
                                                          <div>
-                                                            <p className="text-sm font-bold text-slate-900">{job.title}</p>
-                                                            <p className="text-xs text-slate-400 font-medium">{job.type || 'Full-time'}</p>
+                                                            <p className="text-sm font-bold text-slate-900">{app.candidateName}</p>
+                                                            <p className="text-xs text-slate-400 font-medium">{app.email}</p>
+                                                            {app.contactNumber && (
+                                                               <p className="text-xs text-slate-400 font-medium">{app.contactNumber}</p>
+                                                            )}
                                                          </div>
                                                       </td>
                                                       <td className="px-6 py-4">
-                                                         <span className="text-sm text-slate-600">{job.company || 'N/A'}</span>
+                                                         <div className="flex flex-col">
+                                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 flex items-center gap-1.5">
+                                                               <span className={`w-1.5 h-1.5 rounded-full ${app.source === 'Direct' ? 'bg-blue-400' : 'bg-amber-400'}`}></span>
+                                                               {app.source === 'Direct' ? 'Direct' : 'Agent'}
+                                                            </span>
+                                                            <span className="text-[10px] font-medium text-slate-400 pl-3">
+                                                               {app.source === 'Direct' ? 'Portal Application' : 'Agent Submitted'}
+                                                            </span>
+                                                         </div>
                                                       </td>
                                                       <td className="px-6 py-4">
-                                                         <span className="text-sm text-slate-600 flex items-center gap-1">
-                                                            <MapPin className="w-3 h-3" /> {job.location || 'N/A'}
+                                                         <span className={`
+                                                      px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest
+                                                      ${app.status === 'PENDING' ? 'bg-amber-50 text-amber-600' : ''}
+                                                      ${app.status === 'Applied' ? 'bg-blue-50 text-blue-600' : ''}
+                                                      ${app.status === 'Processing' ? 'bg-purple-50 text-purple-600' : ''}
+                                                      ${app.status === 'APPROVED' || app.status === 'Selected' ? 'bg-teal-50 text-teal-600' : ''}
+                                                      ${app.status === 'REJECTED' || app.status === 'Rejected' ? 'bg-red-50 text-red-600' : ''}
+                                                   `}>
+                                                            {app.status}
                                                          </span>
                                                       </td>
-                                                      <td className="px-6 py-4">
-                                                         <span className="text-sm font-medium text-slate-700">{job.salaryRange || job.salary || 'N/A'}</span>
-                                                      </td>
-                                                      <td className="px-6 py-4">
-                                                         <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${job.status === 'OPEN' || job.status === 'Current Opening'
-                                                            ? 'bg-emerald-50 text-emerald-600'
-                                                            : 'bg-slate-100 text-slate-500'
-                                                            }`}>
-                                                            {job.status || 'OPEN'}
-                                                         </span>
-                                                      </td>
-                                                      <td className="px-6 py-4 text-right flex items-center justify-end">
+                                                      <td className="px-6 py-4 text-right">
                                                          <button
-                                                            onClick={() => handleJobClick(job)}
-                                                            className="px-4 py-2 rounded-lg bg-teal-50 text-teal-600 border border-teal-100 text-[10px] font-black uppercase tracking-widest hover:bg-teal-100 hover:border-teal-200 transition-all shadow-sm flex items-center gap-2"
+                                                            onClick={() => setSelectedResume({
+                                                               ...app,
+                                                               name: app.candidateName,
+                                                               role: selectedJob?.title || 'Unknown Role',
+                                                               whatsapp: app.contactNumber,
+                                                               nationality: 'Applicant',
+                                                               agency: app.source === 'Direct' ? 'Direct Application' : 'Agent Submission',
+                                                               statusColor: '',
+                                                               documents: {
+                                                                  resume: app.resumeFilename || 'Resume.pdf',
+                                                                  certificates: app.certsFilename || null
+                                                               }
+                                                            })}
+                                                            className="w-8 h-8 rounded-lg bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-900 flex items-center justify-center transition-all ml-auto"
                                                          >
-                                                            <Users className="w-3 h-3" /> View Candidates
+                                                            <Eye className="w-4 h-4" />
                                                          </button>
                                                       </td>
                                                    </tr>
-                                                ))}
-                                             </tbody>
-                                          </table>
-                                       ) : (
-                                          <div className="p-12 flex flex-col items-center justify-center">
-                                             <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 mb-4">
-                                                <Briefcase className="w-8 h-8 opacity-40" />
-                                             </div>
-                                             <p className="text-slate-500 font-bold">No jobs found in {selectedCategory}</p>
-                                             <p className="text-slate-400 text-sm mt-1">Click "Add Job Vacancy" to create one.</p>
-                                          </div>
-                                       )}
-                                    </div>
-                                 </div>
-                              )}
-
-                              {/* VIEW 3: CANDIDATES LIST */}
-                              {vacancyViewMode === 'CANDIDATES' && (
-                                 <div className="space-y-6">
-                                    {/* Back Button & Header */}
-                                    <div className="flex items-center justify-between">
-                                       <div className="flex items-center gap-4">
-                                          <button
-                                             onClick={handleBackToJobs}
-                                             className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors"
-                                          >
-                                             <ArrowLeft className="w-4 h-4" /> Back to Jobs
-                                          </button>
-                                          <span className="text-slate-300">|</span>
-                                          <h2 className="text-xl font-bold text-slate-900">Candidates for: {selectedJobTitle}</h2>
-                                       </div>
-                                    </div>
-
-                                    {/* Candidates Table */}
-                                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                                       {isLoadingApplications ? (
-                                          <div className="p-12 flex flex-col items-center justify-center">
-                                             <Loader2 className="w-8 h-8 text-teal-600 animate-spin mb-4" />
-                                             <p className="text-slate-500 font-medium">Loading applicants...</p>
-                                          </div>
-                                       ) : jobApplications.length > 0 ? (
-                                          <table className="w-full text-left">
-                                             <thead>
-                                                <tr className="bg-slate-50 border-b border-slate-100">
-                                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Applicant Name</th>
-                                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Agent Name</th>
-                                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Resume</th>
-                                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Status</th>
-                                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Actions</th>
+                                                ))
+                                             ) : (
+                                                <tr>
+                                                   <td colSpan="4" className="px-6 py-12 text-center">
+                                                      <div className="flex flex-col items-center justify-center gap-2">
+                                                         <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400">
+                                                            <Users className="w-6 h-6 opacity-40" />
+                                                         </div>
+                                                         <p className="text-slate-500 font-bold">No candidates yet</p>
+                                                         <p className="text-xs text-slate-400">No one has applied for this position yet.</p>
+                                                      </div>
+                                                   </td>
                                                 </tr>
-                                             </thead>
-                                             <tbody className="divide-y divide-slate-50">
-                                                {jobApplications.map((app) => (
-                                                   <tr key={app.id || app._id} className="hover:bg-slate-50/50 transition-colors">
-                                                      <td className="px-6 py-4">
-                                                         <div>
-                                                            <p className="text-sm font-bold text-slate-900">{app.candidateName || app.name || 'Unknown'}</p>
-                                                            <p className="text-xs text-slate-400 font-medium">{app.email || 'No email'}</p>
-                                                         </div>
-                                                      </td>
-                                                      <td className="px-6 py-4">
-                                                         <span className="text-sm text-slate-600">
-                                                            {app.source === 'Direct' ? (
-                                                               <span className="text-blue-600 font-medium">Direct Application</span>
-                                                            ) : (
-                                                               app.agentName || app.agency || 'N/A'
-                                                            )}
-                                                         </span>
-                                                      </td>
-                                                      <td className="px-6 py-4">
-                                                         {app.hasResume || app.resumeUrl ? (
-                                                            <button
-                                                               onClick={() => window.open(app.resumeUrl || '#', '_blank')}
-                                                               className="flex items-center gap-2 text-xs font-bold text-teal-600 hover:text-teal-700"
-                                                            >
-                                                               <FileText className="w-4 h-4" /> View Resume
-                                                            </button>
-                                                         ) : (
-                                                            <span className="text-xs text-slate-400">Not available</span>
-                                                         )}
-                                                      </td>
-                                                      <td className="px-6 py-4">
-                                                         <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${app.status === 'Applied' ? 'bg-blue-50 text-blue-600' :
-                                                            app.status === 'Processing' ? 'bg-purple-50 text-purple-600' :
-                                                               app.status === 'Selected' ? 'bg-emerald-50 text-emerald-600' :
-                                                                  app.status === 'Rejected' ? 'bg-red-50 text-red-600' :
-                                                                     'bg-slate-100 text-slate-500'
-                                                            }`}>
-                                                            {app.status || 'Applied'}
-                                                         </span>
-                                                      </td>
-                                                      <td className="px-6 py-4">
-                                                         <div className="flex items-center gap-2 justify-end">
-                                                            <button
-                                                               onClick={() => handleApplicationAction(app.id || app._id, 'approve')}
-                                                               disabled={app.status === 'Selected'}
-                                                               className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                                            >
-                                                               Approve
-                                                            </button>
-                                                            <button
-                                                               onClick={() => handleApplicationAction(app.id || app._id, 'reject')}
-                                                               disabled={app.status === 'Rejected'}
-                                                               className="px-3 py-1.5 rounded-lg bg-red-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                                            >
-                                                               Reject
-                                                            </button>
-                                                         </div>
-                                                      </td>
-                                                   </tr>
-                                                ))}
-                                             </tbody>
-                                          </table>
-                                       ) : (
-                                          <div className="p-12 flex flex-col items-center justify-center">
-                                             <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 mb-4">
-                                                <Users className="w-8 h-8 opacity-40" />
-                                             </div>
-                                             <p className="text-slate-500 font-bold">No candidates found for this job</p>
-                                             <p className="text-slate-400 text-sm mt-1">Applicants will appear here once they apply.</p>
-                                          </div>
-                                       )}
+                                             )}
+                                          </tbody>
+                                       </table>
                                     </div>
                                  </div>
                               )}
-
                            </div>
                         )}
 
@@ -1922,632 +2022,284 @@ const AdminDashboard = () => {
                                  </form>
                               </div>
                            </div>
-                        )
-                        }
+                        )}
 
                         {/* AGENT ECOSYSTEM */}
-                        {
-                           activeTab === 'agents' && (
-                              <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                 {/* Sub-tabs */}
-                                 <div className="flex items-center gap-4 mb-8">
-                                    <button
-                                       onClick={() => setAgentSubTab('vacancies')}
-                                       className={`flex items-center gap-2 px-6 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${agentSubTab === 'vacancies'
-                                          ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/20'
-                                          : 'bg-white text-slate-400 hover:text-slate-600'
-                                          }`}
-                                    >
-                                       <Briefcase className="w-4 h-4" /> Agent Vacancies
-                                    </button>
-                                    <button
-                                       onClick={() => setAgentSubTab('resumes')}
-                                       className={`flex items-center gap-2 px-6 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${agentSubTab === 'resumes'
-                                          ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/20'
-                                          : 'bg-white text-slate-400 hover:text-slate-600'
-                                          }`}
-                                    >
-                                       <Users className="w-4 h-4" /> Agent Resumes
-                                    </button>
-                                    <button
-                                       onClick={() => setAgentSubTab('new_apps')}
-                                       className={`flex items-center gap-2 px-6 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${agentSubTab === 'new_apps'
-                                          ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/20'
-                                          : 'bg-white text-slate-400 hover:text-slate-600'
-                                          }`}
-                                    >
-                                       <UserPlus className="w-4 h-4" /> New Applications
-                                    </button>
-                                 </div>
-
-                                 {/* Content Area */}
-                                 <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-8">
-                                    {agentSubTab === 'vacancies' && (
-                                       <div className="space-y-4">
-                                          <div className="flex justify-end items-center gap-3">
-                                             <div className="relative">
-                                                <input
-                                                   type="text"
-                                                   placeholder="Search vacancies..."
-                                                   className="pl-4 pr-10 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 w-64"
-                                                   value={vacancySearchInput}
-                                                   onChange={(e) => setVacancySearchInput(e.target.value)}
-                                                   onKeyDown={(e) => e.key === 'Enter' && handleVacancySearch()}
-                                                />
-                                                <button
-                                                   onClick={handleVacancySearch}
-                                                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors"
-                                                >
-                                                   <Search className="w-4 h-4" />
-                                                </button>
-                                             </div>
-                                             <div className="relative">
-                                                <button
-                                                   onClick={() => setIsVacancyFilterOpen(!isVacancyFilterOpen)}
-                                                   className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isVacancyFilterOpen ? 'bg-teal-50 text-teal-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
-                                                >
-                                                   <Filter className="w-4 h-4" />
-                                                </button>
-                                                {isVacancyFilterOpen && (
-                                                   <div className="absolute right-0 top-full mt-4 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                                      <div className="max-h-[60vh] overflow-y-auto custom-scrollbar p-6 space-y-6">
-                                                         <div className="space-y-3">
-                                                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">1. Status</h4>
-                                                            <div className="space-y-2">
-                                                               {['HIDDEN', 'LIVE TO PUBLIC', 'STILL IN HOLD'].map(status => (
-                                                                  <label key={status} className="flex items-center gap-3 cursor-pointer group">
-                                                                     <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${vacancyFilters.status.includes(status) ? 'bg-teal-600 border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
-                                                                        {vacancyFilters.status.includes(status) && <CheckCircle2 className="w-3 h-3 text-white" />}
-                                                                     </div>
-                                                                     <input type="checkbox" className="hidden" checked={vacancyFilters.status.includes(status)} onChange={() => toggleVacancyFilter(status)} />
-                                                                     <span className="text-xs font-bold text-slate-700">{status}</span>
-                                                                  </label>
-                                                               ))}
-                                                            </div>
-                                                         </div>
-                                                         <div className="space-y-3">
-                                                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">2. Duration</h4>
-                                                            <div className="space-y-2">
-                                                               {['Since 1 hr', 'Since 1 week', 'Since 1 month', 'Since 3 months', 'All'].map(duration => (
-                                                                  <label key={duration} className="flex items-center gap-3 cursor-pointer group">
-                                                                     <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${vacancyFilters.duration === duration ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
-                                                                        {vacancyFilters.duration === duration && <div className="w-2 h-2 rounded-full bg-teal-600" />}
-                                                                     </div>
-                                                                     <input type="radio" className="hidden" checked={vacancyFilters.duration === duration} onChange={() => setVacancyFilters({ ...vacancyFilters, duration })} />
-                                                                     <span className="text-xs font-bold text-slate-700">{duration}</span>
-                                                                  </label>
-                                                               ))}
-                                                            </div>
-                                                         </div>
-                                                      </div>
-                                                      <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
-                                                         <button onClick={() => setVacancyFilters({ status: [], duration: 'All' })} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">Clear</button>
-                                                         <button onClick={() => setIsVacancyFilterOpen(false)} className="flex-1 py-2 rounded-lg bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20">Apply</button>
-                                                      </div>
-                                                   </div>
-                                                )}
-                                             </div>
-                                          </div>
-                                          <table className="w-full text-left border-collapse">
-                                             <thead>
-                                                <tr>
-                                                   <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Vacancy Details</th>
-                                                   <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Spoke Agency</th>
-                                                   <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-center">Openings</th>
-                                                   <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-center">View Vacancy</th>
-                                                   <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-right">Public State</th>
-                                                </tr>
-                                             </thead>
-                                             <tbody className="divide-y divide-slate-50">
-                                                {filteredAgentVacancies.length > 0 ? (
-                                                   filteredAgentVacancies.map((job) => (
-                                                      <tr key={job.id} className="group hover:bg-slate-50 transition-colors">
-                                                         <td className="px-6 py-8 align-middle">
-                                                            <div>
-                                                               <h4 className="font-bold text-slate-900 text-base mb-1">{job.title}</h4>
-                                                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                                                  {job.ref} <span className="mx-1">•</span> {job.date}
-                                                               </p>
-                                                            </div>
-                                                         </td>
-                                                         <td className="px-6 py-8 align-middle">
-                                                            <div className="flex items-center gap-4">
-                                                               <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center">
-                                                                  <Globe2 className="w-5 h-5" />
-                                                               </div>
-                                                               <span className="font-bold text-slate-700 text-sm">{job.agency}</span>
-                                                            </div>
-                                                         </td>
-                                                         <td className="px-6 py-8 text-center bg-transparent align-middle">
-                                                            <span className="font-black text-slate-900 text-xl">{job.openings}</span>
-                                                         </td>
-                                                         <td className="px-6 py-8 text-center align-middle">
-                                                            <button
-                                                               onClick={() => setSelectedVacancy(job)}
-                                                               className="px-6 py-3 rounded-lg border border-slate-200 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:border-teal-600 hover:text-teal-600 hover:bg-teal-50 transition-all"
-                                                            >
-                                                               View Details
-                                                            </button>
-                                                         </td>
-                                                         <td className="px-6 py-8 text-right align-middle">
-                                                            <div className={`inline-flex items-center gap-2 ${job.stateColor} text-[10px] font-black uppercase tracking-widest`}>
-                                                               {job.state === 'HIDDEN' && <AlertCircle className="w-4 h-4" />}
-                                                               {job.state === 'LIVE TO PUBLIC' && <Globe2 className="w-4 h-4" />}
-                                                               {job.state === 'STILL IN HOLD' && <Clock className="w-4 h-4" />}
-                                                               {job.state}
-                                                            </div>
-                                                         </td>
-                                                      </tr>
-                                                   ))
-                                                ) : (
-                                                   <tr>
-                                                      <td colSpan="5" className="px-6 py-12 text-center">
-                                                         <div className="flex flex-col items-center justify-center gap-2">
-                                                            <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400">
-                                                               <Search className="w-6 h-6 opacity-40" />
-                                                            </div>
-                                                            <p className="text-slate-500 font-bold">No record exist !!</p>
-                                                         </div>
-                                                      </td>
-                                                   </tr>
-                                                )}
-                                             </tbody>
-                                          </table>
-                                       </div>
-                                    )}
-
-                                    {agentSubTab === 'resumes' && (
-                                       <div className="space-y-4">
-                                          <div className="flex justify-end items-center gap-3">
-                                             <div className="relative">
-                                                <input
-                                                   type="text"
-                                                   placeholder="Search candidate or email..."
-                                                   className="pl-4 pr-10 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 w-64"
-                                                   value={resumeSearchInput}
-                                                   onChange={(e) => setResumeSearchInput(e.target.value)}
-                                                   onKeyDown={(e) => e.key === 'Enter' && handleResumeSearch()}
-                                                />
-                                                <button
-                                                   onClick={handleResumeSearch}
-                                                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors"
-                                                >
-                                                   <Search className="w-4 h-4" />
-                                                </button>
-                                             </div>
-                                             <div className="relative">
-                                                <button
-                                                   onClick={() => setIsResumeFilterOpen(!isResumeFilterOpen)}
-                                                   className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isResumeFilterOpen ? 'bg-teal-50 text-teal-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
-                                                >
-                                                   <Filter className="w-4 h-4" />
-                                                </button>
-                                                {isResumeFilterOpen && (
-                                                   <div className="absolute right-0 top-full mt-4 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                                      <div className="max-h-[60vh] overflow-y-auto custom-scrollbar p-6 space-y-6">
-                                                         <div className="space-y-3">
-                                                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">1. Status</h4>
-                                                            <div className="space-y-2">
-                                                               {['SELECTED', 'REJECTED', 'PROCESSING'].map(status => (
-                                                                  <label key={status} className="flex items-center gap-3 cursor-pointer group">
-                                                                     <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${resumeFilters.status.includes(status) ? 'bg-teal-600 border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
-                                                                        {resumeFilters.status.includes(status) && <CheckCircle2 className="w-3 h-3 text-white" />}
-                                                                     </div>
-                                                                     <input type="checkbox" className="hidden" checked={resumeFilters.status.includes(status)} onChange={() => toggleResumeFilter(status)} />
-                                                                     <span className="text-xs font-bold text-slate-700">{status}</span>
-                                                                  </label>
-                                                               ))}
-                                                            </div>
-                                                         </div>
-                                                         <div className="space-y-3">
-                                                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">2. Duration</h4>
-                                                            <div className="space-y-2">
-                                                               {['Since 1 hr', 'Since 1 week', 'Since 1 month', 'Since 3 months', 'All'].map(duration => (
-                                                                  <label key={duration} className="flex items-center gap-3 cursor-pointer group">
-                                                                     <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${resumeFilters.duration === duration ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
-                                                                        {resumeFilters.duration === duration && <div className="w-2 h-2 rounded-full bg-teal-600" />}
-                                                                     </div>
-                                                                     <input type="radio" className="hidden" checked={resumeFilters.duration === duration} onChange={() => setResumeFilters({ ...resumeFilters, duration })} />
-                                                                     <span className="text-xs font-bold text-slate-700">{duration}</span>
-                                                                  </label>
-                                                               ))}
-                                                            </div>
-                                                         </div>
-                                                      </div>
-                                                      <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
-                                                         <button onClick={() => setResumeFilters({ status: [], duration: 'All' })} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">Clear</button>
-                                                         <button onClick={() => setIsResumeFilterOpen(false)} className="flex-1 py-2 rounded-lg bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20">Apply</button>
-                                                      </div>
-                                                   </div>
-                                                )}
-                                             </div>
-                                          </div>
-                                          <table className="w-full text-left border-collapse">
-                                             <thead>
-                                                <tr>
-                                                   <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Agent Candidate</th>
-                                                   <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Job Role</th>
-                                                   <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Spoke Agency</th>
-                                                   <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-center">Status</th>
-                                                   <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-right">Admin Action</th>
-                                                </tr>
-                                             </thead>
-                                             <tbody className="divide-y divide-slate-50">
-                                                {filteredAgentResumes.length > 0 ? (
-                                                   filteredAgentResumes.map((resume) => (
-                                                      <tr key={resume.id} className="group hover:bg-slate-50 transition-colors">
-                                                         <td className="px-6 py-8 align-middle">
-                                                            <div>
-                                                               <h4 className="font-bold text-slate-900 text-base mb-1">{resume.name}</h4>
-                                                               <p className="text-sm font-medium text-slate-400">
-                                                                  {resume.email}
-                                                               </p>
-                                                            </div>
-                                                         </td>
-                                                         <td className="px-6 py-8 align-middle">
-                                                            <span className="font-bold text-slate-700 text-sm">{resume.role}</span>
-                                                         </td>
-                                                         <td className="px-6 py-8 align-middle">
-                                                            <div className="flex items-center gap-3">
-                                                               <span className={`w-2 h-2 rounded-full ${resume.agency === 'GLOBAL TALENT' ? 'bg-amber-400' : 'bg-indigo-400'}`}></span>
-                                                               <span className="font-bold text-slate-700 text-xs tracking-wider uppercase">{resume.agency}</span>
-                                                            </div>
-                                                         </td>
-                                                         <td className="px-6 py-8 text-center align-middle">
-                                                            <div className={`inline-flex px-4 py-2 rounded-full border ${resume.statusColor} text-[10px] font-black uppercase tracking-widest`}>
-                                                               {resume.status}
-                                                            </div>
-                                                         </td>
-                                                         <td className="px-6 py-8 text-right align-middle">
-                                                            <button
-                                                               onClick={() => setSelectedResume(resume)}
-                                                               className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-teal-50 hover:text-teal-600 transition-all inline-flex ml-auto"
-                                                            >
-                                                               <Eye className="w-4 h-4" />
-                                                            </button>
-                                                         </td>
-                                                      </tr>
-                                                   ))
-                                                ) : (
-                                                   <tr>
-                                                      <td colSpan="5" className="px-6 py-12 text-center">
-                                                         <div className="flex flex-col items-center justify-center gap-2">
-                                                            <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400">
-                                                               <Search className="w-6 h-6 opacity-40" />
-                                                            </div>
-                                                            <p className="text-slate-500 font-bold">No record exist !!</p>
-                                                         </div>
-                                                      </td>
-                                                   </tr>
-                                                )}
-                                             </tbody>
-                                          </table>
-                                       </div>
-                                    )}
-
-                                    {agentSubTab === 'new_apps' && (
-                                       <div className="space-y-4">
-                                          <div className="flex justify-end items-center gap-3">
-                                             <div className="relative">
-                                                <input
-                                                   type="text"
-                                                   placeholder="Search applications..."
-                                                   className="pl-4 pr-10 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 w-64"
-                                                   value={appSearchInput}
-                                                   onChange={(e) => setAppSearchInput(e.target.value)}
-                                                   onKeyDown={(e) => e.key === 'Enter' && handleAppSearch()}
-                                                />
-                                                <button
-                                                   onClick={handleAppSearch}
-                                                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors"
-                                                >
-                                                   <Search className="w-4 h-4" />
-                                                </button>
-                                             </div>
-                                             <div className="relative">
-                                                <button
-                                                   onClick={() => setIsAppFilterOpen(!isAppFilterOpen)}
-                                                   className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isAppFilterOpen ? 'bg-teal-50 text-teal-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
-                                                >
-                                                   <Filter className="w-4 h-4" />
-                                                </button>
-                                                {isAppFilterOpen && (
-                                                   <div className="absolute right-0 top-full mt-4 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                                      <div className="max-h-[60vh] overflow-y-auto custom-scrollbar p-6 space-y-6">
-                                                         <div className="space-y-3">
-                                                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">1. Status</h4>
-                                                            <div className="space-y-2">
-                                                               {['YET TO BE CHECKED', 'ON HOLD', 'SELECTED', 'REJECTED'].map(status => (
-                                                                  <label key={status} className="flex items-center gap-3 cursor-pointer group">
-                                                                     <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${appFilters.status.includes(status) ? 'bg-teal-600 border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
-                                                                        {appFilters.status.includes(status) && <CheckCircle2 className="w-3 h-3 text-white" />}
-                                                                     </div>
-                                                                     <input type="checkbox" className="hidden" checked={appFilters.status.includes(status)} onChange={() => toggleAppFilter(status)} />
-                                                                     <span className="text-xs font-bold text-slate-700">{status}</span>
-                                                                  </label>
-                                                               ))}
-                                                            </div>
-                                                         </div>
-                                                         <div className="space-y-3">
-                                                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">2. Duration</h4>
-                                                            <div className="space-y-2">
-                                                               {['Since 1 hr', 'Since 1 week', 'Since 1 month', 'Since 3 months', 'All'].map(duration => (
-                                                                  <label key={duration} className="flex items-center gap-3 cursor-pointer group">
-                                                                     <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${appFilters.duration === duration ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
-                                                                        {appFilters.duration === duration && <div className="w-2 h-2 rounded-full bg-teal-600" />}
-                                                                     </div>
-                                                                     <input type="radio" className="hidden" checked={appFilters.duration === duration} onChange={() => setAppFilters({ ...appFilters, duration })} />
-                                                                     <span className="text-xs font-bold text-slate-700">{duration}</span>
-                                                                  </label>
-                                                               ))}
-                                                            </div>
-                                                         </div>
-                                                      </div>
-                                                      <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
-                                                         <button onClick={() => setAppFilters({ status: [], duration: 'All' })} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">Clear</button>
-                                                         <button onClick={() => setIsAppFilterOpen(false)} className="flex-1 py-2 rounded-lg bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20">Apply</button>
-                                                      </div>
-                                                   </div>
-                                                )}
-                                             </div>
-                                          </div>
-                                          <table className="w-full text-left border-collapse">
-                                             <thead>
-                                                <tr>
-                                                   <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Applicant / Agency</th>
-                                                   <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Target Region</th>
-                                                   <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-center">Application Status</th>
-                                                   <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-right">Action</th>
-                                                </tr>
-                                             </thead>
-                                             <tbody className="divide-y divide-slate-50">
-                                                {filteredPartnerApplications.length > 0 ? (
-                                                   filteredPartnerApplications.map((app) => (
-                                                      <tr key={app.id} className="group hover:bg-slate-50 transition-colors">
-                                                         <td className="px-6 py-8 align-middle">
-                                                            <div>
-                                                               <h4 className="font-bold text-slate-900 text-base mb-1">{app.applicant}</h4>
-                                                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{app.agency}</p>
-                                                            </div>
-                                                         </td>
-                                                         <td className="px-6 py-8 align-middle">
-                                                            <div className="flex items-center gap-2 text-slate-500 text-xs font-bold">
-                                                               <MapPin className="w-4 h-4 text-slate-300" />
-                                                               {app.region}
-                                                            </div>
-                                                         </td>
-                                                         <td className="px-6 py-8 text-center align-middle">
-                                                            <div className={`inline-flex px-4 py-2 rounded-full border ${app.statusColor} text-[10px] font-black uppercase tracking-widest`}>
-                                                               {app.status}
-                                                            </div>
-                                                         </td>
-                                                         <td className="px-6 py-8 text-right align-middle">
-                                                            <button
-                                                               onClick={() => setSelectedApplication(app)}
-                                                               className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-teal-50 hover:text-teal-600 transition-all inline-flex ml-auto"
-                                                            >
-                                                               <Eye className="w-4 h-4" />
-                                                            </button>
-                                                         </td>
-                                                      </tr>
-                                                   ))
-                                                ) : (
-                                                   <tr>
-                                                      <td colSpan="4" className="px-6 py-12 text-center">
-                                                         <div className="flex flex-col items-center justify-center gap-2">
-                                                            <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400">
-                                                               <Search className="w-6 h-6 opacity-40" />
-                                                            </div>
-                                                            <p className="text-slate-500 font-bold">No record exist !!</p>
-                                                         </div>
-                                                      </td>
-                                                   </tr>
-                                                )}
-                                             </tbody>
-                                          </table>
-                                       </div>
-                                    )}
-
-
-                                 </div>
+                        {activeTab === 'agents' && (
+                           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                              {/* Sub-tabs */}
+                              <div className="flex items-center gap-4 mb-8">
+                                 <button
+                                    onClick={() => setAgentSubTab('vacancies')}
+                                    className={`flex items-center gap-2 px-6 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${agentSubTab === 'vacancies'
+                                       ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/20'
+                                       : 'bg-white text-slate-400 hover:text-slate-600'
+                                       }`}
+                                 >
+                                    <Briefcase className="w-4 h-4" /> Agent Vacancies
+                                 </button>
+                                 <button
+                                    onClick={() => setAgentSubTab('resumes')}
+                                    className={`flex items-center gap-2 px-6 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${agentSubTab === 'resumes'
+                                       ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/20'
+                                       : 'bg-white text-slate-400 hover:text-slate-600'
+                                       }`}
+                                 >
+                                    <Users className="w-4 h-4" /> Agent Resumes
+                                 </button>
+                                 <button
+                                    onClick={() => setAgentSubTab('new_apps')}
+                                    className={`flex items-center gap-2 px-6 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${agentSubTab === 'new_apps'
+                                       ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/20'
+                                       : 'bg-white text-slate-400 hover:text-slate-600'
+                                       }`}
+                                 >
+                                    <UserPlus className="w-4 h-4" /> New Applications
+                                 </button>
                               </div>
-                           )
-                        }
 
-
-                        {/* BLACKLISTED CONTENT */}
-                        {
-                           activeTab === 'blacklisted' && (
-                              <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                                    <div className="p-6 border-b border-slate-100 flex justify-between items-center gap-4">
-                                       <h3 className="font-bold text-slate-900 text-sm uppercase tracking-widest text-red-500 flex items-center gap-2 whitespace-nowrap">
-                                          <ShieldCheck className="w-4 h-4" /> Rejected Candidates
-                                       </h3>
-
-                                       <div className="flex items-center gap-3 w-full justify-end">
-                                          <div className="relative flex-1 max-w-md">
+                              {/* Content Area */}
+                              <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-8">
+                                 {agentSubTab === 'vacancies' && (
+                                    <div className="space-y-4">
+                                       <div className="flex justify-end items-center gap-3">
+                                          <div className="relative">
                                              <input
                                                 type="text"
-                                                placeholder="Search blacklisted candidates..."
-                                                className="w-full pl-4 pr-10 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20"
-                                                value={blacklistSearchInput}
-                                                onChange={(e) => setBlacklistSearchInput(e.target.value)}
-                                                onKeyDown={(e) => e.key === 'Enter' && handleBlacklistSearch()}
+                                                placeholder="Search vacancies..."
+                                                className="pl-4 pr-10 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 w-64"
+                                                value={vacancySearchInput}
+                                                onChange={(e) => setVacancySearchInput(e.target.value)}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleVacancySearch()}
                                              />
                                              <button
-                                                onClick={handleBlacklistSearch}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 transition-colors"
+                                                onClick={handleVacancySearch}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors"
                                              >
                                                 <Search className="w-4 h-4" />
                                              </button>
                                           </div>
-
-                                          <div className="flex items-center gap-2">
-                                             {/* Source Dropdown */}
-                                             <div className="relative" ref={blacklistSourceRef}>
-                                                <div className="flex items-center gap-0">
-                                                   <button
-                                                      onClick={() => {
-                                                         setIsBlacklistSourceOpen(!isBlacklistSourceOpen);
-                                                         setIsBlacklistDurationOpen(false);
-                                                         setIsBlacklistFilterOpen(false);
-                                                      }}
-                                                      className={`px-4 py-2 rounded-lg border text-xs font-bold transition-all flex items-center gap-2 ${blacklistFilters.source !== 'All' ? 'bg-red-50 text-red-600 border-red-200 rounded-r-none border-r-0' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}
-                                                   >
-                                                      {blacklistFilters.source === 'All' ? 'Source' : blacklistFilters.source}
-                                                      <ChevronDown className={`w-3 h-3 transition-transform ${isBlacklistSourceOpen ? 'rotate-180' : ''}`} />
-                                                   </button>
-                                                   {blacklistFilters.source !== 'All' && (
-                                                      <button
-                                                         onClick={() => setBlacklistFilters(prev => ({ ...prev, source: 'All' }))}
-                                                         className="h-[34px] px-2 border border-red-200 bg-red-50 text-red-600 rounded-r-lg hover:bg-red-100 transition-colors flex items-center justify-center border-l-0"
-                                                      >
-                                                         <X className="w-3 h-3" />
-                                                      </button>
-                                                   )}
-                                                </div>
-                                                {isBlacklistSourceOpen && (
-                                                   <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                                      {['Direct Application', 'Agency Ref', 'All'].map(source => (
-                                                         <button
-                                                            key={source}
-                                                            onClick={() => {
-                                                               setBlacklistFilters(prev => ({ ...prev, source }));
-                                                               setIsBlacklistSourceOpen(false);
-                                                            }}
-                                                            className={`w-full text-left px-4 py-2.5 text-xs font-bold transition-colors ${blacklistFilters.source === source ? 'bg-red-50 text-red-600' : 'text-slate-600 hover:bg-slate-50'}`}
-                                                         >
-                                                            {source}
-                                                         </button>
-                                                      ))}
-                                                   </div>
-                                                )}
-                                             </div>
-
-                                             {/* Duration Dropdown */}
-                                             <div className="relative" ref={blacklistDurationRef}>
-                                                <div className="flex items-center gap-0">
-                                                   <button
-                                                      onClick={() => {
-                                                         setIsBlacklistDurationOpen(!isBlacklistDurationOpen);
-                                                         setIsBlacklistSourceOpen(false);
-                                                         setIsBlacklistFilterOpen(false);
-                                                      }}
-                                                      className={`px-4 py-2 rounded-lg border text-xs font-bold transition-all flex items-center gap-2 ${blacklistFilters.duration !== 'All' ? 'bg-red-50 text-red-600 border-red-200 rounded-r-none border-r-0' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}
-                                                   >
-                                                      {blacklistFilters.duration === 'All' ? 'Duration' : (blacklistFilters.duration === 'All Time' ? 'All Time' : blacklistFilters.duration)}
-                                                      <ChevronDown className={`w-3 h-3 transition-transform ${isBlacklistDurationOpen ? 'rotate-180' : ''}`} />
-                                                   </button>
-                                                   {blacklistFilters.duration !== 'All' && blacklistFilters.duration !== 'All Time' && (
-                                                      <button
-                                                         onClick={() => setBlacklistFilters(prev => ({ ...prev, duration: 'All' }))}
-                                                         className="h-[34px] px-2 border border-red-200 bg-red-50 text-red-600 rounded-r-lg hover:bg-red-100 transition-colors flex items-center justify-center border-l-0"
-                                                      >
-                                                         <X className="w-3 h-3" />
-                                                      </button>
-                                                   )}
-                                                </div>
-                                                {isBlacklistDurationOpen && (
-                                                   <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                                      {['Last 24 Hours', 'Last 7 Days', 'Last 30 Days', 'Last 3 Months', 'All Time'].map(duration => (
-                                                         <button
-                                                            key={duration}
-                                                            onClick={() => {
-                                                               setBlacklistFilters(prev => ({ ...prev, duration }));
-                                                               setIsBlacklistDurationOpen(false);
-                                                            }}
-                                                            className={`w-full text-left px-4 py-2.5 text-xs font-bold transition-colors ${blacklistFilters.duration === duration ? 'bg-red-50 text-red-600' : 'text-slate-600 hover:bg-slate-50'}`}
-                                                         >
-                                                            {duration}
-                                                         </button>
-                                                      ))}
-                                                   </div>
-                                                )}
-                                             </div>
-
-                                             {/* Advanced Filter Icon (Optional/Extra) */}
-                                             <div className="relative">
-                                                <button
-                                                   onClick={() => {
-                                                      setIsBlacklistFilterOpen(!isBlacklistFilterOpen);
-                                                      setIsBlacklistSourceOpen(false);
-                                                      setIsBlacklistDurationOpen(false);
-                                                   }}
-                                                   className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${isBlacklistFilterOpen ? 'bg-red-50 text-red-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
-                                                >
-                                                   <Filter className="w-4 h-4" />
-                                                </button>
-                                                {isBlacklistFilterOpen && (
-                                                   <div className="absolute right-0 top-full mt-4 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                                      <div className="p-6 space-y-6">
-                                                         <div className="space-y-3">
-                                                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Quick Filters</h4>
-                                                            <button
-                                                               onClick={() => {
-                                                                  setBlacklistFilters({ source: 'All', duration: 'All' });
-                                                                  setIsBlacklistFilterOpen(false);
-                                                               }}
-                                                               className="w-full py-2 rounded-lg bg-red-50 text-red-600 text-[10px] font-black uppercase tracking-widest hover:bg-red-100 transition-colors"
-                                                            >
-                                                               Reset All
-                                                            </button>
+                                          <div className="relative">
+                                             <button
+                                                onClick={() => setIsVacancyFilterOpen(!isVacancyFilterOpen)}
+                                                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isVacancyFilterOpen ? 'bg-teal-50 text-teal-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                                             >
+                                                <Filter className="w-4 h-4" />
+                                             </button>
+                                             {isVacancyFilterOpen && (
+                                                <div className="absolute right-0 top-full mt-4 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                                   <div className="max-h-[60vh] overflow-y-auto custom-scrollbar p-6 space-y-6">
+                                                      <div className="space-y-3">
+                                                         <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">1. Status</h4>
+                                                         <div className="space-y-2">
+                                                            {['HIDDEN', 'LIVE TO PUBLIC', 'STILL IN HOLD'].map(status => (
+                                                               <label key={status} className="flex items-center gap-3 cursor-pointer group">
+                                                                  <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${vacancyFilters.status.includes(status) ? 'bg-teal-600 border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                     {vacancyFilters.status.includes(status) && <CheckCircle2 className="w-3 h-3 text-white" />}
+                                                                  </div>
+                                                                  <input type="checkbox" className="hidden" checked={vacancyFilters.status.includes(status)} onChange={() => toggleVacancyFilter(status)} />
+                                                                  <span className="text-xs font-bold text-slate-700">{status}</span>
+                                                               </label>
+                                                            ))}
+                                                         </div>
+                                                      </div>
+                                                      <div className="space-y-3">
+                                                         <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">2. Duration</h4>
+                                                         <div className="space-y-2">
+                                                            {['Since 1 hr', 'Since 1 week', 'Since 1 month', 'Since 3 months', 'All'].map(duration => (
+                                                               <label key={duration} className="flex items-center gap-3 cursor-pointer group">
+                                                                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${vacancyFilters.duration === duration ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                     {vacancyFilters.duration === duration && <div className="w-2 h-2 rounded-full bg-teal-600" />}
+                                                                  </div>
+                                                                  <input type="radio" className="hidden" checked={vacancyFilters.duration === duration} onChange={() => setVacancyFilters({ ...vacancyFilters, duration })} />
+                                                                  <span className="text-xs font-bold text-slate-700">{duration}</span>
+                                                               </label>
+                                                            ))}
                                                          </div>
                                                       </div>
                                                    </div>
-                                                )}
-                                             </div>
+                                                   <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
+                                                      <button onClick={() => setVacancyFilters({ status: [], duration: 'All' })} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">Clear</button>
+                                                      <button onClick={() => setIsVacancyFilterOpen(false)} className="flex-1 py-2 rounded-lg bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20">Apply</button>
+                                                   </div>
+                                                </div>
+                                             )}
                                           </div>
                                        </div>
-                                    </div>
-                                    <div className="overflow-x-auto">
-                                       <table className="w-full text-left">
+                                       <table className="w-full text-left border-collapse">
                                           <thead>
-                                             <tr className="bg-red-50/50 border-b border-red-100">
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest">Candidate Name</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest">Job Role</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest">Source</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest">Status</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest text-right">Review</th>
+                                             <tr>
+                                                <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Vacancy Details</th>
+                                                <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Spoke Agency</th>
+                                                <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-center">Openings</th>
+                                                <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-center">View Vacancy</th>
+                                                <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-right">Public State</th>
                                              </tr>
                                           </thead>
                                           <tbody className="divide-y divide-slate-50">
-                                             {filteredBlacklistedCandidates.length > 0 ? (
-                                                filteredBlacklistedCandidates.map((candidate, idx) => (
-                                                   <tr key={`${candidate.id}-${idx}`} className="hover:bg-red-50/30 transition-colors">
-                                                      <td className="px-6 py-4">
+                                             {filteredAgentVacancies.length > 0 ? (
+                                                filteredAgentVacancies.map((job) => (
+                                                   <tr key={job.id} className="group hover:bg-slate-50 transition-colors">
+                                                      <td className="px-6 py-8 align-middle">
                                                          <div>
-                                                            <p className="text-sm font-bold text-slate-900">{candidate.name}</p>
-                                                            <p className="text-xs text-slate-400 font-medium">{candidate.email}</p>
+                                                            <h4 className="font-bold text-slate-900 text-base mb-1">{job.title}</h4>
+                                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                                               {job.ref} <span className="mx-1">•</span> {job.date}
+                                                            </p>
                                                          </div>
                                                       </td>
-                                                      <td className="px-6 py-4">
-                                                         <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full uppercase tracking-wider">
-                                                            {candidate.role}
-                                                         </span>
-                                                      </td>
-                                                      <td className="px-6 py-4">
-                                                         <div className="flex flex-col">
-                                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 flex items-center gap-1.5">
-                                                               <span className={`w-1.5 h-1.5 rounded-full ${'source' in candidate && candidate.source === 'Direct' ? 'bg-blue-400' : 'bg-amber-400'}`}></span>
-                                                               {'source' in candidate && candidate.source === 'Direct' ? 'Direct' : 'Agency'}
-                                                            </span>
-                                                            {'agency' in candidate && (
-                                                               <span className="text-[10px] font-medium text-slate-400 pl-3">
-                                                                  {candidate.agency}
-                                                               </span>
-                                                            )}
+                                                      <td className="px-6 py-8 align-middle">
+                                                         <div className="flex items-center gap-4">
+                                                            <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center">
+                                                               <Globe2 className="w-5 h-5" />
+                                                            </div>
+                                                            <span className="font-bold text-slate-700 text-sm">{job.agency}</span>
                                                          </div>
                                                       </td>
-                                                      <td className="px-6 py-4">
-                                                         <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${candidate.statusColor}`}>
-                                                            {candidate.status}
-                                                         </span>
+                                                      <td className="px-6 py-8 text-center bg-transparent align-middle">
+                                                         <span className="font-black text-slate-900 text-xl">{job.openings}</span>
                                                       </td>
-                                                      <td className="px-6 py-4 text-right">
+                                                      <td className="px-6 py-8 text-center align-middle">
                                                          <button
-                                                            onClick={() => { setSelectedResume(candidate); setIsBlacklistReview(true); }}
-                                                            className="w-10 h-10 rounded-full bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition-all ml-auto shadow-sm"
+                                                            onClick={() => setSelectedVacancy(job)}
+                                                            className="px-6 py-3 rounded-lg border border-slate-200 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:border-teal-600 hover:text-teal-600 hover:bg-teal-50 transition-all"
+                                                         >
+                                                            View Details
+                                                         </button>
+                                                      </td>
+                                                      <td className="px-6 py-8 text-right align-middle">
+                                                         <div className={`inline-flex items-center gap-2 ${job.stateColor} text-[10px] font-black uppercase tracking-widest`}>
+                                                            {job.state === 'HIDDEN' && <AlertCircle className="w-4 h-4" />}
+                                                            {job.state === 'LIVE TO PUBLIC' && <Globe2 className="w-4 h-4" />}
+                                                            {job.state === 'STILL IN HOLD' && <Clock className="w-4 h-4" />}
+                                                            {job.state}
+                                                         </div>
+                                                      </td>
+                                                   </tr>
+                                                ))
+                                             ) : (
+                                                <tr>
+                                                   <td colSpan="5" className="px-6 py-12 text-center">
+                                                      <div className="flex flex-col items-center justify-center gap-2">
+                                                         <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400">
+                                                            <Search className="w-6 h-6 opacity-40" />
+                                                         </div>
+                                                         <p className="text-slate-500 font-bold">No record exist !!</p>
+                                                      </div>
+                                                   </td>
+                                                </tr>
+                                             )}
+                                          </tbody>
+                                       </table>
+                                    </div>
+                                 )}
+
+                                 {agentSubTab === 'resumes' && (
+                                    <div className="space-y-4">
+                                       <div className="flex justify-end items-center gap-3">
+                                          <div className="relative">
+                                             <input
+                                                type="text"
+                                                placeholder="Search candidate or email..."
+                                                className="pl-4 pr-10 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 w-64"
+                                                value={resumeSearchInput}
+                                                onChange={(e) => setResumeSearchInput(e.target.value)}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleResumeSearch()}
+                                             />
+                                             <button
+                                                onClick={handleResumeSearch}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors"
+                                             >
+                                                <Search className="w-4 h-4" />
+                                             </button>
+                                          </div>
+                                          <div className="relative">
+                                             <button
+                                                onClick={() => setIsResumeFilterOpen(!isResumeFilterOpen)}
+                                                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isResumeFilterOpen ? 'bg-teal-50 text-teal-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                                             >
+                                                <Filter className="w-4 h-4" />
+                                             </button>
+                                             {isResumeFilterOpen && (
+                                                <div className="absolute right-0 top-full mt-4 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                                   <div className="max-h-[60vh] overflow-y-auto custom-scrollbar p-6 space-y-6">
+                                                      <div className="space-y-3">
+                                                         <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">1. Status</h4>
+                                                         <div className="space-y-2">
+                                                            {['SELECTED', 'REJECTED', 'PROCESSING'].map(status => (
+                                                               <label key={status} className="flex items-center gap-3 cursor-pointer group">
+                                                                  <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${resumeFilters.status.includes(status) ? 'bg-teal-600 border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                     {resumeFilters.status.includes(status) && <CheckCircle2 className="w-3 h-3 text-white" />}
+                                                                  </div>
+                                                                  <input type="checkbox" className="hidden" checked={resumeFilters.status.includes(status)} onChange={() => toggleResumeFilter(status)} />
+                                                                  <span className="text-xs font-bold text-slate-700">{status}</span>
+                                                               </label>
+                                                            ))}
+                                                         </div>
+                                                      </div>
+                                                      <div className="space-y-3">
+                                                         <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">2. Duration</h4>
+                                                         <div className="space-y-2">
+                                                            {['Since 1 hr', 'Since 1 week', 'Since 1 month', 'Since 3 months', 'All'].map(duration => (
+                                                               <label key={duration} className="flex items-center gap-3 cursor-pointer group">
+                                                                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${resumeFilters.duration === duration ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                     {resumeFilters.duration === duration && <div className="w-2 h-2 rounded-full bg-teal-600" />}
+                                                                  </div>
+                                                                  <input type="radio" className="hidden" checked={resumeFilters.duration === duration} onChange={() => setResumeFilters({ ...resumeFilters, duration })} />
+                                                                  <span className="text-xs font-bold text-slate-700">{duration}</span>
+                                                               </label>
+                                                            ))}
+                                                         </div>
+                                                      </div>
+                                                   </div>
+                                                   <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
+                                                      <button onClick={() => setResumeFilters({ status: [], duration: 'All' })} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">Clear</button>
+                                                      <button onClick={() => setIsResumeFilterOpen(false)} className="flex-1 py-2 rounded-lg bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20">Apply</button>
+                                                   </div>
+                                                </div>
+                                             )}
+                                          </div>
+                                       </div>
+                                       <table className="w-full text-left border-collapse">
+                                          <thead>
+                                             <tr>
+                                                <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Agent Candidate</th>
+                                                <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Job Role</th>
+                                                <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Spoke Agency</th>
+                                                <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-center">Status</th>
+                                                <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-right">Admin Action</th>
+                                             </tr>
+                                          </thead>
+                                          <tbody className="divide-y divide-slate-50">
+                                             {filteredAgentResumes.length > 0 ? (
+                                                filteredAgentResumes.map((resume) => (
+                                                   <tr key={resume.id} className="group hover:bg-slate-50 transition-colors">
+                                                      <td className="px-6 py-8 align-middle">
+                                                         <div>
+                                                            <h4 className="font-bold text-slate-900 text-base mb-1">{resume.name}</h4>
+                                                            <p className="text-sm font-medium text-slate-400">
+                                                               {resume.email}
+                                                            </p>
+                                                         </div>
+                                                      </td>
+                                                      <td className="px-6 py-8 align-middle">
+                                                         <span className="font-bold text-slate-700 text-sm">{resume.role}</span>
+                                                      </td>
+                                                      <td className="px-6 py-8 align-middle">
+                                                         <div className="flex items-center gap-3">
+                                                            <span className={`w-2 h-2 rounded-full ${resume.agency === 'GLOBAL TALENT' ? 'bg-amber-400' : 'bg-indigo-400'}`}></span>
+                                                            <span className="font-bold text-slate-700 text-xs tracking-wider uppercase">{resume.agency}</span>
+                                                         </div>
+                                                      </td>
+                                                      <td className="px-6 py-8 text-center align-middle">
+                                                         <div className={`inline-flex px-4 py-2 rounded-full border ${resume.statusColor} text-[10px] font-black uppercase tracking-widest`}>
+                                                            {resume.status}
+                                                         </div>
+                                                      </td>
+                                                      <td className="px-6 py-8 text-right align-middle">
+                                                         <button
+                                                            onClick={() => setSelectedResume(resume)}
+                                                            className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-teal-50 hover:text-teal-600 transition-all inline-flex ml-auto"
                                                          >
                                                             <Eye className="w-4 h-4" />
                                                          </button>
@@ -2556,36 +2308,377 @@ const AdminDashboard = () => {
                                                 ))
                                              ) : (
                                                 <tr>
-                                                   <td colSpan={5} className="px-6 py-12 text-center text-slate-400 text-sm font-medium">
-                                                      No blacklisted candidates found.
+                                                   <td colSpan="5" className="px-6 py-12 text-center">
+                                                      <div className="flex flex-col items-center justify-center gap-2">
+                                                         <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400">
+                                                            <Search className="w-6 h-6 opacity-40" />
+                                                         </div>
+                                                         <p className="text-slate-500 font-bold">No record exist !!</p>
+                                                      </div>
                                                    </td>
                                                 </tr>
                                              )}
                                           </tbody>
                                        </table>
                                     </div>
+                                 )}
+
+                                 {agentSubTab === 'new_apps' && (
+                                    <div className="space-y-4">
+                                       <div className="flex justify-end items-center gap-3">
+                                          <div className="relative">
+                                             <input
+                                                type="text"
+                                                placeholder="Search applications..."
+                                                className="pl-4 pr-10 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 w-64"
+                                                value={appSearchInput}
+                                                onChange={(e) => setAppSearchInput(e.target.value)}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleAppSearch()}
+                                             />
+                                             <button
+                                                onClick={handleAppSearch}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors"
+                                             >
+                                                <Search className="w-4 h-4" />
+                                             </button>
+                                          </div>
+                                          <div className="relative">
+                                             <button
+                                                onClick={() => setIsAppFilterOpen(!isAppFilterOpen)}
+                                                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isAppFilterOpen ? 'bg-teal-50 text-teal-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                                             >
+                                                <Filter className="w-4 h-4" />
+                                             </button>
+                                             {isAppFilterOpen && (
+                                                <div className="absolute right-0 top-full mt-4 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                                   <div className="max-h-[60vh] overflow-y-auto custom-scrollbar p-6 space-y-6">
+                                                      <div className="space-y-3">
+                                                         <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">1. Status</h4>
+                                                         <div className="space-y-2">
+                                                            {['YET TO BE CHECKED', 'ON HOLD', 'SELECTED', 'REJECTED'].map(status => (
+                                                               <label key={status} className="flex items-center gap-3 cursor-pointer group">
+                                                                  <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${appFilters.status.includes(status) ? 'bg-teal-600 border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                     {appFilters.status.includes(status) && <CheckCircle2 className="w-3 h-3 text-white" />}
+                                                                  </div>
+                                                                  <input type="checkbox" className="hidden" checked={appFilters.status.includes(status)} onChange={() => toggleAppFilter(status)} />
+                                                                  <span className="text-xs font-bold text-slate-700">{status}</span>
+                                                               </label>
+                                                            ))}
+                                                         </div>
+                                                      </div>
+                                                      <div className="space-y-3">
+                                                         <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">2. Duration</h4>
+                                                         <div className="space-y-2">
+                                                            {['Since 1 hr', 'Since 1 week', 'Since 1 month', 'Since 3 months', 'All'].map(duration => (
+                                                               <label key={duration} className="flex items-center gap-3 cursor-pointer group">
+                                                                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${appFilters.duration === duration ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                     {appFilters.duration === duration && <div className="w-2 h-2 rounded-full bg-teal-600" />}
+                                                                  </div>
+                                                                  <input type="radio" className="hidden" checked={appFilters.duration === duration} onChange={() => setAppFilters({ ...appFilters, duration })} />
+                                                                  <span className="text-xs font-bold text-slate-700">{duration}</span>
+                                                               </label>
+                                                            ))}
+                                                         </div>
+                                                      </div>
+                                                   </div>
+                                                   <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
+                                                      <button onClick={() => setAppFilters({ status: [], duration: 'All' })} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">Clear</button>
+                                                      <button onClick={() => setIsAppFilterOpen(false)} className="flex-1 py-2 rounded-lg bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20">Apply</button>
+                                                   </div>
+                                                </div>
+                                             )}
+                                          </div>
+                                       </div>
+                                       <table className="w-full text-left border-collapse">
+                                          <thead>
+                                             <tr>
+                                                <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Applicant / Agency</th>
+                                                <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Target Region</th>
+                                                <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-center">Application Status</th>
+                                                <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-right">Action</th>
+                                             </tr>
+                                          </thead>
+                                          <tbody className="divide-y divide-slate-50">
+                                             {filteredPartnerApplications.length > 0 ? (
+                                                filteredPartnerApplications.map((app) => (
+                                                   <tr key={app.id} className="group hover:bg-slate-50 transition-colors">
+                                                      <td className="px-6 py-8 align-middle">
+                                                         <div>
+                                                            <h4 className="font-bold text-slate-900 text-base mb-1">{app.applicant}</h4>
+                                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{app.agency}</p>
+                                                         </div>
+                                                      </td>
+                                                      <td className="px-6 py-8 align-middle">
+                                                         <div className="flex items-center gap-2 text-slate-500 text-xs font-bold">
+                                                            <MapPin className="w-4 h-4 text-slate-300" />
+                                                            {app.region}
+                                                         </div>
+                                                      </td>
+                                                      <td className="px-6 py-8 text-center align-middle">
+                                                         <div className={`inline-flex px-4 py-2 rounded-full border ${app.statusColor} text-[10px] font-black uppercase tracking-widest`}>
+                                                            {app.status}
+                                                         </div>
+                                                      </td>
+                                                      <td className="px-6 py-8 text-right align-middle">
+                                                         <button
+                                                            onClick={() => setSelectedApplication(app)}
+                                                            className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-teal-50 hover:text-teal-600 transition-all inline-flex ml-auto"
+                                                         >
+                                                            <Eye className="w-4 h-4" />
+                                                         </button>
+                                                      </td>
+                                                   </tr>
+                                                ))
+                                             ) : (
+                                                <tr>
+                                                   <td colSpan="4" className="px-6 py-12 text-center">
+                                                      <div className="flex flex-col items-center justify-center gap-2">
+                                                         <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400">
+                                                            <Search className="w-6 h-6 opacity-40" />
+                                                         </div>
+                                                         <p className="text-slate-500 font-bold">No record exist !!</p>
+                                                      </div>
+                                                   </td>
+                                                </tr>
+                                             )}
+                                          </tbody>
+                                       </table>
+                                    </div>
+                                 )}
+
+
+                              </div>
+                           </div>
+                        )}
+
+
+                        {/* BLACKLISTED CONTENT */}
+                        {activeTab === 'blacklisted' && (
+                           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                                 <div className="p-6 border-b border-slate-100 flex justify-between items-center gap-4">
+                                    <h3 className="font-bold text-slate-900 text-sm uppercase tracking-widest text-red-500 flex items-center gap-2 whitespace-nowrap">
+                                       <ShieldCheck className="w-4 h-4" /> Rejected Candidates
+                                    </h3>
+
+                                    <div className="flex items-center gap-3 w-full justify-end">
+                                       <div className="relative flex-1 max-w-md">
+                                          <input
+                                             type="text"
+                                             placeholder="Search blacklisted candidates..."
+                                             className="w-full pl-4 pr-10 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                                             value={blacklistSearchInput}
+                                             onChange={(e) => setBlacklistSearchInput(e.target.value)}
+                                             onKeyDown={(e) => e.key === 'Enter' && handleBlacklistSearch()}
+                                          />
+                                          <button
+                                             onClick={handleBlacklistSearch}
+                                             className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 transition-colors"
+                                          >
+                                             <Search className="w-4 h-4" />
+                                          </button>
+                                       </div>
+
+                                       <div className="flex items-center gap-2">
+                                          {/* Source Dropdown */}
+                                          <div className="relative" ref={blacklistSourceRef}>
+                                             <div className="flex items-center gap-0">
+                                                <button
+                                                   onClick={() => {
+                                                      setIsBlacklistSourceOpen(!isBlacklistSourceOpen);
+                                                      setIsBlacklistDurationOpen(false);
+                                                      setIsBlacklistFilterOpen(false);
+                                                   }}
+                                                   className={`px-4 py-2 rounded-lg border text-xs font-bold transition-all flex items-center gap-2 ${blacklistFilters.source !== 'All' ? 'bg-red-50 text-red-600 border-red-200 rounded-r-none border-r-0' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}
+                                                >
+                                                   {blacklistFilters.source === 'All' ? 'Source' : blacklistFilters.source}
+                                                   <ChevronDown className={`w-3 h-3 transition-transform ${isBlacklistSourceOpen ? 'rotate-180' : ''}`} />
+                                                </button>
+                                                {blacklistFilters.source !== 'All' && (
+                                                   <button
+                                                      onClick={() => setBlacklistFilters(prev => ({ ...prev, source: 'All' }))}
+                                                      className="h-[34px] px-2 border border-red-200 bg-red-50 text-red-600 rounded-r-lg hover:bg-red-100 transition-colors flex items-center justify-center border-l-0"
+                                                   >
+                                                      <X className="w-3 h-3" />
+                                                   </button>
+                                                )}
+                                             </div>
+                                             {isBlacklistSourceOpen && (
+                                                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                                   {['Direct Application', 'Agency Ref', 'All'].map(source => (
+                                                      <button
+                                                         key={source}
+                                                         onClick={() => {
+                                                            setBlacklistFilters(prev => ({ ...prev, source }));
+                                                            setIsBlacklistSourceOpen(false);
+                                                         }}
+                                                         className={`w-full text-left px-4 py-2.5 text-xs font-bold transition-colors ${blacklistFilters.source === source ? 'bg-red-50 text-red-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                                                      >
+                                                         {source}
+                                                      </button>
+                                                   ))}
+                                                </div>
+                                             )}
+                                          </div>
+
+                                          {/* Duration Dropdown */}
+                                          <div className="relative" ref={blacklistDurationRef}>
+                                             <div className="flex items-center gap-0">
+                                                <button
+                                                   onClick={() => {
+                                                      setIsBlacklistDurationOpen(!isBlacklistDurationOpen);
+                                                      setIsBlacklistSourceOpen(false);
+                                                      setIsBlacklistFilterOpen(false);
+                                                   }}
+                                                   className={`px-4 py-2 rounded-lg border text-xs font-bold transition-all flex items-center gap-2 ${blacklistFilters.duration !== 'All' ? 'bg-red-50 text-red-600 border-red-200 rounded-r-none border-r-0' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}
+                                                >
+                                                   {blacklistFilters.duration === 'All' ? 'Duration' : (blacklistFilters.duration === 'All Time' ? 'All Time' : blacklistFilters.duration)}
+                                                   <ChevronDown className={`w-3 h-3 transition-transform ${isBlacklistDurationOpen ? 'rotate-180' : ''}`} />
+                                                </button>
+                                                {blacklistFilters.duration !== 'All' && blacklistFilters.duration !== 'All Time' && (
+                                                   <button
+                                                      onClick={() => setBlacklistFilters(prev => ({ ...prev, duration: 'All' }))}
+                                                      className="h-[34px] px-2 border border-red-200 bg-red-50 text-red-600 rounded-r-lg hover:bg-red-100 transition-colors flex items-center justify-center border-l-0"
+                                                   >
+                                                      <X className="w-3 h-3" />
+                                                   </button>
+                                                )}
+                                             </div>
+                                             {isBlacklistDurationOpen && (
+                                                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                                   {['Last 24 Hours', 'Last 7 Days', 'Last 30 Days', 'Last 3 Months', 'All Time'].map(duration => (
+                                                      <button
+                                                         key={duration}
+                                                         onClick={() => {
+                                                            setBlacklistFilters(prev => ({ ...prev, duration }));
+                                                            setIsBlacklistDurationOpen(false);
+                                                         }}
+                                                         className={`w-full text-left px-4 py-2.5 text-xs font-bold transition-colors ${blacklistFilters.duration === duration ? 'bg-red-50 text-red-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                                                      >
+                                                         {duration}
+                                                      </button>
+                                                   ))}
+                                                </div>
+                                             )}
+                                          </div>
+
+                                          {/* Advanced Filter Icon (Optional/Extra) */}
+                                          <div className="relative">
+                                             <button
+                                                onClick={() => {
+                                                   setIsBlacklistFilterOpen(!isBlacklistFilterOpen);
+                                                   setIsBlacklistSourceOpen(false);
+                                                   setIsBlacklistDurationOpen(false);
+                                                }}
+                                                className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${isBlacklistFilterOpen ? 'bg-red-50 text-red-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                                             >
+                                                <Filter className="w-4 h-4" />
+                                             </button>
+                                             {isBlacklistFilterOpen && (
+                                                <div className="absolute right-0 top-full mt-4 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                                   <div className="p-6 space-y-6">
+                                                      <div className="space-y-3">
+                                                         <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Quick Filters</h4>
+                                                         <button
+                                                            onClick={() => {
+                                                               setBlacklistFilters({ source: 'All', duration: 'All' });
+                                                               setIsBlacklistFilterOpen(false);
+                                                            }}
+                                                            className="w-full py-2 rounded-lg bg-red-50 text-red-600 text-[10px] font-black uppercase tracking-widest hover:bg-red-100 transition-colors"
+                                                         >
+                                                            Reset All
+                                                         </button>
+                                                      </div>
+                                                   </div>
+                                                </div>
+                                             )}
+                                          </div>
+                                       </div>
+                                    </div>
+                                 </div>
+                                 <div className="overflow-x-auto">
+                                    <table className="w-full text-left">
+                                       <thead>
+                                          <tr className="bg-red-50/50 border-b border-red-100">
+                                             <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest">Candidate Name</th>
+                                             <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest">Job Role</th>
+                                             <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest">Source</th>
+                                             <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest">Status</th>
+                                             <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest text-right">Review</th>
+                                          </tr>
+                                       </thead>
+                                       <tbody className="divide-y divide-slate-50">
+                                          {filteredBlacklistedCandidates.length > 0 ? (
+                                             filteredBlacklistedCandidates.map((candidate, idx) => (
+                                                <tr key={`${candidate.id}-${idx}`} className="hover:bg-red-50/30 transition-colors">
+                                                   <td className="px-6 py-4">
+                                                      <div>
+                                                         <p className="text-sm font-bold text-slate-900">{candidate.name}</p>
+                                                         <p className="text-xs text-slate-400 font-medium">{candidate.email}</p>
+                                                      </div>
+                                                   </td>
+                                                   <td className="px-6 py-4">
+                                                      <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full uppercase tracking-wider">
+                                                         {candidate.role}
+                                                      </span>
+                                                   </td>
+                                                   <td className="px-6 py-4">
+                                                      <div className="flex flex-col">
+                                                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 flex items-center gap-1.5">
+                                                            <span className={`w-1.5 h-1.5 rounded-full ${'source' in candidate && candidate.source === 'Direct' ? 'bg-blue-400' : 'bg-amber-400'}`}></span>
+                                                            {'source' in candidate && candidate.source === 'Direct' ? 'Direct' : 'Agency'}
+                                                         </span>
+                                                         {'agency' in candidate && (
+                                                            <span className="text-[10px] font-medium text-slate-400 pl-3">
+                                                               {candidate.agency}
+                                                            </span>
+                                                         )}
+                                                      </div>
+                                                   </td>
+                                                   <td className="px-6 py-4">
+                                                      <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${candidate.statusColor}`}>
+                                                         {candidate.status}
+                                                      </span>
+                                                   </td>
+                                                   <td className="px-6 py-4 text-right">
+                                                      <button
+                                                         onClick={() => { setSelectedResume(candidate); setIsBlacklistReview(true); }}
+                                                         className="w-10 h-10 rounded-full bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition-all ml-auto shadow-sm"
+                                                      >
+                                                         <Eye className="w-4 h-4" />
+                                                      </button>
+                                                   </td>
+                                                </tr>
+                                             ))
+                                          ) : (
+                                             <tr>
+                                                <td colSpan={5} className="px-6 py-12 text-center text-slate-400 text-sm font-medium">
+                                                   No blacklisted candidates found.
+                                                </td>
+                                             </tr>
+                                          )}
+                                       </tbody>
+                                    </table>
                                  </div>
                               </div>
-                           )
-                        }
+                           </div>
+                        )}
 
 
                         {/* PLACEHOLDER FOR OTHER TABS */}
-                        {
-                           activeTab === 'network' && (
-                              <div className="flex flex-col items-center justify-center p-20 bg-white rounded-xl border-2 border-dashed border-slate-200 text-center">
-                                 <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                                    <Briefcase className="w-8 h-8 text-slate-300" />
-                                 </div>
-                                 <h3 className="text-lg font-bold text-slate-900 mb-2">Section Under Development</h3>
-                                 <p className="text-slate-500 max-w-md mx-auto">This module is currently being optimized for better performance and usability. Check back soon.</p>
+                        {activeTab === 'network' && (
+                           <div className="flex flex-col items-center justify-center p-20 bg-white rounded-xl border-2 border-dashed border-slate-200 text-center">
+                              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                                 <Briefcase className="w-8 h-8 text-slate-300" />
                               </div>
-                           )
-                        }
-                     </div >
-                  </div >
-               </main >
-            </div >
+                              <h3 className="text-lg font-bold text-slate-900 mb-2">Section Under Development</h3>
+                              <p className="text-slate-500 max-w-md mx-auto">This module is currently being optimized for better performance and usability. Check back soon.</p>
+                           </div>
+                        )}
+                     </div>
+                  </div>
+               </main>
+            </div>
 
 
             {/* MODAL */}
@@ -3167,7 +3260,60 @@ const AdminDashboard = () => {
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
       `}</style>
-         </div >
+
+            {/* REJECT JOB REQUEST MODAL */}
+            {showRejectModal && selectedJobRequest && (
+               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200] animate-in fade-in duration-200">
+                  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 animate-in zoom-in-95 duration-300">
+                     <div className="flex items-center gap-3 mb-6">
+                        <div className="w-12 h-12 rounded-xl bg-red-100 text-red-600 flex items-center justify-center">
+                           <X className="w-6 h-6" />
+                        </div>
+                        <div>
+                           <h3 className="text-lg font-bold text-slate-900">Reject Job Request</h3>
+                           <p className="text-sm text-slate-500">{selectedJobRequest.title}</p>
+                        </div>
+                     </div>
+
+                     <div className="mb-6">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">
+                           Rejection Reason
+                        </label>
+                        <textarea
+                           value={rejectReason}
+                           onChange={(e) => setRejectReason(e.target.value)}
+                           placeholder="Please provide a reason for rejection..."
+                           className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 resize-none"
+                           rows={4}
+                        />
+                     </div>
+
+                     <div className="flex gap-3">
+                        <button
+                           onClick={() => {
+                              setShowRejectModal(false);
+                              setSelectedJobRequest(null);
+                              setRejectReason('');
+                           }}
+                           className="flex-1 py-3 bg-slate-100 text-slate-600 text-xs font-bold uppercase tracking-wider rounded-xl hover:bg-slate-200 transition-colors"
+                        >
+                           Cancel
+                        </button>
+                        <button
+                           onClick={handleRejectJobRequest}
+                           disabled={isRejectingJob}
+                           className="flex-1 py-3 bg-red-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                           {isRejectingJob ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                           ) : null}
+                           Reject
+                        </button>
+                     </div>
+                  </div>
+               </div>
+            )}
+         </div>
       </>
    );
 };
