@@ -100,12 +100,21 @@ const JobCard = ({ job }) => {
                 </div>
 
                 <div className="w-full flex flex-col gap-2">
-                    <Link
-                        to={`/job/${job.id}`}
-                        className="w-full bg-[#0b1a33] hover:bg-black text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] transition-all shadow-xl shadow-slate-900/10 flex items-center justify-center gap-2 group-hover:gap-4"
-                    >
-                        Details <ChevronRight className="w-4 h-4" />
-                    </Link>
+                    {job.isApplied ? (
+                        <Link
+                            to={`/job/${job.id}`}
+                            className="w-full bg-teal-50 border border-teal-200 text-teal-600 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-2 cursor-pointer hover:bg-teal-100"
+                        >
+                            <Check className="w-4 h-4" /> Applied
+                        </Link>
+                    ) : (
+                        <Link
+                            to={`/job/${job.id}`}
+                            className="w-full bg-[#0b1a33] hover:bg-black text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] transition-all shadow-xl shadow-slate-900/10 flex items-center justify-center gap-2 group-hover:gap-4"
+                        >
+                            Details <ChevronRight className="w-4 h-4" />
+                        </Link>
+                    )}
                     <button
                         onClick={handleShare}
                         className="w-full bg-white border border-slate-100 text-slate-400 py-3.5 rounded-2xl text-[9px] font-black uppercase tracking-[0.3em] transition-all hover:bg-teal-50 hover:text-teal-600 hover:border-teal-200 flex items-center justify-center gap-2"

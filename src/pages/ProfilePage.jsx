@@ -397,7 +397,7 @@ const ProfilePage = () => {
 
     const [profileData, setProfileData] = useState({
         name: '',
-        title: isAgent ? 'Global Talent Ltd' : 'Senior Guest Relations Officer',
+        title: isAgent ? 'Global Talent Ltd' : '',
         email: '',
         phone: isAgent ? '+1 (115) 555-0198' : '+91 98765 43110',
         location: isAgent ? 'Business District, Mumbai' : 'Mumbai, India',
@@ -418,6 +418,8 @@ const ProfilePage = () => {
     const [isAddingDoc, setIsAddingDoc] = useState(false);
     const [previewImage, setPreviewImage] = useState(null);
     const [applications, setApplications] = useState([]);
+    const fileInputRef = React.useRef(null);
+    const [uploadingDocId, setUploadingDocId] = useState(null);
 
     useEffect(() => {
         if (user) {
@@ -425,7 +427,7 @@ const ProfilePage = () => {
             setProfileData(prev => ({
                 ...prev,
                 name: user.name || user.full_name || '',
-                title: user.title || (isAgent ? 'Global Talent Ltd' : 'Senior Guest Relations Officer'), // Added fallback persistence
+                title: user.title || (isAgent ? 'Global Talent Ltd' : ''),
                 email: user.email || '',
                 phone: user.phone || user.contact_number || '',
                 location: user.location || (isAgent ? 'Business District, Mumbai' : 'Mumbai, India'),
@@ -444,16 +446,41 @@ const ProfilePage = () => {
                         const data = await response.json();
                         // Ensure data is array
                         const docArray = Array.isArray(data) ? data : [];
-                        const userDocs = docArray.map(d => ({
+
+                        // Map backend documents to frontend structure
+                        const backendDocs = docArray.map(d => ({
                             id: d._id,
-                            label: d.document_type?.toUpperCase() || 'DOCUMENT',
-                            type: d.mime_type?.includes('pdf') ? 'PDF' : 'IMG',
+                            label: d.document_type || 'DOCUMENT',
+                            type: d.content_type?.includes('pdf') ? 'PDF' : 'IMG',
                             required: false,
                             status: 'uploaded',
                             date: d.created_at ? new Date(d.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-                            filePath: d.file_path
+                            dbMetadata: d // Store full metadata
                         }));
-                        // Merge logic would go here, for now we just log or use if needed
+
+                        // Merge with default required docs
+                        const defaults = isAgent ? AGENT_DOCS : CANDIDATE_DOCS;
+
+                        // Create a map of uploaded docs by label (or type) for easy lookup
+                        const uploadedMap = {};
+                        backendDocs.forEach(d => {
+                            uploadedMap[d.label] = d;
+                            // Also map by ID if strictly matching
+                        });
+
+                        const mergedDocs = defaults.map(defDoc => {
+                            // detailed matching logic could go here, for now match by Label
+                            const found = backendDocs.find(bd => bd.label === defDoc.label);
+                            if (found) {
+                                return { ...defDoc, ...found };
+                            }
+                            return defDoc;
+                        });
+
+                        // Add any custom docs that are not in defaults
+                        const customDocs = backendDocs.filter(bd => !defaults.some(def => def.label === bd.label));
+
+                        setDocs([...mergedDocs, ...customDocs]);
                     }
                 } catch (err) {
                     console.error('Error fetching documents:', err);
@@ -568,18 +595,114 @@ const ProfilePage = () => {
     };
 
     const handleDocAction = (id) => {
-        setDocs(prevDocs => prevDocs.map(doc => {
-            if (doc.id === id) {
-                if (doc.status === 'missing') {
-                    return { ...doc, status: 'uploaded', date: new Date().toISOString().split('T')[0] };
-                } else {
-                    if (window.confirm("Remove this document?")) {
-                        return { ...doc, status: 'missing', date: undefined };
-                    }
-                }
+        const doc = docs.find(d => d.id === id);
+        if (!doc) return;
+
+        if (doc.status === 'uploaded') {
+            if (window.confirm("Remove this document? This cannot be undone.")) {
+                handleDeleteDocument(id);
             }
-            return doc;
-        }));
+        } else {
+            // Trigger upload
+            setUploadingDocId(id);
+            if (fileInputRef.current) {
+                fileInputRef.current.click();
+            }
+        }
+    };
+
+    const handleDeleteDocument = async (id) => {
+        // If it's a default required doc that hasn't been uploaded yet (local ID), just ignore
+        // But here we are in 'uploaded' state, so it must have a DB ID if it was fetched from DB.
+        // However, our merged state uses default IDs (strings) if not uploaded.
+        // If uploaded, we replaced ID with DB ID? Let's check merge logic.
+        // Actually, merged logic keeps default ID if we just spread ...found? 
+        // No, if found exists, we use its ID? 
+        // In merge: return { ...defDoc, ...found }; -> found.id overwrites defDoc.id
+
+        try {
+            const response = await fetch(`http://localhost:5000/api/documents/${id}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                // Re-fetch or update local state
+                // Simplest: update local state to 'missing' if it's a required doc, or remove if custom
+                setDocs(prevDocs => prevDocs.map(d => {
+                    if (d.id === id) {
+                        // Check if it was a default doc by label
+                        const defaults = isAgent ? AGENT_DOCS : CANDIDATE_DOCS;
+                        const defaultDoc = defaults.find(def => def.label === d.label);
+
+                        if (defaultDoc) {
+                            // Reset to default state
+                            return { ...defaultDoc, status: 'missing' };
+                        } else {
+                            // It was a custom doc, mark for filtering? 
+                            return { ...d, _deleted: true };
+                        }
+                    }
+                    return d;
+                }).filter(d => !d._deleted));
+                alert('Document removed');
+            } else {
+                alert('Failed to delete document');
+            }
+        } catch (err) {
+            console.error('Error removing doc:', err);
+        }
+    };
+
+    const handleFileSelect = async (e) => {
+        const file = e.target.files[0];
+        if (!file || !uploadingDocId) return;
+
+        // Find the doc label/type
+        const docToUpload = docs.find(d => d.id === uploadingDocId);
+        if (!docToUpload) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('user_id', user.id);
+        formData.append('document_type', docToUpload.label || 'Details');
+
+        try {
+            setIsAddingDoc(true); // Using this as loading indicator temporarily
+            const response = await fetch('http://localhost:5000/api/documents', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const newDoc = data.document;
+
+                // Update state
+                setDocs(prevDocs => prevDocs.map(d => {
+                    if (d.id === uploadingDocId) {
+                        return {
+                            ...d,
+                            id: newDoc.id, // Update ID to database ID
+                            status: 'uploaded',
+                            date: new Date().toISOString().split('T')[0],
+                            type: file.type.includes('pdf') ? 'PDF' : 'IMG'
+                        };
+                    }
+                    return d;
+                }));
+                alert('Document uploaded successfully!');
+            } else {
+                const err = await response.json();
+                alert(`Upload failed: ${err.message}`);
+            }
+        } catch (err) {
+            console.error('Upload error:', err);
+            alert('Upload failed');
+        } finally {
+            setUploadingDocId(null);
+            setIsAddingDoc(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
     };
 
     const handleAddDoc = () => {
@@ -634,6 +757,15 @@ const ProfilePage = () => {
                         applications={applications}
                     />
                 )}
+
+                {/* Hidden File Input */}
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                />
 
                 {/* MODALS (Shared Logic, Visuals Neutral) */}
                 {isResettingPassword && (

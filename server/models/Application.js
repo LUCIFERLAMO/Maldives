@@ -41,8 +41,23 @@ const applicationSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['PENDING', 'REVIEWING', 'ACCEPTED', 'REJECTED'],
+        enum: ['PENDING', 'REVIEWING', 'ACCEPTED', 'REJECTED', 'APPROVED', 'HOLD', 'SELECTED'],
         default: 'PENDING'
+    },
+    // Visibility Request - candidate requests to see their application progress
+    visibility_request_status: {
+        type: String,
+        enum: ['NOT_REQUESTED', 'PENDING', 'APPROVED', 'REJECTED'],
+        default: 'NOT_REQUESTED'
+    },
+    visibility_requested_at: {
+        type: Date
+    },
+    visibility_reviewed_by: {
+        type: String
+    },
+    visibility_reviewed_at: {
+        type: Date
     },
     applied_at: {
         type: Date,

@@ -470,13 +470,137 @@ app.get('/api/jobs', async (req, res) => {
     }
 });
 
-// GET: Job Categories List
+// POST: Create a new Job (Admin)
+app.post('/api/jobs', async (req, res) => {
+    try {
+        const {
+            title, company, location, category, salary_range,
+            description, requirements, headcount
+        } = req.body;
+
+        // Validation
+        if (!title || !company || !location || !category || !description) {
+            return res.status(400).json({ message: 'Missing required fields' });
+        }
+
+        // Get highest ID for simple increment (or use UUID in future)
+        const lastJob = await Job.findOne().sort({ id: -1 });
+        const newId = lastJob && !isNaN(parseInt(lastJob.id)) ? (parseInt(lastJob.id) + 1).toString() : '1';
+
+        const newJob = new Job({
+            id: newId,
+            title,
+            company,
+            location,
+            category,
+            salary_range,
+            description,
+            requirements: Array.isArray(requirements) ? requirements : requirements.split(',').map(r => r.trim()),
+            vacancies: headcount || 1,
+            posted_date: new Date(),
+            status: 'OPEN'
+        });
+
+        await newJob.save();
+        res.status(201).json(newJob);
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to create job', error: err.message });
+    }
+});
+
+// Import Category Model
+import Category from './models/Category.js';
+
+// GET: Job Categories List (Dynamic)
 app.get('/api/jobs/categories', async (req, res) => {
     try {
-        const categories = ['Hospitality', 'Construction', 'Healthcare', 'IT', 'Education', 'Retail', 'Manufacturing', 'Tourism', 'Fishing', 'Agriculture', 'Other'];
-        res.json(categories);
+        let categories = await Category.find().sort({ name: 1 });
+
+        // Seed if empty (First run)
+        if (categories.length === 0) {
+            const initialCategories = ['Hospitality', 'Construction', 'Healthcare', 'IT', 'Education', 'Retail', 'Manufacturing', 'Tourism', 'Fishing', 'Agriculture', 'Other'];
+            await Category.insertMany(initialCategories.map(name => ({ name })));
+            categories = await Category.find().sort({ name: 1 });
+        }
+
+        // Return just names to match previous array format if needed, OR return objects. 
+        // Previous frontend expects array of strings? Let's check BrowseJobsPage.
+        // BrowseJobsPage: const data = await response.json(); setCategories(data || []);
+        // And it iterates: {CATEGORIES.map(cat => ...)}
+        // If data is objects, this breaks.
+        // Let's return array of strings for compatibility, OR update frontend.
+        // Returning objects is better for IDs, but for now to be safe with existing code:
+        res.json(categories.map(c => c.name));
     } catch (err) {
         res.status(500).json({ message: err.message });
+    }
+});
+
+// POST: Add Category
+app.post('/api/jobs/categories', async (req, res) => {
+    try {
+        const { name } = req.body;
+        if (!name) return res.status(400).json({ message: 'Category name is required' });
+
+        const exists = await Category.findOne({ name: { $regex: new RegExp(`^${name}$`, 'i') } });
+        if (exists) return res.status(400).json({ message: 'Category already exists' });
+
+        const newCategory = new Category({ name });
+        await newCategory.save();
+
+        res.status(201).json(newCategory);
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to add category', error: err.message });
+    }
+});
+
+// DELETE: Delete Category (with validation and cascade option)
+app.delete('/api/jobs/categories/:name', async (req, res) => {
+    try {
+        const categoryName = req.params.name;
+        const forceDelete = req.query.force === 'true';
+
+        // Count jobs in this category
+        const totalJobs = await Job.countDocuments({ category: categoryName });
+        const openJobs = await Job.countDocuments({ category: categoryName, status: 'OPEN' });
+
+        // Check for OPEN (active) jobs - must close them first
+        if (openJobs > 0) {
+            return res.status(400).json({
+                message: `Cannot delete category '${categoryName}'. It has ${openJobs} active (OPEN) job(s). Please close all jobs in this category first.`,
+                openJobsCount: openJobs,
+                totalJobsCount: totalJobs,
+                canForceDelete: false
+            });
+        }
+
+        // If there are closed jobs and force delete is not requested, warn user
+        if (totalJobs > 0 && !forceDelete) {
+            return res.status(400).json({
+                message: `Category '${categoryName}' has ${totalJobs} closed job(s). These will be permanently deleted along with the category. Use force delete to proceed.`,
+                openJobsCount: 0,
+                totalJobsCount: totalJobs,
+                canForceDelete: true
+            });
+        }
+
+        // Delete all jobs in this category (cascade delete)
+        if (totalJobs > 0) {
+            await Job.deleteMany({ category: categoryName });
+        }
+
+        // Delete the category
+        const result = await Category.deleteOne({ name: categoryName });
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ message: 'Category not found' });
+        }
+
+        res.json({
+            message: `Category '${categoryName}' and ${totalJobs} job(s) deleted successfully`,
+            deletedJobsCount: totalJobs
+        });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to delete category', error: err.message });
     }
 });
 
@@ -493,6 +617,51 @@ app.get('/api/jobs/:id', async (req, res) => {
         res.json(job);
     } catch (err) {
         res.status(500).json({ message: err.message });
+    }
+});
+
+// PUT: Update Job Status (Start/Close)
+app.put('/api/jobs/:id/status', async (req, res) => {
+    try {
+        const { status } = req.body; // e.g., 'OPEN', 'CLOSED'
+
+        let job = await Job.findOne({ id: req.params.id });
+        if (!job && mongoose.Types.ObjectId.isValid(req.params.id)) {
+            job = await Job.findById(req.params.id);
+        }
+
+        if (!job) {
+            return res.status(404).json({ message: 'Job not found' });
+        }
+
+        job.status = status;
+        await job.save();
+
+        res.json({ message: `Job status updated to ${status}`, job });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to update job status', error: err.message });
+    }
+});
+
+// DELETE: Delete Job (Permanent)
+app.delete('/api/jobs/:id', async (req, res) => {
+    try {
+        let job = await Job.findOne({ id: req.params.id });
+        if (!job && mongoose.Types.ObjectId.isValid(req.params.id)) {
+            job = await Job.findById(req.params.id);
+        }
+
+        if (!job) {
+            return res.status(404).json({ message: 'Job not found' });
+        }
+
+        // Ideally, we should also delete or archive related applications
+        // For now, we will just delete the job as per requirement
+        await Job.deleteOne({ _id: job._id });
+
+        res.json({ message: 'Job deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to delete job', error: err.message });
     }
 });
 
@@ -875,7 +1044,44 @@ app.get('/api/admin/applications', async (req, res) => {
             .select('-resume.data -certificates.data')
             .sort({ applied_at: -1 });
 
-        res.json(applications);
+        // Enhance with Job details
+        const enhancedApplications = await Promise.all(
+            applications.map(async (app) => {
+                const appObj = app.toObject();
+
+                // Find job by job_id
+                let job = null;
+                if (app.job_id) {
+                    job = await Job.findOne({ id: app.job_id }).select('title company location category');
+                    if (!job && mongoose.Types.ObjectId.isValid(app.job_id)) {
+                        job = await Job.findById(app.job_id).select('title company location category');
+                    }
+                }
+
+                appObj.job = job ? {
+                    title: job.title,
+                    company: job.company,
+                    location: job.location,
+                    category: job.category
+                } : null;
+
+                // Find agent details if it's an agency application
+                if (app.agent_id) {
+                    const agent = await Profile.findById(app.agent_id).select('agency_name');
+                    if (agent) {
+                        appObj.agency_name = agent.agency_name;
+                    } else {
+                        // Fallback: try to find by string ID if legacy
+                        const agentLegacy = await Profile.findOne({ _id: app.agent_id }).select('agency_name');
+                        if (agentLegacy) appObj.agency_name = agentLegacy.agency_name;
+                    }
+                }
+
+                return appObj;
+            })
+        );
+
+        res.json(enhancedApplications);
     } catch (err) {
         res.status(500).json({ message: 'Failed to fetch applications', error: err.message });
     }
@@ -887,7 +1093,11 @@ app.put('/api/admin/applications/:id/status', async (req, res) => {
         const { status, reviewed_by, review_notes } = req.body;
 
         // Find by MongoDB _id or custom id field
-        let application = await Application.findById(req.params.id);
+        let application = null;
+        if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+            application = await Application.findById(req.params.id);
+        }
+
         if (!application) {
             application = await Application.findOne({ id: req.params.id });
         }
@@ -906,6 +1116,129 @@ app.put('/api/admin/applications/:id/status', async (req, res) => {
         res.json({ message: 'Application status updated', application });
     } catch (err) {
         res.status(500).json({ message: 'Failed to update application status', error: err.message });
+    }
+});
+
+// ============ VISIBILITY REQUEST ENDPOINTS ============
+
+// POST: Candidate requests visibility for their application progress
+app.post('/api/applications/:id/request-visibility', async (req, res) => {
+    try {
+        let application = null;
+        if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+            application = await Application.findById(req.params.id);
+        }
+        if (!application) {
+            application = await Application.findOne({ id: req.params.id });
+        }
+
+        if (!application) {
+            return res.status(404).json({ message: 'Application not found' });
+        }
+
+        // Check if already requested or rejected
+        if (application.visibility_request_status === 'REJECTED') {
+            return res.status(400).json({ message: 'Visibility request was already denied for this application' });
+        }
+        if (application.visibility_request_status === 'PENDING') {
+            return res.status(400).json({ message: 'Visibility request is already pending' });
+        }
+        if (application.visibility_request_status === 'APPROVED') {
+            return res.status(400).json({ message: 'Visibility is already approved' });
+        }
+
+        application.visibility_request_status = 'PENDING';
+        application.visibility_requested_at = new Date();
+        await application.save();
+
+        res.json({ message: 'Visibility request submitted successfully', application });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to submit visibility request', error: err.message });
+    }
+});
+
+// GET: Admin - Fetch all pending visibility requests
+app.get('/api/admin/visibility-requests', async (req, res) => {
+    try {
+        const pendingRequests = await Application.find({ visibility_request_status: 'PENDING' })
+            .select('-resume.data -certificates.data') // Exclude large file data
+            .sort({ visibility_requested_at: -1 });
+
+        // Enrich with job details
+        const enrichedRequests = await Promise.all(pendingRequests.map(async (app) => {
+            const job = await Job.findOne({ id: app.job_id }) || await Job.findOne({ _id: app.job_id });
+            return {
+                ...app.toObject(),
+                jobTitle: job?.title || 'Unknown Job',
+                jobCompany: job?.company || 'Unknown Company'
+            };
+        }));
+
+        res.json(enrichedRequests);
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to fetch visibility requests', error: err.message });
+    }
+});
+
+// GET: Admin - Count of pending visibility requests
+app.get('/api/admin/visibility-requests/count', async (req, res) => {
+    try {
+        const count = await Application.countDocuments({ visibility_request_status: 'PENDING' });
+        res.json({ count });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to count visibility requests', error: err.message });
+    }
+});
+
+// PUT: Admin - Approve visibility request
+app.put('/api/admin/visibility-requests/:id/approve', async (req, res) => {
+    try {
+        let application = null;
+        if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+            application = await Application.findById(req.params.id);
+        }
+        if (!application) {
+            application = await Application.findOne({ id: req.params.id });
+        }
+
+        if (!application) {
+            return res.status(404).json({ message: 'Application not found' });
+        }
+
+        application.visibility_request_status = 'APPROVED';
+        application.visibility_reviewed_by = req.body.reviewed_by || 'Admin';
+        application.visibility_reviewed_at = new Date();
+        await application.save();
+
+        res.json({ message: 'Visibility request approved', application });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to approve visibility request', error: err.message });
+    }
+});
+
+// PUT: Admin - Reject visibility request
+app.put('/api/admin/visibility-requests/:id/reject', async (req, res) => {
+    try {
+        let application = null;
+        if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+            application = await Application.findById(req.params.id);
+        }
+        if (!application) {
+            application = await Application.findOne({ id: req.params.id });
+        }
+
+        if (!application) {
+            return res.status(404).json({ message: 'Application not found' });
+        }
+
+        application.visibility_request_status = 'REJECTED';
+        application.visibility_reviewed_by = req.body.reviewed_by || 'Admin';
+        application.visibility_reviewed_at = new Date();
+        await application.save();
+
+        res.json({ message: 'Visibility request rejected', application });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to reject visibility request', error: err.message });
     }
 });
 
@@ -975,6 +1308,19 @@ app.get('/api/documents', async (req, res) => {
         res.json(documents);
     } catch (err) {
         res.status(500).json({ message: 'Failed to fetch documents', error: err.message });
+    }
+});
+
+// GET: Fetch a single document with full data (for auto-attach)
+app.get('/api/documents/:id', async (req, res) => {
+    try {
+        const document = await Document.findById(req.params.id);
+        if (!document) {
+            return res.status(404).json({ message: 'Document not found' });
+        }
+        res.json(document);
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to fetch document', error: err.message });
     }
 });
 

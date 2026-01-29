@@ -68,16 +68,106 @@ const JobDetailPage = () => {
         }
     }, [id, navigate]);
 
-    // Pre-fill user data
+    const [hasApplied, setHasApplied] = useState(false);
+    const [applicationStatus, setApplicationStatus] = useState(null);
+
+    // Pre-fill user data and Fetch Documents for Auto-Attach
     useEffect(() => {
         if (isAuthenticated && user) {
             setFormData({
                 name: user.name,
                 email: user.email,
-                contact: '',
+                contact: user.contact_number || '', // Use contact from user object if available
             });
+
+            // check for existing application
+            async function checkExistingApplication() {
+                try {
+                    const response = await fetch(`http://localhost:5000/api/applications/candidate/${user.email}`);
+                    if (response.ok) {
+                        const apps = await response.json();
+                        // Check if applied for THIS job (compare job_id)
+                        // Note: id from params might be string, app.job_id might be string or ObjectId
+                        const existingApp = apps.find(app => {
+                            if (!app.job_id) return false;
+                            return String(app.job_id) === String(id);
+                        });
+
+                        if (existingApp && existingApp.status !== 'REJECTED') {
+                            setHasApplied(true);
+                            setApplicationStatus(existingApp.status);
+                        } else {
+                            setHasApplied(false);
+                            setApplicationStatus(null);
+                        }
+                    }
+                } catch (err) {
+                    console.error("Error checking applications", err);
+                }
+            }
+            checkExistingApplication();
+
+            // Fetch user documents to find Resume and Certificates
+            async function fetchUserDocs() {
+                try {
+                    const response = await fetch(`http://localhost:5000/api/documents?user_id=${user.id}`);
+                    if (response.ok) {
+                        const docs = await response.json();
+
+                        // Find Resume
+                        const resumeDoc = docs.find(d =>
+                            d.document_type?.toUpperCase().includes('RESUME') ||
+                            d.document_type?.toUpperCase().includes('CV')
+                        );
+
+                        // Find Certificates (Education or others)
+                        const certDoc = docs.find(d =>
+                            d.document_type?.toUpperCase().includes('EDUCATION') ||
+                            d.document_type?.toUpperCase().includes('CERT')
+                        );
+
+                        // If found, fetch the full content (base64) to convert to File
+                        if (resumeDoc) {
+                            fetchAndConvertDoc(resumeDoc._id, 'resume', resumeDoc.filename, resumeDoc.content_type);
+                        }
+
+                        if (certDoc) {
+                            fetchAndConvertDoc(certDoc._id, 'certs', certDoc.filename, certDoc.content_type);
+                        }
+                    }
+                } catch (err) {
+                    console.error('Error auto-attaching docs:', err);
+                }
+            }
+            fetchUserDocs();
         }
     }, [isAuthenticated, user]);
+
+    // Helper to fetch full doc and convert to File object
+    const fetchAndConvertDoc = async (docId, fileKey, filename, mimeType) => {
+        try {
+            const res = await fetch(`http://localhost:5000/api/documents/${docId}`);
+            if (res.ok) {
+                const fullDoc = await res.json();
+                if (fullDoc.file_data) {
+                    // Convert Base64 to Blob/File
+                    const byteCharacters = atob(fullDoc.file_data);
+                    const byteNumbers = new Array(byteCharacters.length);
+                    for (let i = 0; i < byteCharacters.length; i++) {
+                        byteNumbers[i] = byteCharacters.charCodeAt(i);
+                    }
+                    const byteArray = new Uint8Array(byteNumbers);
+                    const blob = new Blob([byteArray], { type: mimeType });
+                    const file = new File([blob], filename, { type: mimeType });
+
+                    setFiles(prev => ({ ...prev, [fileKey]: file }));
+                    console.log(`Auto-attached ${fileKey}: ${filename}`);
+                }
+            }
+        } catch (e) {
+            console.error('Failed to convert doc:', e);
+        }
+    };
 
 
     /* ---------------- HELPER FUNCTIONS ---------------- */
@@ -124,7 +214,7 @@ const JobDetailPage = () => {
 
         try {
             const formDataPayload = new FormData();
-            formDataPayload.append('job_id', job._id || job.id);
+            formDataPayload.append('job_id', job.id || job._id);
             formDataPayload.append('name', formData.name);
             formDataPayload.append('email', formData.email);
             formDataPayload.append('contact', formData.contact);
@@ -321,13 +411,23 @@ const JobDetailPage = () => {
                                     </div>
                                 ) : (
                                     isAuthenticated ? (
-                                        <button
-                                            onClick={() => setIsApplyModalOpen(true)}
-                                            className="w-full py-4 bg-[#0B1A33] hover:bg-black text-white rounded-xl font-bold text-base shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 group"
-                                        >
-                                            Apply for Position
-                                            <ArrowLeft className="w-4 h-4 rotate-180 group-hover:translate-x-1 transition-transform" />
-                                        </button>
+                                        hasApplied ? (
+                                            <div className="w-full py-4 bg-teal-50 border-2 border-teal-100 text-teal-700 rounded-xl font-bold text-base flex flex-col items-center justify-center gap-1 cursor-default">
+                                                <div className="flex items-center gap-2">
+                                                    <CheckCircle className="w-5 h-5 fill-teal-100" />
+                                                    <span>Application Submitted</span>
+                                                </div>
+                                                <span className="text-xs uppercase tracking-wider font-bold opacity-75">Status: {applicationStatus}</span>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => setIsApplyModalOpen(true)}
+                                                className="w-full py-4 bg-[#0B1A33] hover:bg-black text-white rounded-xl font-bold text-base shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 group"
+                                            >
+                                                Apply for Position
+                                                <ArrowLeft className="w-4 h-4 rotate-180 group-hover:translate-x-1 transition-transform" />
+                                            </button>
+                                        )
                                     ) : (
                                         <div className="space-y-3">
                                             <button
@@ -411,14 +511,21 @@ const JobDetailPage = () => {
                                         label="Resume / CV *"
                                         required
                                         currentFile={files.resume}
-                                        defaultFileName={getDefaultFileName('resume')}
+                                        defaultFileName={files.resume ? files.resume.name : getDefaultFileName('resume')}
                                         onChange={(f) => handleFileChange('resume', f)}
                                     />
+                                    {files.resume && (
+                                        <p className="text-xs text-green-600 font-bold -mt-3 mb-3 ml-1">
+                                            {files.resume.name === user?.name?.split(' ')[0] + '_CV_2024.pdf' ?
+                                                "" : "✓ Auto-attached from Profile"
+                                            }
+                                        </p>
+                                    )}
                                     <FileUpload
                                         id="certs"
                                         label="Certificates"
                                         currentFile={files.certs}
-                                        defaultFileName={getDefaultFileName('certs')}
+                                        defaultFileName={files.certs ? files.certs.name : getDefaultFileName('certs')}
                                         onChange={(f) => handleFileChange('certs', f)}
                                     />
                                 </div>

@@ -18,8 +18,10 @@ import { Link, useSearchParams } from 'react-router-dom';
 import JobCard from '../components/JobCard';
 import { MOCK_JOBS, INDUSTRIES } from '../constants';
 import { JobStatus } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 const BrowseJobsPage = () => {
+    const { user } = useAuth();
     const [searchParams, setSearchParams] = useSearchParams();
     const [searchTerm, setSearchTerm] = useState('');
     const [viewType, setViewType] = useState('list');
@@ -131,6 +133,26 @@ const BrowseJobsPage = () => {
                 const response = await fetch(`http://localhost:5000/api/jobs?${query.toString()}`);
                 const data = await response.json();
 
+                // Fetch User Applications if logged in
+                let myAppIds = [];
+                if (user && user.email) {
+                    try {
+                        const appRes = await fetch(`http://localhost:5000/api/applications/candidate/${user.email}`);
+                        if (appRes.ok) {
+                            const apps = await appRes.json();
+                            // Filter out rejected apps so user can re-apply ?? 
+                            // User said: "candidate will not be able to apply for the job again until he is rejected"
+                            // So if rejected, isApplied should be FALSE (allow apply).
+                            // If pending/approved/etc, isApplied should be TRUE.
+                            myAppIds = apps
+                                .filter(app => app.status !== 'REJECTED')
+                                .map(app => String(app.job_id));
+                        }
+                    } catch (e) {
+                        console.error("Failed to fetch my apps", e);
+                    }
+                }
+
                 // Map database fields to frontend structure
                 const mappedJobs = (data || []).map(job => ({
                     ...job,
@@ -138,6 +160,8 @@ const BrowseJobsPage = () => {
                     salaryRange: job.salary_range,
                     // Backend returns 'OPEN' or 'CLOSED', map to JobStatus enum
                     status: job.status === 'OPEN' ? JobStatus.OPEN : JobStatus.CLOSED,
+                    // Check if applied
+                    isApplied: myAppIds.includes(String(job.id)),
                     industry: job.category // Map backend 'category' to frontend 'industry'
                 }));
 
@@ -159,7 +183,7 @@ const BrowseJobsPage = () => {
         }
 
         fetchJobs();
-    }, [sortBy]);
+    }, [sortBy, user]);
 
 
     const handleShare = async (e, job) => {

@@ -48,7 +48,11 @@ const MyApplicationsPage = () => {
                     adminFeedback: app.admin_feedback,
                     documentFeedbacks: app.document_feedbacks,
                     jobTitle: app.job?.title || app.jobs?.title || 'Unknown Role',
-                    company: app.job?.company || app.jobs?.company || 'Unknown Company'
+                    company: app.job?.company || app.jobs?.company || 'Unknown Company',
+                    // Visibility request fields from backend
+                    visibilityRequestStatus: app.visibility_request_status || 'NOT_REQUESTED',
+                    visibilityRequestedAt: app.visibility_requested_at,
+                    visibilityReviewedAt: app.visibility_reviewed_at
                 }));
 
                 setApplications(transformedApps);
@@ -63,14 +67,55 @@ const MyApplicationsPage = () => {
         fetchApplications();
     }, [user]);
 
-    const handleRequestProgress = (appId) => {
-        setApplications(prev => prev.map(a =>
-            a.id === appId ? { ...a, statusRequestStatus: 'pending' } : a
-        ));
-        if (selectedApp && selectedApp.id === appId) {
-            setSelectedApp({ ...selectedApp, statusRequestStatus: 'pending' });
+    // Helper function to get display-friendly status
+    const getDisplayStatus = (status) => {
+        switch (status) {
+            case 'APPROVED':
+            case 'SELECTED':
+            case 'ACCEPTED':
+                return { label: 'Selected', color: 'bg-emerald-100 text-emerald-700' };
+            case 'REJECTED':
+                return { label: 'Rejected', color: 'bg-red-100 text-red-700' };
+            case 'HOLD':
+            case 'REVIEWING':
+                return { label: 'In Review', color: 'bg-blue-100 text-blue-700' };
+            case 'PENDING':
+                return { label: 'Applied', color: 'bg-slate-100 text-slate-600' };
+            default:
+                return { label: status, color: 'bg-slate-100 text-slate-600' };
         }
-        alert("Request sent to employer.");
+    };
+
+    // Check if status is a final outcome (always visible)
+    const isFinalStatus = (status) => {
+        return ['APPROVED', 'SELECTED', 'ACCEPTED', 'REJECTED'].includes(status);
+    };
+
+    // Handle visibility request - calls backend API
+    const handleRequestProgress = async (appId) => {
+        try {
+            const response = await fetch(`http://localhost:5000/api/applications/${appId}/request-visibility`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                setApplications(prev => prev.map(a =>
+                    a.id === appId ? { ...a, visibilityRequestStatus: 'PENDING' } : a
+                ));
+                if (selectedApp && selectedApp.id === appId) {
+                    setSelectedApp({ ...selectedApp, visibilityRequestStatus: 'PENDING' });
+                }
+                alert('✅ Request sent! The admin will review your request.');
+            } else {
+                alert(`❌ ${data.message}`);
+            }
+        } catch (error) {
+            console.error('Error requesting visibility:', error);
+            alert('Failed to send request. Please try again.');
+        }
     };
 
     const allApplications = applications.filter(app => {
@@ -197,12 +242,14 @@ const MyApplicationsPage = () => {
 
                         <div className="flex-1 overflow-y-auto p-8 space-y-8">
 
-                            {/* STATUS BANNER */}
-                            <div className={`rounded-2xl p-6 border ${selectedApp.status === ApplicationStatus.ACTION_REQUIRED ? 'bg-amber-50 border-amber-100 text-amber-900' : 'bg-slate-50 border-slate-100 text-slate-800'}`}>
+                            {/* STATUS BANNER - Use display-friendly status */}
+                            <div className={`rounded-2xl p-6 border ${isFinalStatus(selectedApp.status) ? (selectedApp.status === 'REJECTED' ? 'bg-red-50 border-red-100' : 'bg-emerald-50 border-emerald-100') : selectedApp.status === ApplicationStatus.ACTION_REQUIRED ? 'bg-amber-50 border-amber-100 text-amber-900' : 'bg-slate-50 border-slate-100 text-slate-800'}`}>
                                 <div className="text-xs font-bold uppercase tracking-wider opacity-60 mb-2">Current Status</div>
-                                <div className="text-xl font-bold flex items-center gap-2">
+                                <div className={`text-xl font-bold flex items-center gap-2 ${getDisplayStatus(selectedApp.status).color.replace('bg-', 'text-').split(' ')[0]}`}>
                                     {selectedApp.status === ApplicationStatus.ACTION_REQUIRED && <AlertTriangle className="w-6 h-6 text-amber-600" />}
-                                    {selectedApp.status}
+                                    {isFinalStatus(selectedApp.status) && selectedApp.status !== 'REJECTED' && <CheckCircle2 className="w-6 h-6 text-emerald-600" />}
+                                    {selectedApp.status === 'REJECTED' && <X className="w-6 h-6 text-red-600" />}
+                                    {getDisplayStatus(selectedApp.status).label}
                                 </div>
                             </div>
 
@@ -246,36 +293,62 @@ const MyApplicationsPage = () => {
                             {/* GENERAL INFO (If no action required) */}
                             {selectedApp.status !== ApplicationStatus.ACTION_REQUIRED && (
                                 <div className="space-y-8">
-                                    <div>
-                                        <h4 className="text-sm font-bold text-slate-900 mb-4">Application Timeline</h4>
-                                        <div className="relative pl-4 border-l-2 border-slate-100 space-y-8">
-                                            <div className="relative">
-                                                <div className="absolute -left-[21px] top-1 w-4 h-4 bg-teal-500 rounded-full border-4 border-white shadow-sm"></div>
-                                                <div className="text-sm font-bold text-slate-900">Application Received</div>
-                                                <div className="text-xs text-slate-500 mt-1">{selectedApp.appliedDate}</div>
-                                            </div>
-                                            <div className="relative">
-                                                <div className="absolute -left-[21px] top-1 w-4 h-4 bg-slate-300 rounded-full border-4 border-white"></div>
-                                                <div className="text-sm font-medium text-slate-500">Screening in progress</div>
+                                    {/* Show timeline only if: visibility approved OR final status (Selected/Rejected) */}
+                                    {(selectedApp.visibilityRequestStatus === 'APPROVED' || isFinalStatus(selectedApp.status)) ? (
+                                        <div>
+                                            <h4 className="text-sm font-bold text-slate-900 mb-4">Application Timeline</h4>
+                                            <div className="relative pl-4 border-l-2 border-slate-100 space-y-8">
+                                                <div className="relative">
+                                                    <div className="absolute -left-[21px] top-1 w-4 h-4 bg-teal-500 rounded-full border-4 border-white shadow-sm"></div>
+                                                    <div className="text-sm font-bold text-slate-900">Application Received</div>
+                                                    <div className="text-xs text-slate-500 mt-1">{selectedApp.appliedDate}</div>
+                                                </div>
+                                                <div className="relative">
+                                                    <div className={`absolute -left-[21px] top-1 w-4 h-4 ${isFinalStatus(selectedApp.status) ? (selectedApp.status === 'REJECTED' ? 'bg-red-500' : 'bg-emerald-500') : 'bg-blue-500'} rounded-full border-4 border-white shadow-sm`}></div>
+                                                    <div className="text-sm font-bold text-slate-900">
+                                                        {isFinalStatus(selectedApp.status) ? getDisplayStatus(selectedApp.status).label : 'Under Review'}
+                                                    </div>
+                                                    {selectedApp.visibilityReviewedAt && (
+                                                        <div className="text-xs text-slate-500 mt-1">Updated on {new Date(selectedApp.visibilityReviewedAt).toLocaleDateString()}</div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    ) : (
+                                        /* Timeline hidden - Show request visibility UI */
+                                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center">
+                                            <Clock className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                                            <h4 className="text-base font-bold text-slate-800 mb-2">Progress Details Hidden</h4>
+                                            <p className="text-sm text-slate-500 mb-4">
+                                                {selectedApp.visibilityRequestStatus === 'REJECTED'
+                                                    ? 'Your request for visibility was denied by the admin.'
+                                                    : selectedApp.visibilityRequestStatus === 'PENDING'
+                                                        ? 'Your visibility request is pending admin approval.'
+                                                        : 'Request visibility from the admin to see detailed progress.'}
+                                            </p>
+                                        </div>
+                                    )}
 
-                                    {/* Request Access Button */}
-                                    <div className="pt-6 border-t border-slate-100">
-                                        <p className="text-sm text-slate-500 mb-4 font-medium">Need more detailed updates?</p>
-                                        <button
-                                            onClick={() => handleRequestProgress(selectedApp.id)}
-                                            disabled={selectedApp.statusRequestStatus === 'pending' || selectedApp.statusRequestStatus === 'approved'}
-                                            className="w-full py-4 border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                                        >
-                                            {selectedApp.statusRequestStatus === 'pending' ? <Clock className="w-4 h-4" /> :
-                                                selectedApp.statusRequestStatus === 'approved' ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Clock className="w-4 h-4" />}
+                                    {/* Request Access Button - Only show if not final status */}
+                                    {!isFinalStatus(selectedApp.status) && (
+                                        <div className="pt-6 border-t border-slate-100">
+                                            <p className="text-sm text-slate-500 mb-4 font-medium">Need more detailed updates?</p>
+                                            <button
+                                                onClick={() => handleRequestProgress(selectedApp.id)}
+                                                disabled={selectedApp.visibilityRequestStatus === 'PENDING' || selectedApp.visibilityRequestStatus === 'APPROVED' || selectedApp.visibilityRequestStatus === 'REJECTED'}
+                                                className={`w-full py-4 border text-slate-700 font-bold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${selectedApp.visibilityRequestStatus === 'REJECTED' ? 'border-red-200 bg-red-50 text-red-600' : selectedApp.visibilityRequestStatus === 'APPROVED' ? 'border-emerald-200 bg-emerald-50 text-emerald-600' : 'border-slate-200 hover:bg-slate-50'}`}
+                                            >
+                                                {selectedApp.visibilityRequestStatus === 'PENDING' && <Clock className="w-4 h-4" />}
+                                                {selectedApp.visibilityRequestStatus === 'APPROVED' && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                                                {selectedApp.visibilityRequestStatus === 'REJECTED' && <X className="w-4 h-4 text-red-500" />}
+                                                {selectedApp.visibilityRequestStatus === 'NOT_REQUESTED' && <Clock className="w-4 h-4" />}
 
-                                            {selectedApp.statusRequestStatus === 'pending' ? 'Request Pending' :
-                                                selectedApp.statusRequestStatus === 'approved' ? 'Access Granted' : 'Request Status Visibility'}
-                                        </button>
-                                    </div>
+                                                {selectedApp.visibilityRequestStatus === 'PENDING' ? 'Request Pending...' :
+                                                    selectedApp.visibilityRequestStatus === 'APPROVED' ? 'Visibility Granted' :
+                                                        selectedApp.visibilityRequestStatus === 'REJECTED' ? 'Request Denied' : 'Request Status Visibility'}
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

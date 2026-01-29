@@ -16,6 +16,7 @@ import ProfilePage from './pages/ProfilePage';
 import SupportPage from './pages/SupportPage';
 import AgentRegistrationPage from './pages/AgentRegistrationPage';
 import { AuthProvider } from './context/AuthContext';
+import GlobalErrorBoundary from './components/GlobalErrorBoundary';
 
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -31,8 +32,16 @@ const AppContent = () => {
                 <Routes>
                     {/* Public Routes */}
                     <Route path="/" element={<HomePage />} />
-                    <Route path="/jobs" element={<BrowseJobsPage />} />
-                    <Route path="/job/:id" element={<JobDetailPage />} />
+                    <Route path="/jobs" element={
+                        <GlobalErrorBoundary>
+                            <BrowseJobsPage />
+                        </GlobalErrorBoundary>
+                    } />
+                    <Route path="/job/:id" element={
+                        <GlobalErrorBoundary>
+                            <JobDetailPage />
+                        </GlobalErrorBoundary>
+                    } />
                     <Route path="/success" element={<SuccessPage />} />
                     <Route path="/support" element={<SupportPage />} />
 
@@ -49,7 +58,9 @@ const AppContent = () => {
                         path="/admin"
                         element={
                             <ProtectedRoute allowedRoles={['admin']}>
-                                <AdminDashboard />
+                                <GlobalErrorBoundary>
+                                    <AdminDashboard />
+                                </GlobalErrorBoundary>
                             </ProtectedRoute>
                         }
                     />
