@@ -1228,10 +1228,12 @@ const RecruiterDashboard = () => {
                                                             <td className="px-8 py-5 text-slate-600">{app.jobs?.title || 'Unknown Role'}</td>
                                                             <td className="px-8 py-5 text-right">
                                                                 <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide
-                                                   ${app.status === ApplicationStatus.SELECTED ? 'bg-teal-50 text-teal-700 border border-teal-100' :
-                                                                        app.status === ApplicationStatus.REJECTED ? 'bg-red-50 text-red-700 border border-red-100' :
-                                                                            app.status === ApplicationStatus.BLACKLISTED ? 'bg-slate-100 text-slate-500 border border-slate-200' :
-                                                                                'bg-amber-50 text-amber-700 border border-amber-100'
+                                                   ${['APPROVED', 'SELECTED', 'Selected', 'ACCEPTED'].includes(app.status) ? 'bg-teal-50 text-teal-700 border border-teal-100' :
+                                                                        ['REJECTED', 'Rejected'].includes(app.status) ? 'bg-red-50 text-red-700 border border-red-100' :
+                                                                            ['BLACKLISTED', 'Blacklisted'].includes(app.status) ? 'bg-slate-100 text-slate-500 border border-slate-200' :
+                                                                                ['PENDING', 'APPLIED', 'Applied', 'PROCESSING', 'Processing'].includes(app.status) ? 'bg-amber-50 text-amber-700 border border-amber-100' :
+                                                                                    ['REVIEWING', 'INTERVIEW', 'Interview', 'In Review'].includes(app.status) ? 'bg-blue-50 text-blue-700 border border-blue-100' :
+                                                                                        'bg-slate-50 text-slate-700 border border-slate-100'
                                                                     }`}>
                                                                     {app.status}
                                                                 </span>
@@ -1438,12 +1440,12 @@ const RecruiterDashboard = () => {
                                                                 </td>
                                                                 <td className="px-6 py-4 text-center">
                                                                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide
-                                                      ${app.status === ApplicationStatus.APPLIED ? 'bg-blue-50 text-blue-700 border border-blue-100' : ''}
-                                                      ${app.status === ApplicationStatus.PROCESSING ? 'bg-amber-50 text-amber-700 border border-amber-100' : ''}
-                                                      ${app.status === ApplicationStatus.INTERVIEW ? 'bg-purple-50 text-purple-700 border border-purple-100' : ''}
-                                                      ${app.status === ApplicationStatus.SELECTED ? 'bg-teal-50 text-teal-700 border border-teal-100' : ''}
-                                                      ${app.status === ApplicationStatus.REJECTED ? 'bg-red-50 text-red-700 border border-red-100' : ''}
-                                                      ${app.status === ApplicationStatus.BLACKLISTED ? 'bg-slate-100 text-slate-500 border border-slate-200' : ''}
+                                                      ${['APPROVED', 'SELECTED', 'Selected', 'ACCEPTED'].includes(app.status) ? 'bg-teal-50 text-teal-700 border border-teal-100' : ''}
+                                                      ${['PENDING', 'APPLIED', 'Applied'].includes(app.status) ? 'bg-amber-50 text-amber-700 border border-amber-100' : ''}
+                                                      ${['PROCESSING', 'Processing'].includes(app.status) ? 'bg-yellow-50 text-yellow-700 border border-yellow-100' : ''}
+                                                      ${['REVIEWING', 'INTERVIEW', 'Interview', 'In Review'].includes(app.status) ? 'bg-blue-50 text-blue-700 border border-blue-100' : ''}
+                                                      ${['REJECTED', 'Rejected'].includes(app.status) ? 'bg-red-50 text-red-700 border border-red-100' : ''}
+                                                      ${['BLACKLISTED', 'Blacklisted'].includes(app.status) ? 'bg-slate-100 text-slate-500 border border-slate-200' : ''}
                                                    `}>
                                                                         {app.status}
                                                                     </span>
