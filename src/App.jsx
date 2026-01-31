@@ -109,11 +109,11 @@ const AppContent = () => {
                             <div className="col-span-1 md:col-span-2">
                                 <div className="flex items-center gap-2 text-white font-black text-xl mb-6">
                                     <div className="w-8 h-8 bg-teal-500 rounded-lg flex items-center justify-center">
-                                        <span className="text-white text-lg">M</span>
+                                        <span className="text-white text-lg">G</span>
                                     </div>
-                                    MaldivesCareer
+                                    GlobalAKjobs
                                 </div>
-                                <p className="text-sm leading-relaxed max-w-sm">Connecting the world's best talent to luxury career opportunities across the Maldives. Our platform simplifies the international recruitment process for both candidates and employers.</p>
+                                <p className="text-sm leading-relaxed max-w-sm">Connecting the world's best talent to luxury career opportunities globally. Our platform simplifies the international recruitment process for both candidates and employers.</p>
                             </div>
                             <div>
                                 <h4 className="text-white font-bold mb-6 text-sm uppercase tracking-widest">Platform</h4>
@@ -132,7 +132,7 @@ const AppContent = () => {
                             </div>
                         </div>
                         <div className="pt-12 border-t border-white/10 text-center text-[11px] font-bold uppercase tracking-[0.2em] opacity-40">
-                            © 2024 MaldivesCareer Connect. All rights reserved.
+                            © 2024 GlobalAKjobs. All rights reserved.
                         </div>
                     </div>
                 </footer>

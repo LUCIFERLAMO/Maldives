@@ -335,7 +335,7 @@ const AgentProfile = ({ user, profileData, docs, handleDocAction, setIsResetting
                             <h3 className="font-bold text-sm">Compliance Status</h3>
                         </div>
                         <div className="text-xs leading-relaxed opacity-80 mb-4">
-                            Your agency license is valid until <span className="text-white font-bold">Dec 2024</span>. Ensure all candidate submissions adhere to the latest Maldives Employment Act regulations.
+                            Your agency license is valid until <span className="text-white font-bold">Dec 2024</span>. Ensure all candidate submissions adhere to the latest international employment regulations.
                         </div>
                         <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
                             <div className="bg-green-500 h-full w-full"></div>

@@ -1612,7 +1612,7 @@ const RecruiterDashboard = () => {
                                 <div className="bg-amber-50 rounded-lg p-4 border border-amber-200 flex items-start gap-4">
                                     <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
                                     <p className="text-xs font-medium text-amber-800 leading-relaxed">
-                                        <strong>Agency Compliance Declaration:</strong> By submitting this candidate, you certify that all uploaded documents have been verified against original copies and the candidate has been briefed on the Maldives employment terms.
+                                        <strong>Agency Compliance Declaration:</strong> By submitting this candidate, you certify that all uploaded documents have been verified against original copies and the candidate has been briefed on the international employment terms.
                                     </p>
                                 </div>
                             </div>

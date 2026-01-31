@@ -134,7 +134,7 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
                         ) : (
                             <>
                                 <h1 className="text-4xl md:text-5xl font-black leading-tight mb-4 tracking-tighter">Start Your <br /><span className="text-maldives-300">Journey.</span></h1>
-                                <p className="text-teal-100 font-medium text-lg opacity-90">Join thousands of professionals finding their dream careers in the Maldives.</p>
+                                <p className="text-teal-100 font-medium text-lg opacity-90">Join thousands of professionals finding their dream careers worldwide.</p>
                             </>
                         )}
                     </div>

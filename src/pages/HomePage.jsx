@@ -67,7 +67,7 @@ const HomePage = () => {
 
                   {/* Subheadline */}
                   <p className="text-slate-500 text-base md:text-lg lg:text-xl max-w-lg mb-8 lg:mb-12 leading-relaxed font-medium mx-auto lg:mx-0">
-                     Connect with the most prestigious luxury resorts and healthcare institutions across the Maldives. Your island career starts here.
+                     Connect with the most prestigious luxury resorts and healthcare institutions worldwide. Your global career starts here.
                   </p>
 
                   {/* Actions */}
@@ -162,7 +162,7 @@ const HomePage = () => {
                   </h2>
 
                   <p className="text-slate-500 text-base lg:text-lg mb-10 lg:mb-12 leading-relaxed font-medium max-w-xl mx-auto lg:mx-0">
-                     We don't just list jobs. We provide a full-spectrum vetting and document handling service that ensures your transition to the Maldives is professional, compliant, and exciting.
+                     We don't just list jobs. We provide a full-spectrum vetting and document handling service that ensures your international career transition is professional, compliant, and exciting.
                   </p>
 
                   <div className="grid grid-cols-3 gap-6 lg:gap-12 mb-10 lg:mb-14 border-y lg:border-none border-slate-100 py-8 lg:py-0">

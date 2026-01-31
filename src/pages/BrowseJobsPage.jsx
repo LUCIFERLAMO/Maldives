@@ -297,7 +297,7 @@ const BrowseJobsPage = () => {
                             <div className="w-full md:w-[35%] flex items-center px-4 md:px-6 h-12 md:h-14 relative cursor-pointer hover:bg-slate-50 transition-colors">
                                 <MapPin className="w-4 h-4 md:w-5 md:h-5 text-slate-400 mr-3 md:mr-4" />
                                 <div className="flex-1 min-w-0">
-                                    <span className="block text-sm font-medium text-slate-700 truncate">Maldives, All Islands</span>
+                                    <span className="block text-sm font-medium text-slate-700 truncate">Global, All Locations</span>
                                 </div>
                                 <ChevronDown className="w-4 h-4 text-slate-300 ml-2" />
                             </div>

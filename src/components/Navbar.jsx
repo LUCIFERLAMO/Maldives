@@ -26,7 +26,7 @@ const Navbar = () => {
                         <div className="w-8 h-8 bg-teal-600 rounded-lg flex items-center justify-center text-white text-sm shadow-lg shadow-teal-600/20">
                             <Briefcase className="w-4 h-4" />
                         </div>
-                        <span>MaldivesCareer</span>
+                        <span>GlobalAKjobs</span>
                     </Link>
 
                     <div className="hidden lg:flex items-center gap-8">
@@ -70,8 +70,8 @@ const Navbar = () => {
                                 <div className="bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-slate-100 py-3 w-64 overflow-hidden ring-1 ring-slate-900/5">
                                     <div className="px-6 py-3">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Email Us</p>
-                                        <a href="mailto:support@maldivescareer.com" className="text-sm font-bold text-slate-700 hover:text-teal-600 transition-colors block">
-                                            support@maldivescareer.com
+                                        <a href="mailto:support@globalakjobs.com" className="text-sm font-bold text-slate-700 hover:text-teal-600 transition-colors block">
+                                            support@globalakjobs.com
                                         </a>
                                     </div>
                                     <div className="h-px bg-slate-50 my-1 mx-4"></div>
