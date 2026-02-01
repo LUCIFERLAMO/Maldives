@@ -102,41 +102,7 @@ const AppContent = () => {
                     />
                 </Routes>
             </main>
-            {!isDashboard && (
-                <footer className="bg-slate-900 text-slate-400 py-12">
-                    <div className="container mx-auto px-4 max-w-6xl">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
-                            <div className="col-span-1 md:col-span-2">
-                                <div className="flex items-center gap-2 text-white font-black text-xl mb-6">
-                                    <div className="w-8 h-8 bg-teal-500 rounded-lg flex items-center justify-center">
-                                        <span className="text-white text-lg">G</span>
-                                    </div>
-                                    GlobalAKjobs
-                                </div>
-                                <p className="text-sm leading-relaxed max-w-sm">Connecting the world's best talent to luxury career opportunities globally. Our platform simplifies the international recruitment process for both candidates and employers.</p>
-                            </div>
-                            <div>
-                                <h4 className="text-white font-bold mb-6 text-sm uppercase tracking-widest">Platform</h4>
-                                <ul className="space-y-4 text-sm">
-                                    <li><Link to="/jobs" className="hover:text-teal-400 transition-colors">Browse Jobs</Link></li>
-                                    <li><Link to="/login/agent" className="hover:text-teal-400 transition-colors">Agent Portal</Link></li>
-                                </ul>
-                            </div>
-                            <div>
-                                <h4 className="text-white font-bold mb-6 text-sm uppercase tracking-widest">Support</h4>
-                                <ul className="space-y-4 text-sm">
-                                    <li><Link to="/support" className="hover:text-teal-400 transition-colors">Contact Us</Link></li>
-                                    <li className="hover:text-white cursor-pointer transition-colors">Privacy Policy</li>
-                                    <li className="hover:text-white cursor-pointer transition-colors">Terms of Service</li>
-                                </ul>
-                            </div>
-                        </div>
-                        <div className="pt-12 border-t border-white/10 text-center text-[11px] font-bold uppercase tracking-[0.2em] opacity-40">
-                            © 2024 GlobalAKjobs. All rights reserved.
-                        </div>
-                    </div>
-                </footer>
-            )}
+
         </div>
     );
 };
