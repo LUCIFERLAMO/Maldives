@@ -7,13 +7,229 @@ import {
     X, Shield, LogOut, Briefcase as BriefcaseIcon,
     Ban, PlusCircle, CheckCircle,
     AlertTriangle, Globe, ArrowRight, UserPlus,
-    MapPin, Award, User,
+    MapPin, Award, User, Building2, DollarSign,
     AlignLeft, ChevronDown, ShieldCheck,
-    FilePlus, Clock, Settings, Key, Eye, EyeOff, RefreshCw
+    FilePlus, Clock, Settings, Key, Eye, EyeOff, RefreshCw, Download, FileText, Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import FileUpload from '../components/FileUpload';
+
+// =============================================
+// DOCUMENT VIEWER MODAL COMPONENT
+// =============================================
+const DocumentViewerModal = ({ app, docViewerData, docViewerLoading, setDocViewerData, setDocViewerLoading, onClose }) => {
+    const [activeDoc, setActiveDoc] = useState(null); // Currently viewed document
+    const [error, setError] = useState(null);
+
+    // Fetch documents when modal opens
+    useEffect(() => {
+        if (app && !docViewerData) {
+            fetchDocuments();
+        }
+    }, [app]);
+
+    const fetchDocuments = async () => {
+        setDocViewerLoading(true);
+        setError(null);
+        try {
+            const appId = app.id || app._id;
+            const response = await fetch(`http://localhost:5000/api/applications/${appId}/documents`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch documents');
+            }
+            const data = await response.json();
+            setDocViewerData(data);
+        } catch (err) {
+            console.error('Error fetching documents:', err);
+            setError(err.message);
+        } finally {
+            setDocViewerLoading(false);
+        }
+    };
+
+    // Download handler - creates a download link from data URL
+    const handleDownload = (doc) => {
+        const link = document.createElement('a');
+        link.href = doc.dataUrl;
+        link.download = doc.name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    // Check if content type is an image
+    const isImage = (contentType) => contentType?.startsWith('image/');
+
+    // Check if content type is PDF
+    const isPdf = (contentType) => contentType === 'application/pdf';
+
+    return (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl border border-slate-200 overflow-hidden transform transition-all scale-100 max-h-[90vh] flex flex-col">
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white shrink-0">
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-900">📄 Submitted Documents</h3>
+                        <p className="text-sm text-slate-500">
+                            Read-only view for <span className="font-semibold text-teal-600">{app.candidate_name}</span>
+                        </p>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                {/* Body */}
+                <div className="flex-1 flex overflow-hidden">
+                    {/* Left Panel - Document List */}
+                    <div className="w-80 border-r border-slate-200 bg-slate-50/50 p-4 overflow-y-auto shrink-0">
+                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Documents</h4>
+
+                        {docViewerLoading ? (
+                            <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+                                <Loader2 className="w-8 h-8 animate-spin mb-3" />
+                                <p className="text-sm font-medium">Loading documents...</p>
+                            </div>
+                        ) : error ? (
+                            <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-center">
+                                <p className="text-sm text-red-600 font-medium">{error}</p>
+                                <button
+                                    onClick={fetchDocuments}
+                                    className="mt-2 text-xs text-red-700 underline"
+                                >
+                                    Retry
+                                </button>
+                            </div>
+                        ) : docViewerData?.documents?.length > 0 ? (
+                            <div className="space-y-3">
+                                {docViewerData.documents.map((doc, index) => (
+                                    <div
+                                        key={index}
+                                        className={`p-4 rounded-xl border cursor-pointer transition-all ${activeDoc?.type === doc.type
+                                            ? 'border-teal-500 bg-teal-50 shadow-sm ring-2 ring-teal-500/20'
+                                            : 'border-slate-200 bg-white hover:border-teal-200 hover:shadow-sm'
+                                            }`}
+                                        onClick={() => setActiveDoc(doc)}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${doc.type === 'resume' ? 'bg-indigo-100 text-indigo-600' :
+                                                doc.type === 'identity' ? 'bg-amber-100 text-amber-600' :
+                                                    doc.type === 'certificates' ? 'bg-teal-100 text-teal-600' :
+                                                        doc.type === 'pcc' ? 'bg-purple-100 text-purple-600' :
+                                                            'bg-blue-100 text-blue-600'
+                                                }`}>
+                                                <FileText className="w-5 h-5" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-bold text-slate-900 text-sm truncate">
+                                                    {doc.type === 'resume' ? 'Resume / CV' :
+                                                        doc.type === 'identity' ? 'Identity Document' :
+                                                            doc.type === 'certificates' ? 'Certificates' :
+                                                                doc.type === 'pcc' ? 'Police Clearance' :
+                                                                    doc.type === 'goodStanding' ? 'Good Standing' : 'Document'}
+                                                </p>
+                                                <p className="text-xs text-slate-500 truncate">{doc.name}</p>
+                                            </div>
+                                        </div>
+                                        <div className="mt-3 flex gap-2">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setActiveDoc(doc); }}
+                                                className="flex-1 px-3 py-1.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-lg hover:bg-slate-200 transition-colors flex items-center justify-center gap-1"
+                                            >
+                                                <Eye className="w-3 h-3" />
+                                                Preview
+                                            </button>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleDownload(doc); }}
+                                                className="flex-1 px-3 py-1.5 bg-teal-600 text-white text-xs font-bold rounded-lg hover:bg-teal-700 transition-colors flex items-center justify-center gap-1"
+                                            >
+                                                <Download className="w-3 h-3" />
+                                                Download
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="p-8 text-center text-slate-400">
+                                <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                                <p className="text-sm font-medium">No documents found</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Right Panel - Document Preview */}
+                    <div className="flex-1 p-6 bg-slate-100 overflow-y-auto flex items-center justify-center">
+                        {activeDoc ? (
+                            <div className="w-full h-full flex flex-col">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h4 className="text-sm font-bold text-slate-700">
+                                        {activeDoc.type === 'resume' ? 'Resume Preview' : 'Certificate Preview'}
+                                    </h4>
+                                    <button
+                                        onClick={() => handleDownload(activeDoc)}
+                                        className="px-4 py-2 bg-teal-600 text-white text-xs font-bold rounded-lg hover:bg-teal-700 transition-colors flex items-center gap-2 shadow-sm"
+                                    >
+                                        <Download className="w-4 h-4" />
+                                        Download File
+                                    </button>
+                                </div>
+                                <div className="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex items-center justify-center">
+                                    {isImage(activeDoc.contentType) ? (
+                                        <img
+                                            src={activeDoc.dataUrl}
+                                            alt={activeDoc.name}
+                                            className="max-w-full max-h-[60vh] object-contain"
+                                        />
+                                    ) : isPdf(activeDoc.contentType) ? (
+                                        <iframe
+                                            src={activeDoc.dataUrl}
+                                            title={activeDoc.name}
+                                            className="w-full h-[60vh] border-0"
+                                        />
+                                    ) : (
+                                        <div className="p-12 text-center">
+                                            <FileText className="w-16 h-16 mx-auto mb-4 text-slate-300" />
+                                            <p className="text-slate-600 font-medium mb-2">{activeDoc.name}</p>
+                                            <p className="text-sm text-slate-400 mb-4">
+                                                Preview not available for this file type.
+                                            </p>
+                                            <button
+                                                onClick={() => handleDownload(activeDoc)}
+                                                className="px-6 py-2.5 bg-teal-600 text-white font-bold rounded-lg hover:bg-teal-700 transition-colors inline-flex items-center gap-2"
+                                            >
+                                                <Download className="w-4 h-4" />
+                                                Download to View
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-center text-slate-400">
+                                <Eye className="w-16 h-16 mx-auto mb-4 opacity-30" />
+                                <p className="text-sm font-medium">Select a document to preview</p>
+                                <p className="text-xs mt-1">Click on a document from the left panel</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="bg-slate-50 px-6 py-3 text-center border-t border-slate-100 shrink-0">
+                    <p className="text-xs text-slate-400 font-medium flex items-center justify-center gap-2">
+                        <Shield className="w-3 h-3" />
+                        This view is read-only. You cannot edit submitted documents.
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const RecruiterDashboard = () => {
     const navigate = useNavigate();
@@ -34,45 +250,54 @@ const RecruiterDashboard = () => {
 
     // --- REAL DATA FETCHER ---
     const [pipelineData, setPipelineData] = useState([]);
-    // This gets the list of candidates from the database
-    useEffect(() => {
-        if (!user?.id) return;
+    const [isRefreshingPipeline, setIsRefreshingPipeline] = useState(false);
 
-        const fetchPipeline = async () => {
-            try {
-                const response = await fetch(`http://localhost:5000/api/applications/agent/${user.id}/all`);
-                const data = await response.json();
-                if (data) {
-                    setPipelineData(data);
-                }
-            } catch (error) {
-                console.error("Error fetching pipeline:", error);
+    // This gets the list of candidates from the database
+    const fetchPipeline = async () => {
+        if (!user?.id) return;
+        setIsRefreshingPipeline(true);
+        try {
+            const response = await fetch(`http://localhost:5000/api/applications/agent/${user.id}/all`);
+            const data = await response.json();
+            if (data) {
+                setPipelineData(data);
             }
-        };
+        } catch (error) {
+            console.error("Error fetching pipeline:", error);
+        } finally {
+            setIsRefreshingPipeline(false);
+        }
+    };
+
+    useEffect(() => {
         fetchPipeline();
     }, [user?.id]);
     // -------------------------
     const [jobs, setJobs] = useState([]);
+    const [isRefreshingGlobal, setIsRefreshingGlobal] = useState(false);
 
     // FETCH REAL JOBS
-    useEffect(() => {
-        const fetchJobs = async () => {
-            try {
-                const response = await fetch('http://localhost:5000/api/jobs');
-                const data = await response.json();
+    const fetchJobs = async () => {
+        try {
+            const response = await fetch('http://localhost:5000/api/jobs');
+            const data = await response.json();
 
-                // Filter for open jobs
-                const openJobs = (data || []).filter(j => j.status === 'OPEN');
-                setJobs(openJobs);
-                if (openJobs.length === 0) console.warn("Fetch successful but 0 jobs found with status 'OPEN'");
-            } catch (error) {
-                console.error("Error fetching jobs:", error);
-            }
-        };
+            // Filter for open jobs
+            const openJobs = (data || []).filter(j => j.status === 'OPEN');
+            setJobs(openJobs);
+            if (openJobs.length === 0) console.warn("Fetch successful but 0 jobs found with status 'OPEN'");
+        } catch (error) {
+            console.error("Error fetching jobs:", error);
+        }
+    };
+    useEffect(() => {
         fetchJobs();
     }, []);
 
     const [selectedJobForSubmission, setSelectedJobForSubmission] = useState(null);
+    const [selectedAppForDocs, setSelectedAppForDocs] = useState(null); // State for document viewer modal
+    const [docViewerData, setDocViewerData] = useState(null); // Fetched documents data
+    const [docViewerLoading, setDocViewerLoading] = useState(false); // Loading state for documents
     const [submissionFiles, setSubmissionFiles] = useState({
         resume: null,
         identity: null,
@@ -279,7 +504,13 @@ const RecruiterDashboard = () => {
             formDataPayload.append('email', submissionData.email);
             formDataPayload.append('contact', submissionData.whatsapp);
             formDataPayload.append('nationality', submissionData.nationality);
+
+            // Append all 5 document files
             formDataPayload.append('resume', submissionFiles.resume);
+            if (submissionFiles.identity) formDataPayload.append('identity', submissionFiles.identity);
+            if (submissionFiles.certs) formDataPayload.append('certs', submissionFiles.certs);
+            if (submissionFiles.pcc) formDataPayload.append('pcc', submissionFiles.pcc);
+            if (submissionFiles.goodStanding) formDataPayload.append('goodStanding', submissionFiles.goodStanding);
 
             const response = await fetch('http://localhost:5000/api/applications', {
                 method: 'POST',
@@ -321,22 +552,45 @@ const RecruiterDashboard = () => {
 
     // --- AGENT PROFILE FETCHER ---
     const [agentProfile, setAgentProfile] = useState(null);
-    useEffect(() => {
-        if (!user?.id) return;
 
-        const fetchAgentProfile = async () => {
-            try {
-                const response = await fetch(`http://localhost:5000/api/agents/${user.id}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    setAgentProfile(data);
-                }
-            } catch (error) {
-                console.error("Error fetching agent profile:", error);
+    const fetchAgentProfile = async () => {
+        if (!user?.id) return;
+        try {
+            const response = await fetch(`http://localhost:5000/api/agents/${user.id}`);
+            if (response.ok) {
+                const data = await response.json();
+                setAgentProfile(data);
             }
-        };
+        } catch (error) {
+            console.error("Error fetching agent profile:", error);
+        }
+    };
+
+    useEffect(() => {
         fetchAgentProfile();
     }, [user?.id]);
+
+
+    // --- GLOBAL REFRESH HANDLER ---
+    const handleGlobalRefresh = async () => {
+        if (isRefreshingGlobal) return;
+        setIsRefreshingGlobal(true);
+        try {
+            // Refresh all data
+            await Promise.all([
+                fetchJobs(),
+                fetchPipeline(),
+                refreshJobRequests(),
+                fetchAgentProfile()
+            ]);
+            // Small delay for visual feedback
+            await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (error) {
+            console.error("Global refresh failed:", error);
+        } finally {
+            setIsRefreshingGlobal(false);
+        }
+    };
 
     // If agent status is PENDING, show waiting screen
     if (user?.status === 'PENDING') {
@@ -378,10 +632,10 @@ const RecruiterDashboard = () => {
                         </div>
                         <div className="min-w-0">
                             <span className="font-bold text-white text-sm tracking-tight block leading-none truncate w-48">
-                                {agentProfile?.company_name || "GlobalTalent"}
+                                Global AKJobs
                             </span>
                             <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider mt-1 block truncate w-48">
-                                {agentProfile?.full_name || user?.name || "Partner Portal"}
+                                {user?.name || agentProfile?.full_name || "Partner Portal"}
                             </span>
                         </div>
                     </div>
@@ -443,12 +697,28 @@ const RecruiterDashboard = () => {
             </aside>
 
             {/* MAIN CONTENT AREA */}
-            <main className="flex-1 flex flex-col h-screen overflow-hidden">
+            <main className="flex-1 flex flex-col h-screen overflow-hidden bg-slate-50">
 
-
+                {/* GLOBAL TOP HEADER */}
+                <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-end px-8 shrink-0 z-30 shadow-sm">
+                    <div className="flex items-center gap-4">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider hidden md:block">
+                            {isRefreshingGlobal ? 'Syncing Data...' : 'System Status: Online'}
+                        </span>
+                        <div className="h-4 w-px bg-slate-200 hidden md:block"></div>
+                        <button
+                            onClick={handleGlobalRefresh}
+                            disabled={isRefreshingGlobal}
+                            className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-200 text-slate-600 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-white hover:text-teal-600 hover:border-teal-200 hover:shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group"
+                        >
+                            <RefreshCw className={`w-4 h-4 text-slate-400 group-hover:text-teal-500 transition-colors ${isRefreshingGlobal ? 'animate-spin text-teal-600' : ''}`} />
+                            <span>Refresh Data</span>
+                        </button>
+                    </div>
+                </header>
 
                 {/* DASHBOARD CONTENT SCROLL AREA */}
-                <div className="flex-1 overflow-y-auto p-12 bg-[#f8fafc]">
+                <div className="flex-1 overflow-y-auto p-6 md:p-12 scroll-smooth">
                     <div className="max-w-[1400px] mx-auto space-y-12">
 
                         {/* TAB CONTENT: AGENT HIRING */}
@@ -473,14 +743,7 @@ const RecruiterDashboard = () => {
                                                         onChange={(e) => setJobRequestSearchTerm(e.target.value)}
                                                     />
                                                 </div>
-                                                <button
-                                                    onClick={refreshJobRequests}
-                                                    disabled={isRefreshingJobRequests}
-                                                    className="bg-white border border-slate-300 text-slate-600 px-4 py-2 rounded-md text-sm font-semibold hover:bg-slate-50 hover:border-slate-400 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50"
-                                                >
-                                                    <RefreshCw className={`w-4 h-4 ${isRefreshingJobRequests ? 'animate-spin' : ''}`} />
-                                                    {isRefreshingJobRequests ? 'Refreshing...' : 'Refresh'}
-                                                </button>
+
                                                 <button
                                                     onClick={() => setShowJobRequestForm(true)}
                                                     className="bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-semibold hover:bg-teal-700 transition-colors flex items-center gap-2 shadow-sm"
@@ -511,28 +774,72 @@ const RecruiterDashboard = () => {
                                                                 : 'border-slate-200 shadow-sm hover:shadow-md hover:border-teal-100'
                                                                 }`}
                                                         >
-                                                            <div className="p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-                                                                <div className="flex-1">
-                                                                    <div className="flex items-center gap-3 mb-2">
-                                                                        <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider">{req.category || 'Other'}</span>
-                                                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${req.status === 'APPROVED' ? 'bg-teal-50 text-teal-700 border-teal-100' :
-                                                                            req.status === 'REJECTED' ? 'bg-red-50 text-red-700 border-red-100' :
-                                                                                req.status === 'PENDING' ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                                                                                    'bg-slate-50 text-slate-700 border-slate-100'
-                                                                            }`}>
-                                                                            {req.status === 'PENDING' ? 'PENDING' : req.status}
-                                                                        </span>
+                                                            <div className="p-6">
+                                                                {/* Top Row: Job Title + Status + Expand */}
+                                                                <div className="flex items-start justify-between gap-4 mb-4">
+                                                                    <div className="flex-1">
+                                                                        <h3 className="text-xl font-bold text-slate-900 group-hover:text-teal-700 transition-colors">
+                                                                            {req.title}
+                                                                        </h3>
                                                                     </div>
-                                                                    <h3 className="text-lg font-bold text-slate-900 mb-1 group-hover:text-teal-700 transition-colors">{req.title}</h3>
-                                                                    <p className="text-sm text-slate-500 mb-2">{req.company} • {req.location}</p>
-                                                                    <div className="flex items-center gap-4 text-xs font-medium text-slate-500">
-                                                                        <span>{req.vacancies || 1} {(req.vacancies || 1) === 1 ? 'Opening' : 'Openings'}</span>
-                                                                        <span>•</span>
-                                                                        <span>{req.salary_range || 'Salary TBD'}</span>
+                                                                    <div className="flex items-center gap-3">
+                                                                        <span className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider border ${req.status === 'APPROVED' ? 'bg-teal-50 text-teal-700 border-teal-200' :
+                                                                            req.status === 'REJECTED' ? 'bg-red-50 text-red-700 border-red-200' :
+                                                                                req.status === 'PENDING' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                                                                    'bg-slate-50 text-slate-700 border-slate-200'
+                                                                            }`}>
+                                                                            {req.status || 'PENDING'}
+                                                                        </span>
+                                                                        <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform duration-300 ${expandedJobRequestId === req.id ? 'rotate-180 text-teal-600' : ''}`} />
                                                                     </div>
                                                                 </div>
-                                                                <div className="flex items-center gap-3">
-                                                                    <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform duration-300 ${expandedJobRequestId === req.id ? 'rotate-180 text-teal-600' : ''}`} />
+
+                                                                {/* Info Grid - Structured Layout */}
+                                                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                                                    {/* Category */}
+                                                                    <div className="space-y-1">
+                                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Category</p>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <Briefcase className="w-4 h-4 text-teal-500" />
+                                                                            <p className="text-sm font-semibold text-slate-800">{req.category || 'Other'}</p>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Company */}
+                                                                    <div className="space-y-1">
+                                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Company</p>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <Building2 className="w-4 h-4 text-indigo-500" />
+                                                                            <p className="text-sm font-semibold text-slate-800 truncate">{req.company || 'TBD'}</p>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Location */}
+                                                                    <div className="space-y-1">
+                                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Location</p>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <MapPin className="w-4 h-4 text-rose-500" />
+                                                                            <p className="text-sm font-semibold text-slate-800 truncate">{req.location || 'TBD'}</p>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Openings */}
+                                                                    <div className="space-y-1">
+                                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Openings</p>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <Users className="w-4 h-4 text-blue-500" />
+                                                                            <p className="text-sm font-semibold text-slate-800">{req.vacancies || 1} Position{(req.vacancies || 1) > 1 ? 's' : ''}</p>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Salary */}
+                                                                    <div className="space-y-1">
+                                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Salary Range</p>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <DollarSign className="w-4 h-4 text-emerald-500" />
+                                                                            <p className="text-sm font-semibold text-slate-800">{req.salary_range || 'TBD'}</p>
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
                                                             </div>
 
@@ -1196,7 +1503,7 @@ const RecruiterDashboard = () => {
                                             </div>
                                             <div className="space-y-1">
                                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Phone Number</label>
-                                                <p className="text-base font-semibold text-slate-900">{user?.contact_number || 'Not Set'}</p>
+                                                <p className="text-base font-semibold text-slate-900">{agentProfile?.contact_number || user?.contact_number || 'Not Set'}</p>
                                             </div>
                                             <div className="space-y-1">
                                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Agency Name</label>
@@ -1378,6 +1685,7 @@ const RecruiterDashboard = () => {
                                         <p className="text-slate-500 font-medium text-sm mt-1">Real-time updates on your submitted candidates</p>
                                     </div>
                                     <div className="flex items-center gap-4">
+
                                         <div className="relative group">
                                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-teal-600 transition-colors" />
                                             <input
@@ -1406,9 +1714,11 @@ const RecruiterDashboard = () => {
                                             <thead>
                                                 <tr className="bg-slate-50 border-b border-slate-200">
                                                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Candidate</th>
-                                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Role & Company</th>
+                                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Job Category</th>
+                                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Job Role</th>
                                                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Submission Date</th>
                                                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Status</th>
+                                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">View</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
@@ -1419,7 +1729,7 @@ const RecruiterDashboard = () => {
                                                     )
                                                     .map((app) => {
                                                         return (
-                                                            <tr key={app.id} className="hover:bg-slate-50/80 transition-colors group">
+                                                            <tr key={app.id || app._id} className="hover:bg-slate-50/80 transition-colors group">
                                                                 <td className="px-6 py-4">
                                                                     <div className="flex items-center gap-3">
                                                                         <div className="w-8 h-8 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center text-xs font-bold border border-teal-100 uppercase">
@@ -1432,23 +1742,36 @@ const RecruiterDashboard = () => {
                                                                     </div>
                                                                 </td>
                                                                 <td className="px-6 py-4">
+                                                                    <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-1 rounded-md">
+                                                                        {app.jobs?.category || 'General'}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-6 py-4">
                                                                     <div className="font-medium text-slate-900 text-sm">{app.jobs?.title || 'Unknown Role'}</div>
                                                                     <div className="text-xs text-slate-500">{app.jobs?.company || 'Unknown Company'}</div>
                                                                 </td>
                                                                 <td className="px-6 py-4">
-                                                                    <div className="text-sm text-slate-600 font-medium">{new Date().toLocaleDateString()}</div>
+                                                                    <div className="text-sm text-slate-600 font-medium">{new Date(app.applied_at || Date.now()).toLocaleDateString()}</div>
                                                                 </td>
                                                                 <td className="px-6 py-4 text-center">
                                                                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide
                                                       ${['APPROVED', 'SELECTED', 'Selected', 'ACCEPTED'].includes(app.status) ? 'bg-teal-50 text-teal-700 border border-teal-100' : ''}
-                                                      ${['PENDING', 'APPLIED', 'Applied'].includes(app.status) ? 'bg-amber-50 text-amber-700 border border-amber-100' : ''}
-                                                      ${['PROCESSING', 'Processing'].includes(app.status) ? 'bg-yellow-50 text-yellow-700 border border-yellow-100' : ''}
+                                                      ${['PENDING', 'APPLIED', 'Applied', 'PROCESSING'].includes(app.status) ? 'bg-amber-50 text-amber-700 border border-amber-100' : ''}
                                                       ${['REVIEWING', 'INTERVIEW', 'Interview', 'In Review'].includes(app.status) ? 'bg-blue-50 text-blue-700 border border-blue-100' : ''}
                                                       ${['REJECTED', 'Rejected'].includes(app.status) ? 'bg-red-50 text-red-700 border border-red-100' : ''}
                                                       ${['BLACKLISTED', 'Blacklisted'].includes(app.status) ? 'bg-slate-100 text-slate-500 border border-slate-200' : ''}
                                                    `}>
                                                                         {app.status}
                                                                     </span>
+                                                                </td>
+                                                                <td className="px-6 py-4 text-center">
+                                                                    <button
+                                                                        onClick={() => setSelectedAppForDocs(app)}
+                                                                        className="p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-all"
+                                                                        title="View Documents"
+                                                                    >
+                                                                        <Eye className="w-5 h-5" />
+                                                                    </button>
                                                                 </td>
                                                             </tr>
                                                         );
@@ -1626,6 +1949,21 @@ const RecruiterDashboard = () => {
                     </div>
                 )
             }
+
+            {/* DOCUMENT VIEWER MODAL (Read-Only with Inline Preview & Download) */}
+            {selectedAppForDocs && (
+                <DocumentViewerModal
+                    app={selectedAppForDocs}
+                    docViewerData={docViewerData}
+                    docViewerLoading={docViewerLoading}
+                    setDocViewerData={setDocViewerData}
+                    setDocViewerLoading={setDocViewerLoading}
+                    onClose={() => {
+                        setSelectedAppForDocs(null);
+                        setDocViewerData(null);
+                    }}
+                />
+            )}
 
             {/* Internal Custom Scrollbar Style */}
             <style>{`

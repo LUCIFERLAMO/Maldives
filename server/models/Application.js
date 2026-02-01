@@ -34,10 +34,28 @@ const applicationSchema = new mongoose.Schema({
         contentType: String,
         data: String // Base64 encoded file data
     },
+    // Identity document (passport, ID card, etc.)
+    identity: {
+        filename: String,
+        contentType: String,
+        data: String
+    },
     certificates: {
         filename: String,
         contentType: String,
         data: String // Base64 encoded file data (optional)
+    },
+    // Police Clearance Certificate
+    pcc: {
+        filename: String,
+        contentType: String,
+        data: String
+    },
+    // Good Standing Certificate
+    goodStanding: {
+        filename: String,
+        contentType: String,
+        data: String
     },
     status: {
         type: String,

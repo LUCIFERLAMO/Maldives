@@ -604,6 +604,22 @@ app.delete('/api/jobs/categories/:name', async (req, res) => {
     }
 });
 
+// GET: Agent Profile by ID
+app.get('/api/agents/:id', async (req, res) => {
+    try {
+        const agent = await Profile.findOne({ id: req.params.id });
+        if (!agent && mongoose.Types.ObjectId.isValid(req.params.id)) {
+            const agentById = await Profile.findById(req.params.id);
+            if (agentById) return res.json(agentById);
+        }
+
+        if (!agent) return res.status(404).json({ message: 'Agent not found' });
+        res.json(agent);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 // GET: Single Job by ID
 app.get('/api/jobs/:id', async (req, res) => {
     try {
@@ -881,7 +897,13 @@ app.put('/api/admin/job-requests/:id/reject', async (req, res) => {
 // ========================
 
 // POST: Submit Application with Resume and Certificates (stored as Base64 in MongoDB)
-app.post('/api/applications', upload.fields([{ name: 'resume', maxCount: 1 }, { name: 'certs', maxCount: 1 }]), async (req, res) => {
+app.post('/api/applications', upload.fields([
+    { name: 'resume', maxCount: 1 },
+    { name: 'identity', maxCount: 1 },
+    { name: 'certs', maxCount: 1 },
+    { name: 'pcc', maxCount: 1 },
+    { name: 'goodStanding', maxCount: 1 }
+]), async (req, res) => {
     try {
         const files = req.files || {};
 
@@ -890,7 +912,10 @@ app.post('/api/applications', upload.fields([{ name: 'resume', maxCount: 1 }, { 
         }
 
         const resumeFile = files.resume[0];
+        const identityFile = files.identity ? files.identity[0] : null;
         const certsFile = files.certs ? files.certs[0] : null;
+        const pccFile = files.pcc ? files.pcc[0] : null;
+        const goodStandingFile = files.goodStanding ? files.goodStanding[0] : null;
 
         // Create application with Base64-encoded files stored directly in MongoDB
         const newApplication = new Application({
@@ -904,10 +929,25 @@ app.post('/api/applications', upload.fields([{ name: 'resume', maxCount: 1 }, { 
                 contentType: resumeFile.mimetype,
                 data: resumeFile.buffer.toString('base64')
             },
+            identity: identityFile ? {
+                filename: identityFile.originalname,
+                contentType: identityFile.mimetype,
+                data: identityFile.buffer.toString('base64')
+            } : undefined,
             certificates: certsFile ? {
                 filename: certsFile.originalname,
                 contentType: certsFile.mimetype,
                 data: certsFile.buffer.toString('base64')
+            } : undefined,
+            pcc: pccFile ? {
+                filename: pccFile.originalname,
+                contentType: pccFile.mimetype,
+                data: pccFile.buffer.toString('base64')
+            } : undefined,
+            goodStanding: goodStandingFile ? {
+                filename: goodStandingFile.originalname,
+                contentType: goodStandingFile.mimetype,
+                data: goodStandingFile.buffer.toString('base64')
             } : undefined,
             status: 'PENDING'
         });
@@ -1290,6 +1330,87 @@ app.get('/api/applications/:id/certificates', async (req, res) => {
         res.send(fileBuffer);
     } catch (err) {
         res.status(500).json({ message: 'Failed to download certificates', error: err.message });
+    }
+});
+
+// GET: Fetch application documents as Base64 data URLs (for inline modal preview)
+app.get('/api/applications/:id/documents', async (req, res) => {
+    try {
+        // Try to find by custom 'id' field first, then by MongoDB _id
+        let application = await Application.findOne({ id: req.params.id });
+        if (!application && mongoose.Types.ObjectId.isValid(req.params.id)) {
+            application = await Application.findById(req.params.id);
+        }
+
+        if (!application) {
+            return res.status(404).json({ message: 'Application not found' });
+        }
+
+        const documents = [];
+
+        // Add Resume if exists
+        if (application.resume && application.resume.data) {
+            documents.push({
+                type: 'resume',
+                name: application.resume.filename || 'Resume',
+                contentType: application.resume.contentType,
+                dataUrl: `data:${application.resume.contentType};base64,${application.resume.data}`,
+                size: application.resume.data.length
+            });
+        }
+
+        // Add Identity Document if exists
+        if (application.identity && application.identity.data) {
+            documents.push({
+                type: 'identity',
+                name: application.identity.filename || 'Identity Document',
+                contentType: application.identity.contentType,
+                dataUrl: `data:${application.identity.contentType};base64,${application.identity.data}`,
+                size: application.identity.data.length
+            });
+        }
+
+        // Add Certificates if exists
+        if (application.certificates && application.certificates.data) {
+            documents.push({
+                type: 'certificates',
+                name: application.certificates.filename || 'Certificates',
+                contentType: application.certificates.contentType,
+                dataUrl: `data:${application.certificates.contentType};base64,${application.certificates.data}`,
+                size: application.certificates.data.length
+            });
+        }
+
+        // Add PCC (Police Clearance Certificate) if exists
+        if (application.pcc && application.pcc.data) {
+            documents.push({
+                type: 'pcc',
+                name: application.pcc.filename || 'Police Clearance Certificate',
+                contentType: application.pcc.contentType,
+                dataUrl: `data:${application.pcc.contentType};base64,${application.pcc.data}`,
+                size: application.pcc.data.length
+            });
+        }
+
+        // Add Good Standing Certificate if exists
+        if (application.goodStanding && application.goodStanding.data) {
+            documents.push({
+                type: 'goodStanding',
+                name: application.goodStanding.filename || 'Good Standing Certificate',
+                contentType: application.goodStanding.contentType,
+                dataUrl: `data:${application.goodStanding.contentType};base64,${application.goodStanding.data}`,
+                size: application.goodStanding.data.length
+            });
+        }
+
+        res.json({
+            applicationId: application.id || application._id,
+            candidateName: application.candidate_name,
+            documents: documents
+        });
+    } catch (err) {
+        console.error('Error fetching documents:', err);
+        res.status(500).json({ message: 'Failed to fetch documents', error: err.message });
     }
 });
 
