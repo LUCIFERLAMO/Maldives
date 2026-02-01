@@ -1,12 +1,46 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, DollarSign, Clock, Heart, Briefcase, ChevronRight, Share2, Check } from 'lucide-react';
+import { MapPin, DollarSign, Clock, Heart, Briefcase, ChevronRight, Share2, Check, Bell } from 'lucide-react';
 import { JobStatus } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 const JobCard = ({ job }) => {
+    const { user } = useAuth();
     const [isLiked, setIsLiked] = useState(false);
     const [isCopied, setIsCopied] = useState(false);
-    const isClosed = job.status === JobStatus.CLOSED;
+    const [isSubscribed, setIsSubscribed] = useState(false);
+    const isClosed = job.status === 'CLOSED' || job.status === JobStatus.CLOSED;
+
+    // Generate a random "closing in" date for the high-end UI look
+    const closingIn = Math.floor(Math.random() * 20) + 1;
+
+    React.useEffect(() => {
+        if (isClosed && user?.id) {
+            fetch(`http://localhost:5000/api/subscription/check?userId=${user.id}&jobId=${job.id || job._id}`)
+                .then(res => res.json())
+                .then(data => setIsSubscribed(data.subscribed))
+                .catch(err => console.error("Error checking subscription:", err));
+        }
+    }, [isClosed, user, job]);
+
+    const handleNotifyMe = async (e) => {
+        e.preventDefault();
+        if (!user) { alert("Please login to subscribe"); return; }
+
+        const newStatus = !isSubscribed;
+        setIsSubscribed(newStatus); // Optimistic UI
+
+        try {
+            await fetch('http://localhost:5000/api/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: user.id, jobId: job.id || job._id })
+            });
+        } catch (error) {
+            setIsSubscribed(!newStatus); // Revert
+            console.error("Subscription failed:", error);
+        }
+    };
 
     const handleShare = (e) => {
         e.preventDefault();
@@ -16,11 +50,8 @@ const JobCard = ({ job }) => {
         setTimeout(() => setIsCopied(false), 2000);
     };
 
-    // Generate a random "closing in" date for the high-end UI look
-    const closingIn = Math.floor(Math.random() * 20) + 1;
-
     return (
-        <div className={`group relative bg-white border border-slate-100 rounded-[3rem] p-8 transition-all hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.12)] hover:border-teal-500/20 flex flex-col md:flex-row items-center gap-8 ${isClosed ? 'opacity-60 grayscale' : ''}`}>
+        <div className={`group relative bg-white border border-slate-100 rounded-[3rem] p-8 transition-all hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.12)] hover:border-teal-500/20 flex flex-col md:flex-row items-center gap-8 ${isClosed ? 'opacity-90' : ''}`}>
 
             {/* Premium Gradient Border Accent */}
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/2 h-1 bg-gradient-to-r from-transparent via-teal-500/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -107,6 +138,16 @@ const JobCard = ({ job }) => {
                         >
                             <Check className="w-4 h-4" /> Applied
                         </Link>
+                    ) : isClosed ? (
+                        <button
+                            onClick={handleNotifyMe}
+                            className={`w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] transition-all shadow-xl shadow-slate-900/10 flex items-center justify-center gap-2 group-hover:gap-4 ${isSubscribed
+                                ? 'bg-teal-100 text-teal-700 border border-teal-200'
+                                : 'bg-slate-800 hover:bg-slate-900 text-white'}`}
+                        >
+                            <Bell className={`w-4 h-4 ${isSubscribed ? 'fill-current' : ''}`} />
+                            {isSubscribed ? 'Alert Active' : 'Notify Me'}
+                        </button>
                     ) : (
                         <Link
                             to={`/job/${job.id}`}

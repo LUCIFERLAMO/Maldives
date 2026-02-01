@@ -11,7 +11,7 @@ import CandidateLoginPage from './pages/CandidateLoginPage';
 import AgentLoginPage from './pages/AgentLoginPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import CandidateDashboard from './pages/CandidateDashboard';
-import MyApplicationsPage from './pages/MyApplicationsPage';
+
 import ProfilePage from './pages/ProfilePage';
 import SupportPage from './pages/SupportPage';
 import AgentRegistrationPage from './pages/AgentRegistrationPage';
@@ -84,14 +84,7 @@ const AppContent = () => {
                             </ProtectedRoute>
                         }
                     />
-                    <Route
-                        path="/applications"
-                        element={
-                            <ProtectedRoute allowedRoles={['candidate']}>
-                                <MyApplicationsPage />
-                            </ProtectedRoute>
-                        }
-                    />
+
                     <Route
                         path="/profile"
                         element={
