@@ -24,6 +24,7 @@ const BrowseJobsPage = () => {
     const { user } = useAuth();
     const [searchParams, setSearchParams] = useSearchParams();
     const [searchTerm, setSearchTerm] = useState('');
+    const [appliedSearch, setAppliedSearch] = useState(''); // New state for API search
     const [viewType, setViewType] = useState('list');
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [sortBy, setSortBy] = useState('recent');
@@ -39,23 +40,15 @@ const BrowseJobsPage = () => {
 
     const clearCategory = () => {
         setSearchParams({});
+        setSearchTerm('');
+        setAppliedSearch('');
     };
 
-    const filteredJobs = useMemo(() => {
-        const sanitizedSearch = searchTerm.replace(/[<>]/g, '').toLowerCase();
+    // Note: We are now using SERVER-SIDE filtering. 
+    // The 'jobs' state already contains the filtered results from the API.
+    const filteredJobs = jobs;
 
-        return jobs.filter(job => {
-            // Filter by Search Term
-            const matchesSearch = job.title.toLowerCase().includes(sanitizedSearch) ||
-                job.company.toLowerCase().includes(sanitizedSearch);
-
-            // Filter by Category check
-            const matchesCategory = selectedIndustry === 'All' || job.industry === selectedIndustry;
-
-            return matchesSearch && matchesCategory;
-        });
-    }, [searchTerm, jobs, selectedIndustry]);
-
+    // ... (formatPostedDate and scroll effect implementation remains same) ...
     const formatPostedDate = (dateString) => {
         if (!dateString) return 'Recently';
         const date = new Date(dateString);
@@ -116,6 +109,25 @@ const BrowseJobsPage = () => {
         fetchCategories();
     }, []);
 
+    const resultsRef = useRef(null);
+
+    const handleSearch = () => {
+        setAppliedSearch(searchTerm);
+        // UX Improvement: Clear category when searching to allow global search
+        setSearchParams({ category: 'All' });
+
+        // Scroll to results section
+        if (resultsRef.current) {
+            resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            handleSearch();
+        }
+    };
+
     // Fetch Jobs from MongoDB Backend
     useEffect(() => {
         async function fetchJobs() {
@@ -123,8 +135,18 @@ const BrowseJobsPage = () => {
             try {
                 const query = new URLSearchParams();
 
-                // Note: We fetch ALL categories now to ensure sidebar counts are correct.
-                // We only filter by Category on the client-side (filteredJobs).
+                // Note: The correct approach for category + search is:
+                // If the user selects a category from sidebar, we filter by it.
+                // If user types in search, we filter by it.
+                // They can be combined.
+                if (selectedIndustry !== 'All') {
+                    query.append('category', selectedIndustry);
+                }
+
+                // Add Search Term
+                if (appliedSearch) {
+                    query.append('search', appliedSearch);
+                }
 
                 // Map sortBy to status
                 const status = sortBy === 'closed' ? 'CLOSED' : 'OPEN';
@@ -140,10 +162,6 @@ const BrowseJobsPage = () => {
                         const appRes = await fetch(`http://localhost:5000/api/applications/candidate/${user.email}`);
                         if (appRes.ok) {
                             const apps = await appRes.json();
-                            // Filter out rejected apps so user can re-apply ?? 
-                            // User said: "candidate will not be able to apply for the job again until he is rejected"
-                            // So if rejected, isApplied should be FALSE (allow apply).
-                            // If pending/approved/etc, isApplied should be TRUE.
                             myAppIds = apps
                                 .filter(app => app.status !== 'REJECTED')
                                 .map(app => String(app.job_id));
@@ -172,9 +190,25 @@ const BrowseJobsPage = () => {
                 // Fallback to MOCK_JOBS
                 let fallbackJobs = MOCK_JOBS;
 
-                // 1. Filter by Status ONLY (Category is handled in useMemo now)
+                // 1. Filter by Status
                 const targetStatus = sortBy === 'closed' ? JobStatus.CLOSED : JobStatus.OPEN;
                 fallbackJobs = fallbackJobs.filter(job => job.status === targetStatus);
+
+                // 2. Filter by Category
+                if (selectedIndustry !== 'All') {
+                    fallbackJobs = fallbackJobs.filter(job => job.industry === selectedIndustry);
+                }
+
+                // 3. Filter by Search Term (Regex)
+                if (appliedSearch) {
+                    const searchLower = appliedSearch.toLowerCase();
+                    fallbackJobs = fallbackJobs.filter(job =>
+                        job.title.toLowerCase().includes(searchLower) ||
+                        job.company.toLowerCase().includes(searchLower) ||
+                        job.location.toLowerCase().includes(searchLower) ||
+                        (job.description && job.description.toLowerCase().includes(searchLower))
+                    );
+                }
 
                 setJobs(fallbackJobs);
             } finally {
@@ -183,9 +217,9 @@ const BrowseJobsPage = () => {
         }
 
         fetchJobs();
-    }, [sortBy, user]);
+    }, [sortBy, user, selectedIndustry, appliedSearch]); // dependencies include appliedSearch
 
-
+    // ... handleShare ...
     const handleShare = async (e, job) => {
         e.preventDefault();
         e.stopPropagation();
@@ -290,6 +324,7 @@ const BrowseJobsPage = () => {
                                     className="w-full bg-transparent border-none focus:ring-0 text-sm md:text-base font-medium text-slate-700 placeholder-slate-400 outline-none h-full truncate"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
+                                    onKeyDown={handleKeyDown}
                                 />
                                 <div className="hidden md:block absolute right-0 top-1/2 -translate-y-1/2 w-px h-8 bg-slate-200"></div>
                             </div>
@@ -303,7 +338,10 @@ const BrowseJobsPage = () => {
                             </div>
 
                             <div className="w-full md:w-auto md:pl-2">
-                                <button className="w-full md:w-auto h-12 md:h-12 bg-[#0B1A33] hover:bg-[#162a4d] text-white px-8 md:rounded-full font-medium text-sm transition-all shadow-none md:shadow-md flex items-center justify-center rounded-none md:rounded-full">
+                                <button
+                                    onClick={handleSearch}
+                                    className="w-full md:w-auto h-12 md:h-12 bg-[#0B1A33] hover:bg-[#162a4d] text-white px-8 md:rounded-full font-medium text-sm transition-all shadow-none md:shadow-md flex items-center justify-center rounded-none md:rounded-full"
+                                >
                                     Search
                                 </button>
                             </div>
@@ -426,7 +464,7 @@ const BrowseJobsPage = () => {
                     </div>
 
                     {/* Job Feed */}
-                    <div className="flex-1">
+                    <div ref={resultsRef} className="flex-1 scroll-mt-24">
                         <div className="sticky top-[80px] z-20 bg-slate-100 md:bg-transparent pb-4 pt-2">
                             <div className="flex items-center justify-between">
                                 <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">

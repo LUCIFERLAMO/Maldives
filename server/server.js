@@ -26,7 +26,7 @@ console.log('Attempting to connect to MongoDB...');
 
 // Mongoose Connection
 mongoose.connect(MONGODB_URI)
-    .then(() => console.log('Connected to MongoDB Cloud (Atlas)'))
+    .then(() => console.log(`Connected to MongoDB: ${MONGODB_URI.includes('localhost') ? 'Local' : 'Cloud/Atlas'}`))
     .catch(err => console.log('MongoDB connection error:', err));
 
 // Use memory storage for file uploads (files stored in memory temporarily, then saved to MongoDB as Base64)
@@ -458,14 +458,35 @@ app.put('/api/admin/agencies/:id/reject', async (req, res) => {
 // GET: All Jobs (with optional category filter)
 app.get('/api/jobs', async (req, res) => {
     try {
-        const { category, status } = req.query;
+        const { category, status, search } = req.query;
         const filter = {};
         if (category && category !== 'All') filter.category = category;
         if (status) filter.status = status;
 
+        // Search Filter
+        if (search) {
+            const searchRegex = new RegExp(search, 'i');
+            console.log(`Search Term: "${search}", Regex: ${searchRegex}`);
+            filter.$or = [
+                { title: searchRegex },
+                { company: searchRegex },
+                { location: searchRegex },
+                { description: searchRegex },
+                { requirements: { $in: [searchRegex] } }
+            ];
+        }
+
+        // Use custom replacer for JSON.stringify to show Regex objects
+        const replacer = (key, value) => {
+            if (value instanceof RegExp) return value.toString();
+            return value;
+        };
+        console.log('GET /api/jobs filter:', JSON.stringify(filter, replacer, 2));
         const jobs = await Job.find(filter).sort({ posted_date: -1 });
+        console.log('Found jobs:', jobs.length);
         res.json(jobs);
     } catch (err) {
+        console.error('Error fetching jobs:', err);
         res.status(500).json({ message: err.message });
     }
 });
