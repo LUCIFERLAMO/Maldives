@@ -1006,7 +1006,35 @@ const AdminDashboard = () => {
       } catch (e) {
          setCategoryError("Error adding category");
       }
-   }
+   };
+
+   const handleDeleteCategory = async (catName) => {
+      // Check if there are any jobs in this category first
+      const jobCount = liveJobs.filter(j => j.industry === catName || j.category === catName).length;
+      if (jobCount > 0) {
+         alert(`Cannot delete category "${catName}" because it contains ${jobCount} jobs. Delete the jobs first.`);
+         return;
+      }
+
+      if (!window.confirm(`Are you sure you want to delete the category "${catName}"?`)) return;
+
+      try {
+         const res = await fetch(`http://localhost:5000/api/jobs/categories/${catName}`, {
+            method: 'DELETE'
+         });
+
+         if (res.ok) {
+            await fetchCategories();
+            alert("Category deleted successfully.");
+         } else {
+            const data = await res.json();
+            alert(data.message || "Failed to delete category");
+         }
+      } catch (err) {
+         console.error("Error deleting category:", err);
+         alert("Error deleting category");
+      }
+   };
    const handleVacancyStateChange = (state) => {
       if (!selectedVacancy) return;
 
