@@ -187,3 +187,11 @@ export const INDUSTRIES = [
     'Agriculture',
     'Other'
 ];
+
+export const REQUIRED_DOCUMENT_OPTIONS = [
+    'Resume',
+    'Passport/ID Copy',
+    'Educational Certificate',
+    'Police Clearance (PCC)',
+    'Good Standing Certificate'
+];
