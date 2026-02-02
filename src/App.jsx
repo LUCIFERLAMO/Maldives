@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
+import Footer from './components/Footer';
 import ScrollToTop from './components/ScrollToTop';
 import HomePage from './pages/HomePage';
 import BrowseJobsPage from './pages/BrowseJobsPage';
@@ -93,10 +94,11 @@ const AppContent = () => {
                             </ProtectedRoute>
                         }
                     />
+                    {/* </Route> removed */}
                 </Routes>
             </main>
-
-        </div>
+            {!isDashboard && <Footer />}
+        </div >
     );
 };
 
