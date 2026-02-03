@@ -519,16 +519,34 @@ const AdminDashboard = () => {
          const response = await fetch(`http://localhost:5000/api/applications?job_id=${encodeURIComponent(jobId)}`);
          if (response.ok) {
             const data = await response.json();
-            setJobApplications(data);
+            if (data.length > 0) {
+               setJobApplications(data);
+            } else {
+               // Fallback to mock data if API returns empty
+               let filteredApps = MOCK_APPLICATIONS.filter(app => app.jobId === jobId);
+               if (filteredApps.length === 0) {
+                  // DEMO MODE: If no ID match, show the Site Manager demo candidates so the details are visible
+                  filteredApps = MOCK_APPLICATIONS.filter(app => ['6', '2'].includes(app.jobId));
+               }
+               setJobApplications(filteredApps);
+            }
          } else {
             // Fallback to mock data filtered by jobId
-            const filteredApps = MOCK_APPLICATIONS.filter(app => app.jobId === jobId);
+            let filteredApps = MOCK_APPLICATIONS.filter(app => app.jobId === jobId);
+            if (filteredApps.length === 0) {
+               // DEMO MODE
+               filteredApps = MOCK_APPLICATIONS.filter(app => ['6', '2'].includes(app.jobId));
+            }
             setJobApplications(filteredApps);
          }
       } catch (error) {
          console.error('Error fetching applications by job:', error);
          // Fallback to mock data
-         const filteredApps = MOCK_APPLICATIONS.filter(app => app.jobId === jobId);
+         let filteredApps = MOCK_APPLICATIONS.filter(app => app.jobId === jobId);
+         if (filteredApps.length === 0) {
+            // DEMO MODE
+            filteredApps = MOCK_APPLICATIONS.filter(app => ['6', '2'].includes(app.jobId));
+         }
          setJobApplications(filteredApps);
       } finally {
          setIsLoadingApplications(false);
@@ -583,6 +601,29 @@ const AdminDashboard = () => {
                }
                return app;
             }));
+
+            // IF REJECTED: Add to Audit Queue (Blacklist)
+            if (action === 'reject') {
+               const rejectedApp = jobApplications.find(app => app.id === appId || app._id === appId);
+               if (rejectedApp) {
+                  setAuditQueue(prev => {
+                     // Check if already exists
+                     if (prev.some(c => c.id === rejectedApp.id || c._id === rejectedApp.id)) {
+                        return prev.map(c => (c.id === rejectedApp.id || c._id === rejectedApp.id) ? { ...c, status: 'REJECTED' } : c);
+                     }
+                     // Add new
+                     return [...prev, {
+                        ...rejectedApp,
+                        id: rejectedApp.id || rejectedApp._id,
+                        name: rejectedApp.candidateName || rejectedApp.name,
+                        role: selectedJobTitle || rejectedApp.jobTitle || 'Applicant',
+                        status: 'REJECTED',
+                        statusColor: 'bg-red-50 text-red-600 border-red-100', // Ensure red color
+                        appliedDate: rejectedApp.appliedDate || new Date().toISOString()
+                     }];
+                  });
+               }
+            }
          }
       } catch (error) {
          console.error(`Error ${action}ing application:`, error);
@@ -593,6 +634,27 @@ const AdminDashboard = () => {
             }
             return app;
          }));
+
+         // IF REJECTED: Add to Audit Queue (Blacklist) - Fallback
+         if (action === 'reject') {
+            const rejectedApp = jobApplications.find(app => app.id === appId || app._id === appId);
+            if (rejectedApp) {
+               setAuditQueue(prev => {
+                  if (prev.some(c => c.id === rejectedApp.id || c._id === rejectedApp.id)) {
+                     return prev.map(c => (c.id === rejectedApp.id || c._id === rejectedApp.id) ? { ...c, status: 'REJECTED' } : c);
+                  }
+                  return [...prev, {
+                     ...rejectedApp,
+                     id: rejectedApp.id || rejectedApp._id,
+                     name: rejectedApp.candidateName || rejectedApp.name,
+                     role: selectedJobTitle || rejectedApp.jobTitle || 'Applicant',
+                     status: 'REJECTED',
+                     statusColor: 'bg-red-50 text-red-600 border-red-100',
+                     appliedDate: rejectedApp.appliedDate || new Date().toISOString()
+                  }];
+               });
+            }
+         }
       }
    };
 
@@ -855,35 +917,59 @@ const AdminDashboard = () => {
 
 
 
+   const handleViewApplication = (app) => {
+      const resumeData = {
+         id: app.id || app._id,
+         name: app.candidateName || app.name || 'Unknown',
+         role: selectedJob?.title || app.jobTitle || 'Applicant',
+         agency: app.agentName || (app.source === 'Direct' ? 'Direct Application' : 'Agency'),
+         email: app.email || 'N/A',
+         whatsapp: app.contactNumber || 'N/A',
+         nationality: app.address ? app.address.split(',').pop().trim() : 'Maldivian',
+         status: app.status,
+         documents: {
+            resume: app.hasResume ? 'resume.pdf' : null,
+            passport: app.hasPassport ? 'passport.jpg' : null,
+            education: app.hasCerts ? 'certificates.pdf' : null,
+            pcc: app.hasPCC ? 'police_clearance.pdf' : null,
+            goodStanding: app.hasGoodStanding ? 'good_standing.pdf' : null
+         }
+      };
+      setSelectedResume(resumeData);
+   };
+
    const handleResumeStatusChange = (status) => {
       if (!selectedResume) return;
 
-      if (status === 'Rejected') {
-         if (!window.confirm('Rejected Applications can be viewed in Blacklisted page. Do u want to Reject the application?')) return;
-      }
-
       const updatedApplications = allApplications.map(app => {
-         if (app.id === selectedResume.id || app._id === selectedResume._id) {
+         // Fix: Ensure we don't match undefined === undefined
+         const matchesId = (app.id && app.id === selectedResume.id) || (app._id && app._id === selectedResume.id);
+
+         if (matchesId) {
             return {
                ...app,
-               status: status === 'Rejected' ? 'Blacklisted' : status
+               status: status
             };
          }
          return app;
       });
 
-      // If rejected and not in allApplications, add it
-      if (status === 'Rejected' && !allApplications.some(app => app.id === selectedResume.id || app._id === selectedResume._id)) {
-         updatedApplications.push({
-            ...selectedResume,
-            status: 'Blacklisted',
-            blockedReason: 'Rejected during audit review'
-         });
-      }
       setAllApplications(updatedApplications);
 
+      // Update Job Applications (Local View)
+      setJobApplications(prev => prev.map(app => {
+         const matchesId = (app.id && app.id === selectedResume.id) || (app._id && app._id === selectedResume.id);
+         if (matchesId) {
+            return { ...app, status: status };
+         }
+         return app;
+      }));
+
+      let candidateFoundInAudit = false;
       const updatedAuditQueue = auditQueue.map(candidate => {
-         if (candidate.id === selectedResume.id || candidate._id === selectedResume._id) {
+         const matchesId = (candidate.id && candidate.id === selectedResume.id) || (candidate._id && candidate._id === selectedResume.id);
+         if (matchesId) {
+            candidateFoundInAudit = true;
             let statusColor = '';
             const finalStatus = status === 'Rejected' ? 'REJECTED' : status.toUpperCase();
 
@@ -899,6 +985,23 @@ const AdminDashboard = () => {
          }
          return candidate;
       });
+
+      // If rejected and NOT in audit queue independently, add them (moves to blacklist view)
+      if (!candidateFoundInAudit && status === 'Rejected') {
+         updatedAuditQueue.push({
+            id: selectedResume.id,
+            name: selectedResume.name,
+            email: selectedResume.email,
+            role: selectedResume.role,
+            agency: selectedResume.agency,
+            nationality: selectedResume.nationality, // Ensure we keep extra details if needed
+            status: 'REJECTED',
+            statusColor: 'bg-red-50 text-red-600 border-red-100',
+            source: 'Direct', // Default or derived from resume data if available
+            appliedDate: new Date().toISOString()
+         });
+      }
+
       setAuditQueue(updatedAuditQueue);
 
       setSelectedResume(null);
@@ -2110,92 +2213,100 @@ const AdminDashboard = () => {
 
                                     {/* Candidates Table */}
                                     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+
+                                       {/* Search and Filter Header */}
+                                       <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-4">
+                                          <div className="relative flex-1 max-w-md">
+                                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                             <input
+                                                type="text"
+                                                placeholder="Search candidates..."
+                                                value={candidateSearchQuery}
+                                                onChange={(e) => setCandidateSearchQuery(e.target.value)}
+                                                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                                             />
+                                          </div>
+                                          <button className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors">
+                                             <Filter className="w-4 h-4" /> Filter
+                                          </button>
+                                       </div>
+
                                        {isLoadingApplications ? (
                                           <div className="p-12 flex flex-col items-center justify-center">
                                              <Loader2 className="w-8 h-8 text-teal-600 animate-spin mb-4" />
                                              <p className="text-slate-500 font-medium">Loading applicants...</p>
                                           </div>
-                                       ) : jobApplications.length > 0 ? (
+                                       ) : (
                                           <table className="w-full text-left">
                                              <thead>
                                                 <tr className="bg-slate-50 border-b border-slate-100">
-                                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Applicant Name</th>
-                                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Agent Name</th>
-                                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Resume</th>
+                                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Candidate Name</th>
+
+                                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Source</th>
                                                    <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Status</th>
                                                    <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Actions</th>
                                                 </tr>
                                              </thead>
                                              <tbody className="divide-y divide-slate-50">
-                                                {jobApplications.map((app) => (
-                                                   <tr key={app.id || app._id} className="hover:bg-slate-50/50 transition-colors">
-                                                      <td className="px-6 py-4">
-                                                         <div>
-                                                            <p className="text-sm font-bold text-slate-900">{app.candidateName || app.name || 'Unknown'}</p>
-                                                            <p className="text-xs text-slate-400 font-medium">{app.email || 'No email'}</p>
-                                                         </div>
-                                                      </td>
-                                                      <td className="px-6 py-4">
-                                                         <span className="text-sm text-slate-600">
-                                                            {app.source === 'Direct' ? (
-                                                               <span className="text-blue-600 font-medium">Direct Application</span>
-                                                            ) : (
-                                                               app.agentName || app.agency || 'N/A'
-                                                            )}
-                                                         </span>
-                                                      </td>
-                                                      <td className="px-6 py-4">
-                                                         {app.hasResume || app.resumeUrl ? (
+                                                {jobApplications.length > 0 ? (
+                                                   jobApplications.filter(app =>
+                                                      /* Filter out Rejected candidates from Vacancy View */
+                                                      (app.status !== 'Rejected' && app.status !== 'REJECTED') &&
+                                                      ((app.candidateName || '').toLowerCase().includes(candidateSearchQuery.toLowerCase()) ||
+                                                         (app.email || '').toLowerCase().includes(candidateSearchQuery.toLowerCase()))
+                                                   ).map((app) => (
+                                                      <tr key={app.id || app._id} className="hover:bg-slate-50/50 transition-colors">
+                                                         <td className="px-6 py-4">
+                                                            <div>
+                                                               <p className="text-sm font-bold text-slate-900">{app.candidateName || app.name || 'Unknown'}</p>
+                                                               <div className="flex items-center gap-1 text-xs text-slate-500 font-medium mt-0.5">
+                                                                  <MapPin className="w-3 h-3" />
+                                                                  <span>{app.address || 'N/A'}</span>
+                                                               </div>
+                                                            </div>
+                                                         </td>
+
+                                                         <td className="px-6 py-4">
+                                                            <div>
+                                                               <p className="text-sm font-bold text-slate-900">{app.source === 'Direct' ? 'Direct' : 'Agency'}</p>
+                                                               {app.source !== 'Direct' && app.agentName && (
+                                                                  <p className="text-xs text-slate-500 font-medium mt-0.5">{app.agentName}</p>
+                                                               )}
+                                                            </div>
+                                                         </td>
+                                                         <td className="px-6 py-4">
+                                                            <span className={`text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-widest ${(app.status === 'Selected' || app.status === 'Accepted') ? 'bg-green-100 text-green-700' :
+                                                               app.status === 'Rejected' ? 'bg-red-100 text-red-700' :
+                                                                  app.status === 'On Hold' ? 'bg-yellow-100 text-yellow-700' :
+                                                                     'bg-purple-100 text-purple-700'
+                                                               }`}>
+                                                               {app.status || 'APPLIED'}
+                                                            </span>
+                                                         </td>
+                                                         <td className="px-6 py-4 text-right">
                                                             <button
-                                                               onClick={() => window.open(app.resumeUrl || '#', '_blank')}
-                                                               className="flex items-center gap-2 text-xs font-bold text-teal-600 hover:text-teal-700"
-                                                            >
-                                                               <FileText className="w-4 h-4" /> View Resume
+                                                               onClick={() => handleViewApplication(app)}
+                                                               className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-bold uppercase tracking-widest rounded-lg transition-colors shadow-sm">
+                                                               View Details
                                                             </button>
-                                                         ) : (
-                                                            <span className="text-xs text-slate-400">Not available</span>
-                                                         )}
-                                                      </td>
-                                                      <td className="px-6 py-4">
-                                                         <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${app.status === 'Applied' ? 'bg-blue-50 text-blue-600' :
-                                                            app.status === 'Processing' ? 'bg-purple-50 text-purple-600' :
-                                                               app.status === 'Selected' ? 'bg-emerald-50 text-emerald-600' :
-                                                                  app.status === 'Rejected' ? 'bg-red-50 text-red-600' :
-                                                                     'bg-slate-100 text-slate-500'
-                                                            }`}>
-                                                            {app.status || 'Applied'}
-                                                         </span>
-                                                      </td>
-                                                      <td className="px-6 py-4">
-                                                         <div className="flex items-center gap-2 justify-end">
-                                                            <button
-                                                               onClick={() => handleApplicationAction(app.id || app._id, 'approve')}
-                                                               disabled={app.status === 'Selected'}
-                                                               className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                                            >
-                                                               Approve
-                                                            </button>
-                                                            <button
-                                                               onClick={() => handleApplicationAction(app.id || app._id, 'reject')}
-                                                               disabled={app.status === 'Rejected'}
-                                                               className="px-3 py-1.5 rounded-lg bg-red-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                                            >
-                                                               Reject
-                                                            </button>
+                                                         </td>
+                                                      </tr>
+                                                   ))
+                                                ) : (
+                                                   <tr>
+                                                      <td colSpan="4" className="px-6 py-12 text-center">
+                                                         <div className="flex flex-col items-center justify-center">
+                                                            <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 mb-4">
+                                                               <Users className="w-8 h-8 opacity-40" />
+                                                            </div>
+                                                            <p className="text-slate-500 font-bold">No candidates found for this job</p>
+                                                            <p className="text-slate-400 text-sm mt-1">Applicants will appear here once they apply.</p>
                                                          </div>
                                                       </td>
                                                    </tr>
-                                                ))}
+                                                )}
                                              </tbody>
                                           </table>
-                                       ) : (
-                                          <div className="p-12 flex flex-col items-center justify-center">
-                                             <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 mb-4">
-                                                <Users className="w-8 h-8 opacity-40" />
-                                             </div>
-                                             <p className="text-slate-500 font-bold">No candidates found for this job</p>
-                                             <p className="text-slate-400 text-sm mt-1">Applicants will appear here once they apply.</p>
-                                          </div>
                                        )}
                                     </div>
                                  </div>
