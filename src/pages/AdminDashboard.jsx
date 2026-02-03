@@ -905,15 +905,23 @@ const AdminDashboard = () => {
       duration: 'All'
    });
 
-   const toggleCandidateStatusFilter = (status) => {
-      setCandidateFilters(prev => {
-         const isSelected = prev.status.includes(status);
-         return {
-            ...prev,
-            status: isSelected ? prev.status.filter(s => s !== status) : [...prev.status, status]
-         };
-      });
+   const toggleCandidateFilter = (filterType, value) => {
+      if (filterType === 'status') {
+         setCandidateFilters(prev => {
+            const current = prev.status;
+            const updated = current.includes(value)
+               ? current.filter(item => item !== value)
+               : [...current, value];
+            return { ...prev, status: updated };
+         });
+      } else {
+         setCandidateFilters(prev => ({ ...prev, [filterType]: value }));
+      }
    };
+
+   const [candidateSearchInput, setCandidateSearchInput] = useState('');
+   const [candidateSearchQuery, setCandidateSearchQuery] = useState('');
+   const handleCandidateSearch = () => setCandidateSearchQuery(candidateSearchInput);
 
 
 
@@ -1265,9 +1273,7 @@ const AdminDashboard = () => {
    const handleAuditSearch = () => setAuditSearchQuery(auditSearchInput);
 
    // 5. Candidate Moderation (Vacancy Mgmt)
-   const [candidateSearchInput, setCandidateSearchInput] = useState('');
-   const [candidateSearchQuery, setCandidateSearchQuery] = useState('');
-   const handleCandidateSearch = () => setCandidateSearchQuery(candidateSearchInput);
+
 
 
 
@@ -2212,7 +2218,7 @@ const AdminDashboard = () => {
                                     </div>
 
                                     {/* Candidates Table */}
-                                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
 
                                        {/* Search and Filter Header */}
                                        <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-4">
@@ -2226,9 +2232,113 @@ const AdminDashboard = () => {
                                                 className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20"
                                              />
                                           </div>
-                                          <button className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors">
-                                             <Filter className="w-4 h-4" /> Filter
-                                          </button>
+                                          <div className="relative">
+                                             <button
+                                                onClick={() => setIsCandidateFilterOpen(!isCandidateFilterOpen)}
+                                                className={`flex items-center gap-2 px-4 py-2 border rounded-lg text-sm font-bold transition-colors ${isCandidateFilterOpen ? 'bg-teal-50 border-teal-200 text-teal-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                             >
+                                                <Filter className="w-4 h-4" /> Filter
+                                             </button>
+
+                                             {isCandidateFilterOpen && (
+                                                <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                                   <div className="max-h-[35vh] overflow-y-auto custom-scrollbar p-4 space-y-5">
+                                                      {/* 1. STATUS */}
+                                                      <div className="space-y-2">
+                                                         <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">1. Status</h4>
+                                                         <div className="space-y-2">
+                                                            {['Processing', 'On Hold', 'Rejected', 'Approved'].map(status => (
+                                                               <label key={status} className="flex items-center gap-3 cursor-pointer group">
+                                                                  <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${candidateFilters.status.includes(status) ? 'bg-teal-600 border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                     {candidateFilters.status.includes(status) && <CheckCircle2 className="w-3 h-3 text-white" />}
+                                                                  </div>
+                                                                  <input
+                                                                     type="checkbox"
+                                                                     className="hidden"
+                                                                     checked={candidateFilters.status.includes(status)}
+                                                                     onChange={() => toggleCandidateFilter('status', status)}
+                                                                  />
+                                                                  <span className="text-xs font-bold text-slate-700">{status}</span>
+                                                               </label>
+                                                            ))}
+                                                         </div>
+                                                      </div>
+
+                                                      {/* 2. SOURCE */}
+                                                      <div className="space-y-2">
+                                                         <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">2. Source</h4>
+                                                         <div className="space-y-2">
+                                                            {['Direct Application', 'Agency Ref'].map(source => (
+                                                               <label key={source} className="flex items-center gap-3 cursor-pointer group">
+                                                                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${candidateFilters.source === source ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                     {candidateFilters.source === source && <div className="w-2 h-2 rounded-full bg-teal-600" />}
+                                                                  </div>
+                                                                  <input
+                                                                     type="radio"
+                                                                     className="hidden"
+                                                                     checked={candidateFilters.source === source}
+                                                                     onChange={() => toggleCandidateFilter('source', source)}
+                                                                  />
+                                                                  <span className="text-xs font-bold text-slate-700">{source}</span>
+                                                               </label>
+                                                            ))}
+                                                            <label className="flex items-center gap-3 cursor-pointer group">
+                                                               <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${candidateFilters.source === 'All' ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                  {candidateFilters.source === 'All' && <div className="w-2 h-2 rounded-full bg-teal-600" />}
+                                                               </div>
+                                                               <input
+                                                                  type="radio"
+                                                                  className="hidden"
+                                                                  checked={candidateFilters.source === 'All'}
+                                                                  onChange={() => toggleCandidateFilter('source', 'All')}
+                                                               />
+                                                               <span className="text-xs font-bold text-slate-700">All</span>
+                                                            </label>
+                                                         </div>
+                                                      </div>
+
+                                                      {/* 3. DURATION */}
+                                                      <div className="space-y-2">
+                                                         <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">3. Duration</h4>
+                                                         <div className="space-y-2">
+                                                            {['Since 1 hr', 'Since 1 week', 'Since 1 month', 'Since 3 months', 'All'].map(duration => (
+                                                               <label key={duration} className="flex items-center gap-3 cursor-pointer group">
+                                                                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${candidateFilters.duration === duration ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                     {candidateFilters.duration === duration && <div className="w-2 h-2 rounded-full bg-teal-600" />}
+                                                                  </div>
+                                                                  <input
+                                                                     type="radio"
+                                                                     className="hidden"
+                                                                     checked={candidateFilters.duration === duration}
+                                                                     onChange={() => toggleCandidateFilter('duration', duration)}
+                                                                  />
+                                                                  <span className="text-xs font-bold text-slate-700">{duration}</span>
+                                                               </label>
+                                                            ))}
+                                                         </div>
+                                                      </div>
+                                                   </div>
+
+                                                   <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3 relative z-10">
+                                                      <button
+                                                         onClick={() => {
+                                                            setCandidateFilters({ status: [], source: 'All', duration: 'All' });
+                                                            setIsCandidateFilterOpen(false);
+                                                         }}
+                                                         className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors"
+                                                      >
+                                                         Clear
+                                                      </button>
+                                                      <button
+                                                         onClick={() => setIsCandidateFilterOpen(false)}
+                                                         className="flex-1 py-2 rounded-lg bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20"
+                                                      >
+                                                         Apply
+                                                      </button>
+                                                   </div>
+                                                </div>
+                                             )}
+                                          </div>
                                        </div>
 
                                        {isLoadingApplications ? (
@@ -2249,12 +2359,51 @@ const AdminDashboard = () => {
                                              </thead>
                                              <tbody className="divide-y divide-slate-50">
                                                 {jobApplications.length > 0 ? (
-                                                   jobApplications.filter(app =>
-                                                      /* Filter out Rejected candidates from Vacancy View */
-                                                      (app.status !== 'Rejected' && app.status !== 'REJECTED') &&
-                                                      ((app.candidateName || '').toLowerCase().includes(candidateSearchQuery.toLowerCase()) ||
-                                                         (app.email || '').toLowerCase().includes(candidateSearchQuery.toLowerCase()))
-                                                   ).map((app) => (
+                                                   jobApplications.filter(app => {
+                                                      // 1. Blacklist Check (Always Active)
+                                                      if (app.status === 'Rejected' || app.status === 'REJECTED') return false;
+
+                                                      // 2. Search Query
+                                                      const matchesSearch = (app.candidateName || '').toLowerCase().includes(candidateSearchQuery.toLowerCase()) ||
+                                                         (app.email || '').toLowerCase().includes(candidateSearchQuery.toLowerCase());
+                                                      if (!matchesSearch) return false;
+
+                                                      // 3. Status Filter
+                                                      if (candidateFilters.status.length > 0) {
+                                                         const appStatus = app.status || 'Processing';
+                                                         const matchesStatus = candidateFilters.status.some(filterStatus => {
+                                                            if (filterStatus === 'Approved' && (appStatus === 'Selected' || appStatus === 'Accepted' || appStatus === 'APPROVED')) return true;
+                                                            if (filterStatus === 'Processing' && (appStatus === 'APPLIED' || appStatus === 'Applied' || !appStatus)) return true;
+                                                            if (filterStatus === 'On Hold' && (appStatus === 'On Hold' || appStatus === 'HOLD')) return true;
+                                                            if (filterStatus === 'Rejected') return false;
+                                                            return appStatus === filterStatus;
+                                                         });
+                                                         if (!matchesStatus) return false;
+                                                      }
+
+                                                      // 4. Source Filter
+                                                      if (candidateFilters.source !== 'All') {
+                                                         const isDirect = app.source === 'Direct';
+                                                         if (candidateFilters.source === 'Direct Application' && !isDirect) return false;
+                                                         if (candidateFilters.source === 'Agency Ref' && isDirect) return false;
+                                                      }
+
+                                                      // 5. Duration Filter
+                                                      if (candidateFilters.duration !== 'All') {
+                                                         const appliedDate = new Date(app.appliedDate || new Date());
+                                                         const now = new Date();
+                                                         const diffMs = now - appliedDate;
+                                                         const diffHours = diffMs / (1000 * 60 * 60);
+                                                         const diffDays = diffHours / 24;
+
+                                                         if (candidateFilters.duration === 'Since 1 hr' && diffHours > 1) return false;
+                                                         if (candidateFilters.duration === 'Since 1 week' && diffDays > 7) return false;
+                                                         if (candidateFilters.duration === 'Since 1 month' && diffDays > 30) return false;
+                                                         if (candidateFilters.duration === 'Since 3 months' && diffDays > 90) return false;
+                                                      }
+
+                                                      return true;
+                                                   }).map((app) => (
                                                       <tr key={app.id || app._id} className="hover:bg-slate-50/50 transition-colors">
                                                          <td className="px-6 py-4">
                                                             <div>
@@ -2280,7 +2429,7 @@ const AdminDashboard = () => {
                                                                   app.status === 'On Hold' ? 'bg-yellow-100 text-yellow-700' :
                                                                      'bg-purple-100 text-purple-700'
                                                                }`}>
-                                                               {app.status || 'APPLIED'}
+                                                               {(app.status === 'APPLIED' || app.status === 'Applied' || !app.status) ? 'Processing' : app.status}
                                                             </span>
                                                          </td>
                                                          <td className="px-6 py-4 text-right">
