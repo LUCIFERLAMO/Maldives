@@ -19,9 +19,11 @@ import JobCard from '../components/JobCard';
 import { MOCK_JOBS, INDUSTRIES } from '../constants';
 import { JobStatus } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { usePopup } from '../context/PopupContext';
 
 const BrowseJobsPage = () => {
     const { user } = useAuth();
+    const popup = usePopup();
     const [searchParams, setSearchParams] = useSearchParams();
     const [searchTerm, setSearchTerm] = useState('');
     const [appliedSearch, setAppliedSearch] = useState(''); // New state for API search
@@ -262,7 +264,7 @@ const BrowseJobsPage = () => {
                 document.body.removeChild(textArea);
                 if (!successful) throw new Error('execCommand copy failed');
             }
-            alert('Job link copied to clipboard!');
+            popup.success('Job link copied to clipboard!');
         } catch (err) {
             console.error('Copy failed:', err);
         }

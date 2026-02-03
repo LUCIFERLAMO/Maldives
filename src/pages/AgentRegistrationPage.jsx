@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { usePopup } from '../context/PopupContext';
 import {
     ArrowLeft,
     User,
@@ -17,6 +18,7 @@ import {
 
 const AgentRegistrationPage = () => {
     const navigate = useNavigate();
+    const popup = usePopup();
     const [formData, setFormData] = useState({
         fullName: '',
         phone: '',
@@ -149,7 +151,7 @@ const AgentRegistrationPage = () => {
 
         if (Object.keys(validationErrors).length > 0) {
             setErrors(validationErrors);
-            alert("Please fix the validation errors before submitting.");
+            popup.warning("Please fix the validation errors before submitting.");
             return;
         }
 
@@ -173,11 +175,11 @@ const AgentRegistrationPage = () => {
             if (response.ok) {
                 setIsSubmitted(true);
             } else {
-                alert("Registration Failed: " + data.message);
+                popup.error("Registration Failed: " + data.message);
             }
         } catch (err) {
             console.error('Submission Error:', err);
-            alert("Registration Failed: Network error. Please try again.");
+            popup.error("Registration Failed: Network error. Please try again.");
         } finally {
             setIsLoading(false);
         }

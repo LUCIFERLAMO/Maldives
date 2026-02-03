@@ -4,8 +4,11 @@ import { MapPin, DollarSign, Clock, Heart, Briefcase, ChevronRight, Share2, Chec
 import { JobStatus } from '../types';
 import { useAuth } from '../context/AuthContext';
 
+import { usePopup } from '../context/PopupContext';
+
 const JobCard = ({ job }) => {
     const { user } = useAuth();
+    const popup = usePopup();
     const [isLiked, setIsLiked] = useState(false);
     const [isCopied, setIsCopied] = useState(false);
     const [isSubscribed, setIsSubscribed] = useState(false);
@@ -25,7 +28,7 @@ const JobCard = ({ job }) => {
 
     const handleNotifyMe = async (e) => {
         e.preventDefault();
-        if (!user) { alert("Please login to subscribe"); return; }
+        if (!user) { popup.alert("Please login to subscribe"); return; }
 
         const newStatus = !isSubscribed;
         setIsSubscribed(newStatus); // Optimistic UI

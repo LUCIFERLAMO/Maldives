@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, User, ArrowRight, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { usePopup } from '../context/PopupContext';
 
 const AgentLoginPage = () => {
     const navigate = useNavigate();
+    const popup = usePopup();
     const { login, mockLogin, logout, user } = useAuth();
 
     // If agent is already logged in, redirect to dashboard
@@ -51,11 +53,11 @@ const AgentLoginPage = () => {
                 // Use navigate instead of window.location.href to avoid full page reload
                 navigate('/recruiter', { replace: true });
             } else {
-                alert("Invalid email or password.");
+                popup.error("Invalid email or password.");
             }
         } catch (err) {
             console.error(err);
-            alert("An error occurred during login.");
+            popup.error("An error occurred during login.");
         }
     };
 

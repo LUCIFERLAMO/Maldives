@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, Terminal, ArrowRight, ArrowLeft, ShieldCheck, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { usePopup } from '../context/PopupContext';
 
 const AdminLoginPage = () => {
     const navigate = useNavigate();
+    const popup = usePopup();
     const { mockLogin } = useAuth();
 
     const [email, setEmail] = useState('');
@@ -52,11 +54,11 @@ const AdminLoginPage = () => {
                 });
                 navigate('/admin');
             } else {
-                alert('Invalid email or password.');
+                popup.error('Invalid email or password.');
             }
         } catch (err) {
             console.error("Admin Login Error:", err);
-            alert('Authentication failed. Network error.');
+            popup.error('Authentication failed. Network error.');
         } finally {
             setIsLoading(false);
         }
@@ -68,7 +70,7 @@ const AdminLoginPage = () => {
         if (twoFACode.join('').length === 6) {
             navigate('/admin');
         } else {
-            alert('Please enter the 6-digit code');
+            popup.warning('Please enter the 6-digit code');
         }
     };
 

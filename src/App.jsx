@@ -17,6 +17,7 @@ import ProfilePage from './pages/ProfilePage';
 import SupportPage from './pages/SupportPage';
 import AgentRegistrationPage from './pages/AgentRegistrationPage';
 import { AuthProvider } from './context/AuthContext';
+import { PopupProvider } from './context/PopupContext';
 import GlobalErrorBoundary from './components/GlobalErrorBoundary';
 
 import ProtectedRoute from './components/ProtectedRoute';
@@ -105,10 +106,12 @@ const AppContent = () => {
 const App = () => {
     return (
         <AuthProvider>
-            <BrowserRouter>
-                <ScrollToTop />
-                <AppContent />
-            </BrowserRouter>
+            <PopupProvider>
+                <BrowserRouter>
+                    <ScrollToTop />
+                    <AppContent />
+                </BrowserRouter>
+            </PopupProvider>
         </AuthProvider>
     );
 };

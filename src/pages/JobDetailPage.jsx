@@ -5,11 +5,13 @@ import { JobStatus } from '../types';
 import FileUpload from '../components/FileUpload';
 import { ArrowLeft, AlertCircle, ShieldCheck, User, Mail, Phone, Lock, MapPin, Clock, Briefcase, DollarSign, List, CheckCircle, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { usePopup } from '../context/PopupContext';
 
 const JobDetailPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { user, isAuthenticated } = useAuth();
+    const popup = usePopup();
     const [job, setJob] = useState(undefined);
     const [error, setError] = useState(null);
     const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
@@ -227,7 +229,7 @@ const JobDetailPage = () => {
             if (files.resume) {
                 formDataPayload.append('resume', files.resume);
             } else {
-                alert('Please upload a resume');
+                popup.warning('Please upload a resume');
                 setIsSubmitting(false);
                 return;
             }
@@ -259,10 +261,10 @@ const JobDetailPage = () => {
             console.error('Application error:', error);
             // Fallback for demo if backend is dead
             if (job && MOCK_JOBS.find(j => j.id === job.id)) {
-                alert('Simulation: Application Submitted Successfully! (Backend Offline)');
+                popup.success('Simulation: Application Submitted Successfully! (Backend Offline)');
                 navigate('/jobs');
             } else {
-                alert(`Failed to submit application: ${error.message}`);
+                popup.error(`Failed to submit application: ${error.message}`);
             }
         } finally {
             setIsSubmitting(false);

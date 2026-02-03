@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { usePopup } from '../context/PopupContext';
 import {
     User,
     Mail,
@@ -381,6 +382,7 @@ const AgentProfile = ({ user, profileData, docs, handleDocAction, setIsResetting
 
 const ProfilePage = () => {
     const { user, updateUser } = useAuth();
+    const popup = usePopup();
     console.log("ProfilePage Rendered. User:", user);
 
     // AuthContext sets role to lowercase, but we check defensively
@@ -544,23 +546,23 @@ const ProfilePage = () => {
                 });
             }
 
-            alert('Profile updated successfully');
+            popup.success('Profile updated successfully');
             setIsEditingPersonal(false);
         } catch (error) {
             console.error('Error updating profile:', error);
-            alert(`Failed: ${error.message}`);
+            popup.error(`Failed: ${error.message}`);
         }
     };
 
     const handlePasswordReset = async (e) => {
         e.preventDefault();
         if (passwords.new !== passwords.confirm) {
-            alert("Passwords do not match");
+            popup.warning("Passwords do not match");
             return;
         }
 
         if (passwords.new.length < 6) {
-            alert("Password must be at least 6 characters long");
+            popup.warning("Password must be at least 6 characters long");
             return;
         }
 
@@ -580,21 +582,21 @@ const ProfilePage = () => {
                 throw new Error(data.message || 'Password update failed');
             }
 
-            alert("Password updated successfully");
+            popup.success("Password updated successfully");
             setIsResettingPassword(false);
             setPasswords({ current: '', new: '', confirm: '' });
         } catch (error) {
             console.error('Error updating password:', error);
-            alert(`Failed to update password: ${error.message}`);
+            popup.error(`Failed to update password: ${error.message}`);
         }
     };
 
-    const handleDocAction = (id) => {
+    const handleDocAction = async (id) => {
         const doc = docs.find(d => d.id === id);
         if (!doc) return;
 
         if (doc.status === 'uploaded') {
-            if (window.confirm("Remove this document? This cannot be undone.")) {
+            if (await popup.confirm("Remove this document? This cannot be undone.")) {
                 handleDeleteDocument(id);
             }
         } else {
@@ -639,9 +641,9 @@ const ProfilePage = () => {
                     }
                     return d;
                 }).filter(d => !d._deleted));
-                alert('Document removed');
+                popup.success('Document removed');
             } else {
-                alert('Failed to delete document');
+                popup.error('Failed to delete document');
             }
         } catch (err) {
             console.error('Error removing doc:', err);
@@ -685,14 +687,14 @@ const ProfilePage = () => {
                     }
                     return d;
                 }));
-                alert('Document uploaded successfully!');
+                popup.success('Document uploaded successfully!');
             } else {
                 const err = await response.json();
-                alert(`Upload failed: ${err.message}`);
+                popup.error(`Upload failed: ${err.message}`);
             }
         } catch (err) {
             console.error('Upload error:', err);
-            alert('Upload failed');
+            popup.error('Upload failed');
         } finally {
             setUploadingDocId(null);
             setIsAddingDoc(false);
