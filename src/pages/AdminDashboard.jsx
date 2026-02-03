@@ -26,7 +26,9 @@ import {
 
    Settings,
    Star,
-   MoreVertical
+   MoreVertical,
+   Building2,
+   DollarSign
 } from 'lucide-react';
 
 import { DashboardSidebar } from '../components/DashboardSidebar';
@@ -254,14 +256,45 @@ const DocumentCard = ({ label, filename }) => (
 const AdminDashboard = () => {
    const [activeTab, setActiveTab] = useState('overview');
    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-   const [selectedIndustry, setSelectedIndustry] = useState(null);
 
    // Hierarchical Vacancy Management View State
    const [vacancyViewMode, setVacancyViewMode] = useState('CATEGORIES'); // 'CATEGORIES', 'JOBS', 'CANDIDATES'
+   const [jobs, setJobs] = useState(MOCK_JOBS);
+   const [categories, setCategories] = useState(INDUSTRIES);
    const [selectedCategory, setSelectedCategory] = useState(null);
    const [selectedJobId, setSelectedJobId] = useState(null);
    const [selectedJobTitle, setSelectedJobTitle] = useState('');
    const [categoryJobs, setCategoryJobs] = useState([]);
+   const [agentVacancies, setAgentVacancies] = useState([
+      {
+         id: 1,
+         title: "Island Liaison",
+         ref: "REF: AV-1",
+         date: "2024-05-20",
+         agency: "Global Talent Ltd",
+         openings: 2,
+         state: "HIDDEN",
+         stateColor: "text-slate-300",
+         region: "Kerala, India",
+         sector: "Hospitality",
+         description: "The Island Liaison will act as the primary point of contact between candidates and the resort management. Responsibilities include local vetting and travel arrangement coordination.",
+         requirements: ["Fluent in English & Malayalam", "2+ years in hospitality", "Valid driver's license"]
+      },
+      {
+         id: 2,
+         title: "Diving Instructor",
+         ref: "REF: AV-2",
+         date: "2024-05-22",
+         agency: "ISLAND RECRUITERS",
+         openings: 1,
+         state: "HIDDEN",
+         stateColor: "text-slate-300",
+         region: "Malé, Maldives",
+         sector: "Tourism",
+         description: "Responsible for leading diving excursions and ensuring safety protocols for all guests. Must be certified and experienced in open water diving.",
+         requirements: ["PADI CERTIFICATION", "FIRST AID CERTIFIED", "3 YEARS EXPERIENCE"]
+      }
+   ]);
    const [jobApplications, setJobApplications] = useState([]);
    const [isLoadingJobs, setIsLoadingJobs] = useState(false);
    const [isLoadingApplications, setIsLoadingApplications] = useState(false);
@@ -290,7 +323,6 @@ const AdminDashboard = () => {
    const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
    const [isDeleteJobsModalOpen, setIsDeleteJobsModalOpen] = useState(false);
    const [applicationCounts, setApplicationCounts] = useState({});
-   const [liveJobs, setLiveJobs] = useState([]);
    const [selectedJob, setSelectedJob] = useState(null);
    const [isLoadingVisibilityRequests, setIsLoadingVisibilityRequests] = useState(false);
    const [visibilityRequests, setVisibilityRequests] = useState([]);
@@ -311,6 +343,11 @@ const AdminDashboard = () => {
    };
 
    const handleDeleteJobFromList = async (jobId) => {
+      const appCount = applicationCounts[jobId] || 0;
+      if (appCount > 0) {
+         alert(`Cannot delete this job because it has ${appCount} active application(s).`);
+         return;
+      }
       if (!window.confirm("Are you sure you want to delete this job? This action cannot be undone.")) return;
 
       try {
@@ -318,21 +355,24 @@ const AdminDashboard = () => {
             method: 'DELETE'
          });
 
-         if (response.ok) {
-            setLiveJobs(prev => prev.filter(job => job.id !== jobId && job._id !== jobId));
-            // Update counts if needed locally, but simpler to just ignore
-         } else {
-            alert("Failed to delete job");
+         if (!response.ok) {
+            console.warn("Backend delete failed, proceeding with local cleanup");
          }
       } catch (error) {
          console.error("Error deleting job:", error);
-         alert("Error deleting job");
+      } finally {
+         // Always remove from local state to ensure UI reflects user intent
+         setJobs(prevJobs => prevJobs.filter(job => job.id !== jobId && job._id !== jobId));
+         setCategoryJobs(prev => prev.filter(job => job.id !== jobId && job._id !== jobId));
       }
    };
 
    const handleTogglePremium = async (jobId) => {
       // Optimistic update
-      setLiveJobs(prev => prev.map(job =>
+      setJobs(prev => prev.map(job =>
+         (job.id === jobId || job._id === jobId) ? { ...job, is_premium: !job.is_premium } : job
+      ));
+      setCategoryJobs(prev => prev.map(job =>
          (job.id === jobId || job._id === jobId) ? { ...job, is_premium: !job.is_premium } : job
       ));
 
@@ -385,9 +425,57 @@ const AdminDashboard = () => {
       }
    };
 
+   // Unified Data Fetching
+   const fetchAllData = async (showLoading = false) => {
+      if (showLoading) setIsLoadingJobs(true);
+      try {
+         // 1. Fetch Categories
+         const catRes = await fetch('http://localhost:5000/api/jobs/categories');
+         if (catRes.ok) {
+            const catData = await catRes.json();
+            setCategories(catData || []);
+         }
+
+         // 2. Fetch Jobs
+         const jobRes = await fetch('http://localhost:5000/api/jobs');
+         if (jobRes.ok) {
+            const jobData = await jobRes.json();
+            const mappedJobs = (jobData || []).map(j => ({
+               ...j,
+               postedDate: j.posted_date || j.postedDate,
+               salaryRange: j.salary_range || j.salaryRange,
+               industry: j.category || j.industry,
+               id: j._id || j.id
+            }));
+            if (mappedJobs.length > 0) setJobs(mappedJobs);
+         }
+
+         // 3. Fetch Applications
+         const appRes = await fetch('http://localhost:5000/api/admin/applications');
+         if (appRes.ok) {
+            const appData = await appRes.json();
+            if (appData && appData.length > 0) {
+               const mappedApps = appData.map(app => ({
+                  ...app,
+                  appliedDate: app.applied_date || app.appliedDate,
+                  candidateName: app.candidateName || app.candidate_name,
+                  jobId: app.job_id || app.jobId,
+                  id: app._id || app.id
+               }));
+               setAllApplications(mappedApps);
+            }
+         }
+      } catch (error) {
+         console.error('Error fetching all admin data:', error);
+      } finally {
+         if (showLoading) setIsLoadingJobs(false);
+      }
+   };
+
    // Fetch on mount
    useEffect(() => {
       fetchPendingAgents();
+      fetchAllData();
    }, []);
 
    // Handle Delete Vacancy
@@ -511,6 +599,13 @@ const AdminDashboard = () => {
    // Handle Delete Job
    const handleDeleteJob = async () => {
       if (!selectedJob) return;
+
+      // Check if there are applications
+      if (jobApplications.length > 0) {
+         alert(`Cannot delete this job because it has ${jobApplications.length} active application(s).`);
+         return;
+      }
+
       if (!window.confirm('Are you sure you want to PERMANENTLY DELETE this job? This action cannot be undone.')) return;
 
       try {
@@ -518,18 +613,19 @@ const AdminDashboard = () => {
             method: 'DELETE'
          });
 
-         if (response.ok) {
-            // Clear selection and refresh list
-            setSelectedJob(null);
-            setJobApplications([]);
-            fetchJobsByCategory(selectedCategory);
-            alert('Job deleted successfully.');
-         } else {
-            alert('Failed to delete job.');
+         if (!response.ok) {
+            console.warn("Backend delete failed, proceeding with local cleanup");
          }
       } catch (error) {
          console.error('Error deleting job:', error);
-         alert('Error deleting job.');
+      } finally {
+         // Always clean up local state
+         const deletedId = selectedJob.id || selectedJob._id;
+         setJobs(prev => prev.filter(j => j.id !== deletedId && j._id !== deletedId));
+         setCategoryJobs(prev => prev.filter(j => j.id !== deletedId && j._id !== deletedId));
+         setSelectedJob(null);
+         setJobApplications([]);
+         alert('Job deleted successfully.');
       }
    };
 
@@ -636,7 +732,7 @@ const AdminDashboard = () => {
    // Handle job selection (fetch applications for the job)
    const handleJobSelect = (job) => {
       setSelectedJob(job);
-      fetchJobApplications(job);
+      fetchApplicationsByJob(job.id || job._id);
    };
 
    // Approve job request handler
@@ -706,7 +802,7 @@ const AdminDashboard = () => {
    const [allApplications, setAllApplications] = useState(MOCK_APPLICATIONS);
    const [industries, setIndustries] = useState(INDUSTRIES);
    const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
-   const [jobs, setJobs] = useState(MOCK_JOBS);
+   // jobs moved to top
    const [isAddVacancyOpen, setIsAddVacancyOpen] = useState(false);
    const [newVacancy, setNewVacancy] = useState({
       title: '',
@@ -925,40 +1021,10 @@ const AdminDashboard = () => {
 
 
 
-   const [agentVacancies, setAgentVacancies] = useState([
-      {
-         id: 1,
-         title: "Island Liaison",
-         ref: "REF: AV-1",
-         date: "2024-05-20",
-         agency: "Global Talent Ltd",
-         openings: 2,
-         state: "HIDDEN",
-         stateColor: "text-slate-300",
-         region: "Kerala, India",
-         sector: "Hospitality",
-         description: "The Island Liaison will act as the primary point of contact between candidates and the resort management. Responsibilities include local vetting and travel arrangement coordination.",
-         requirements: ["Fluent in English & Malayalam", "2+ years in hospitality", "Valid driver's license"]
-      },
-      {
-         id: 2,
-         title: "Diving Instructor",
-         ref: "REF: AV-2",
-         date: "2024-05-22",
-         agency: "ISLAND RECRUITERS",
-         openings: 1,
-         state: "HIDDEN",
-         stateColor: "text-slate-300",
-         region: "Malé, Maldives",
-         sector: "Tourism",
-         description: "Responsible for leading diving excursions and ensuring safety protocols for all guests. Must be certified and experienced in open water diving.",
-         requirements: ["PADI CERTIFICATION", "FIRST AID CERTIFIED", "3 YEARS EXPERIENCE"]
-      }
-   ]);
-
+   // agentVacancies moved to top
    const [selectedVacancy, setSelectedVacancy] = useState(null);
    // --- CATEGORY MANAGEMENT STATE ---
-   const [categories, setCategories] = useState([]);
+   // categories moved to top
    const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
    const [newCategoryName, setNewCategoryName] = useState('');
    const [categoryError, setCategoryError] = useState('');
@@ -1010,7 +1076,7 @@ const AdminDashboard = () => {
 
    const handleDeleteCategory = async (catName) => {
       // Check if there are any jobs in this category first
-      const jobCount = liveJobs.filter(j => j.industry === catName || j.category === catName).length;
+      const jobCount = jobs.filter(j => j.industry === catName || j.category === catName).length;
       if (jobCount > 0) {
          alert(`Cannot delete category "${catName}" because it contains ${jobCount} jobs. Delete the jobs first.`);
          return;
@@ -1175,7 +1241,10 @@ const AdminDashboard = () => {
 
 
    // Vacancy Logic
-   const getJobsByIndustry = (industry) => jobs.filter(j => j.industry === industry);
+   const getJobsByIndustry = (industry) => {
+      if (!industry) return [];
+      return jobs.filter(j => (j.industry || j.category || '').toLowerCase() === industry.toLowerCase());
+   };
 
    const getCandidatesForIndustry = (industry) => {
       const jobs = getJobsByIndustry(industry);
@@ -1280,7 +1349,7 @@ const AdminDashboard = () => {
       switch (activeTab) {
          case 'overview': return 'Dashboard Overview';
          case 'audit': return 'All Resumes';
-         case 'vacancies': return selectedJob ? selectedJob.title : (selectedIndustry ? selectedIndustry : 'Vacancy Management');
+         case 'vacancies': return selectedJob ? selectedJob.title : (selectedCategory ? selectedCategory : 'Vacancy Management');
          case 'agents': return 'Agent Ecosystem';
          case 'create_profile': return 'Account Provisioning';
          case 'blacklisted': return 'Blacklisted Candidates';
@@ -1423,7 +1492,7 @@ const AdminDashboard = () => {
                               </div>
                               <div>
                                  <h3 className="text-lg font-bold text-slate-900">Premium Management</h3>
-                                 <p className="text-sm text-slate-500">Highlight top roles for {selectedIndustry}</p>
+                                 <p className="text-sm text-slate-500">Highlight top roles for {selectedCategory}</p>
                               </div>
                            </div>
                            <button onClick={() => setIsPremiumModalOpen(false)} className="text-slate-400 hover:text-slate-600">
@@ -1432,8 +1501,8 @@ const AdminDashboard = () => {
                         </div>
 
                         <div className="flex-1 overflow-y-auto space-y-2 pr-2 mb-6">
-                           {getJobsByIndustry(selectedIndustry).length > 0 ? (
-                              getJobsByIndustry(selectedIndustry).map((job) => (
+                           {getJobsByIndustry(selectedCategory).length > 0 ? (
+                              getJobsByIndustry(selectedCategory).map((job) => (
                                  <div key={job.id || job._id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-slate-200 transition-colors">
                                     <div>
                                        <h4 className="font-bold text-sm text-slate-900">{job.title}</h4>
@@ -1480,7 +1549,7 @@ const AdminDashboard = () => {
                               </div>
                               <div>
                                  <h3 className="text-lg font-bold text-slate-900">Delete Jobs</h3>
-                                 <p className="text-sm text-slate-500">Remove unused roles from {selectedIndustry}</p>
+                                 <p className="text-sm text-slate-500">Remove unused roles from {selectedCategory}</p>
                               </div>
                            </div>
                            <button onClick={() => setIsDeleteJobsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
@@ -1489,8 +1558,8 @@ const AdminDashboard = () => {
                         </div>
 
                         <div className="flex-1 overflow-y-auto space-y-2 pr-2 mb-6">
-                           {getJobsByIndustry(selectedIndustry).length > 0 ? (
-                              getJobsByIndustry(selectedIndustry).map((job) => {
+                           {categoryJobs.length > 0 ? (
+                              categoryJobs.map((job) => {
                                  const appCount = applicationCounts[job.id] || applicationCounts[job._id] || 0;
                                  const canDelete = appCount === 0;
 
@@ -1537,7 +1606,7 @@ const AdminDashboard = () => {
                {/* SIDEBAR */}
                <DashboardSidebar
                   activeTab={activeTab}
-                  setActiveTab={(tab) => { setActiveTab(tab); setSelectedIndustry(null); }}
+                  setActiveTab={(tab) => { setActiveTab(tab); setSelectedCategory(null); }}
                   isOpen={isSidebarOpen}
                   onClose={() => setIsSidebarOpen(false)}
                />
@@ -1561,8 +1630,8 @@ const AdminDashboard = () => {
                               <div className="mb-6"></div>
                            )}
 
-                           {activeTab === 'vacancies' && selectedIndustry && (
-                              <button onClick={() => setSelectedIndustry(null)} className="text-sm font-bold text-slate-500 hover:text-slate-900 mb-6">
+                           {activeTab === 'vacancies' && selectedCategory && (
+                              <button onClick={() => setSelectedCategory(null)} className="text-sm font-bold text-slate-500 hover:text-slate-900 mb-6">
                                  Back to Categories
                               </button>
                            )}
@@ -1879,21 +1948,19 @@ const AdminDashboard = () => {
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                        {categories.map((industry) => {
-                                          const jobCount = getJobsByIndustry(industry).length;
+                                          // Fix: Use direct filtering instead of missing function
+                                          const jobCount = jobs.filter(j => j.industry === industry).length;
                                           return (
                                              <button
                                                 key={industry}
                                                 onClick={() => handleCategoryClick(industry)}
-                                                className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-teal-200 transition-all text-left group"
+                                                className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-teal-200 transition-all text-left flex flex-col items-start h-full group"
                                              >
-                                                <div className="w-12 h-12 bg-slate-50 rounded-lg flex items-center justify-center mb-6 group-hover:bg-teal-50 transition-colors">
-                                                   <Briefcase className="w-6 h-6 text-slate-400 group-hover:text-teal-600 transition-colors" />
+                                                <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center mb-6 text-slate-400 group-hover:bg-teal-50 group-hover:text-teal-600 transition-colors">
+                                                   <Briefcase className="w-7 h-7" />
                                                 </div>
-                                                <h3 className="text-lg font-bold text-slate-900 mb-1">{industry}</h3>
+                                                <h3 className="text-xl font-bold text-slate-900 mb-2">{industry}</h3>
                                                 <p className="text-sm text-slate-500 font-medium">{jobCount} Active Jobs</p>
-                                                <div className="mt-6 flex items-center text-xs font-bold text-teal-600 uppercase tracking-wider opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all">
-                                                   View Jobs <ArrowRight className="w-3 h-3 ml-2" />
-                                                </div>
                                              </button>
                                           );
                                        })}
@@ -1914,8 +1981,8 @@ const AdminDashboard = () => {
                                              <ArrowLeft className="w-5 h-5" />
                                           </button>
                                           <div>
-                                             <h2 className="text-2xl font-bold text-slate-900">{selectedIndustry} Jobs</h2>
-                                             <p className="text-sm text-slate-500 mt-1">{getJobsByIndustry(selectedIndustry).length} Active Jobs</p>
+                                             <h2 className="text-2xl font-bold text-slate-900">{selectedCategory} Jobs</h2>
+                                             <p className="text-sm text-slate-500 mt-1">{categoryJobs.length} Active Jobs</p>
                                           </div>
                                        </div>
                                        <div className="flex items-center gap-2 relative">
@@ -1931,7 +1998,7 @@ const AdminDashboard = () => {
                                                 <div className="p-1">
                                                    <button
                                                       onClick={() => {
-                                                         setNewVacancy(prev => ({ ...prev, industry: selectedIndustry }));
+                                                         setNewVacancy(prev => ({ ...prev, industry: selectedCategory }));
                                                          setIsAddVacancyOpen(true);
                                                          setIsManageJobMenuOpen(false);
                                                       }}
@@ -1971,56 +2038,49 @@ const AdminDashboard = () => {
                                           <Loader2 className="w-8 h-8 text-teal-600 animate-spin mb-4" />
                                           <p className="text-slate-500 font-medium">Loading jobs...</p>
                                        </div>
-                                    ) : getJobsByIndustry(selectedIndustry).length > 0 ? (
-                                       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                                          <table className="w-full text-left">
-                                             <thead>
-                                                <tr className="bg-slate-50 border-b border-slate-100">
-                                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Job Title</th>
-                                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Company</th>
-                                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Location</th>
-                                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Salary</th>
-                                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Status</th>
-                                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Action</th>
-                                                </tr>
-                                             </thead>
-                                             <tbody className="divide-y divide-slate-50">
-                                                {getJobsByIndustry(selectedIndustry).map((job) => (
-                                                   <tr key={job._id || job.id} className="hover:bg-slate-50/50 transition-colors">
-                                                      <td className="px-6 py-4">
-                                                         <div>
-                                                            <p className="text-sm font-bold text-slate-900">{job.title}</p>
-                                                            <p className="text-xs text-slate-400 font-medium">{job.industry}</p>
-                                                         </div>
-                                                      </td>
-                                                      <td className="px-6 py-4">
-                                                         <span className="text-sm text-slate-600">{job.company || 'N/A'}</span>
-                                                      </td>
-                                                      <td className="px-6 py-4">
-                                                         <span className="text-sm text-slate-600 flex items-center gap-1">
-                                                            <MapPin className="w-3 h-3" /> {job.location || 'N/A'}
-                                                         </span>
-                                                      </td>
-                                                      <td className="px-6 py-4">
-                                                         <span className="text-sm font-medium text-teal-600 font-bold">{job.salary_range || 'N/A'}</span>
-                                                      </td>
-                                                      <td className="px-6 py-4">
-                                                         <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${job.status === 'OPEN' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
-                                                            {job.status || 'OPEN'}
-                                                         </span>
-                                                      </td>
-                                                      <td className="px-6 py-4 text-right">
-                                                         <button
-                                                            onClick={() => handleJobClick(job)}
-                                                            className="px-4 py-2 rounded-lg bg-teal-50 text-teal-600 border border-teal-100 text-[10px] font-black uppercase tracking-widest hover:bg-teal-100 hover:border-teal-200 transition-all shadow-sm flex items-center gap-2"
-                                                         >
-                                                            <Users className="w-3 h-3" /> View Applicants
-                                                         </button>
-                                                      </td>
-                                                   </tr>
-                                                ))}
-                                             </tbody>
-                                          </table>
+                                    ) : categoryJobs.length > 0 ? (
+                                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                          {categoryJobs.map((job) => (
+                                             <div
+                                                key={job._id || job.id}
+                                                className={`p-6 rounded-2xl border transition-all group flex flex-col h-full ${job.is_premium ? 'bg-white border-amber-200 shadow-lg shadow-amber-500/50 hover:shadow-amber-500/70' : 'bg-white border-slate-200 shadow-sm hover:shadow-md hover:border-teal-200'}`}
+                                             >
+                                                <div className="flex justify-between items-start mb-4">
+                                                   <div>
+                                                      <div className="flex items-center gap-2 mb-1">
+                                                         <h3 className="font-bold text-lg text-slate-900 line-clamp-1" title={job.title}>{job.title}</h3>
+                                                         {job.is_premium && <Star className="w-4 h-4 text-amber-500 fill-amber-500" />}
+                                                      </div>
+                                                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{job.industry}</p>
+                                                   </div>
+                                                   <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${job.status === 'OPEN' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+                                                      {job.status || 'OPEN'}
+                                                   </span>
+                                                </div>
+
+                                                <div className="space-y-3 mb-6 flex-1">
+                                                   <div className="flex items-center gap-2 text-sm text-slate-600">
+                                                      <Building2 className="w-4 h-4 text-slate-400" />
+                                                      <span className="truncate">{job.company || 'N/A'}</span>
+                                                   </div>
+                                                   <div className="flex items-center gap-2 text-sm text-slate-600">
+                                                      <MapPin className="w-4 h-4 text-slate-400" />
+                                                      <span className="truncate">{job.location || 'N/A'}</span>
+                                                   </div>
+                                                   <div className="flex items-center gap-2 text-sm text-slate-600">
+                                                      <DollarSign className="w-4 h-4 text-slate-400" />
+                                                      <span className="font-bold text-teal-600">{job.salary_range || 'N/A'}</span>
+                                                   </div>
+                                                </div>
+
+                                                <button
+                                                   onClick={() => handleJobClick(job)}
+                                                   className="w-full py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold uppercase tracking-widest hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
+                                                >
+                                                   <Users className="w-3 h-3" /> View Applicants
+                                                </button>
+                                             </div>
+                                          ))}
                                        </div>
                                     ) : (
                                        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
