@@ -43,6 +43,9 @@ import Profile from './models/Profile.js';
 import Agency from './models/Agency.js';
 import JobRequest from './models/JobRequest.js';
 import Document from './models/Document.js';
+import Subscription from './models/Subscription.js';
+import Notification from './models/Notification.js';
+import notificationRoutes from './routes/notification_routes.js';
 
 // --- ROUTES ---
 
@@ -55,10 +58,13 @@ app.get('/api/health', (req, res) => {
     });
 });
 
+// NOTIFICATION ROUTES
+app.use('/api', notificationRoutes);
+
 // AUTH ROUTES
 app.post('/api/auth/register', async (req, res) => {
     try {
-        const { email, password, role, name, agencyName, skills, contact } = req.body;
+        const { email, password, role, name, agencyName, skills, contact, phone } = req.body;
 
         // Check if user exists
         const existingUser = await Profile.findOne({ email });
@@ -71,7 +77,7 @@ app.post('/api/auth/register', async (req, res) => {
             email,
             password, // NOTE: In production, hash this password with bcrypt!
             role,
-            contact_number: contact,
+            contact_number: contact || phone,
             agency_name: role === 'AGENT' ? agencyName : undefined,
             skills: role === 'CANDIDATE' ? skills : undefined,
             status: role === 'AGENT' ? 'PENDING' : 'ACTIVE' // Agents need admin approval
@@ -122,6 +128,7 @@ app.post('/api/auth/login', async (req, res) => {
                 email: user.email,
                 role: user.role,
                 agency_name: user.agency_name,
+                contact_number: user.contact_number,
                 status: user.status // Include status for approval check
             },
             requiresPasswordChange
@@ -194,10 +201,12 @@ app.put('/api/auth/password', async (req, res) => {
     try {
         const { userId, currentPassword, newPassword } = req.body;
 
-        // Find user
-        let user = await Profile.findById(userId);
-        if (!user) {
-            user = await Profile.findOne({ id: userId });
+        // Find user - First try by custom UUID id field, then by MongoDB ObjectId
+        let user = await Profile.findOne({ id: userId });
+
+        // If not found by custom id, try MongoDB _id (only if valid ObjectId format)
+        if (!user && mongoose.Types.ObjectId.isValid(userId)) {
+            user = await Profile.findById(userId);
         }
 
         if (!user) {
@@ -205,7 +214,6 @@ app.put('/api/auth/password', async (req, res) => {
         }
 
         // Verify current password
-        // Limit checks to prevent timing attacks slightly, though plain text comparison is the real issue here (should use bcrypt)
         const isMatch = user.password === currentPassword || user.temporaryPassword === currentPassword;
         if (!isMatch) {
             return res.status(400).json({ message: 'Current password is incorrect' });
@@ -220,6 +228,7 @@ app.put('/api/auth/password', async (req, res) => {
 
         res.json({ message: 'Password updated successfully' });
     } catch (err) {
+        console.error('Password update error:', err);
         res.status(500).json({ message: 'Failed to update password', error: err.message });
     }
 });
@@ -671,11 +680,33 @@ app.put('/api/jobs/:id/status', async (req, res) => {
             return res.status(404).json({ message: 'Job not found' });
         }
 
+        const previousStatus = job.status;
         job.status = status;
         await job.save();
 
+        // NOTIFICATION LOGIC: If job opened, notify subscribers
+        if (status === 'OPEN' && previousStatus !== 'OPEN') {
+            // Find subscriptions by matching jobId (try both custom ID and _id)
+            const subscribers = await Subscription.find({
+                jobId: { $in: [job.id, job._id.toString()] }
+            });
+
+            if (subscribers.length > 0) {
+                const notifications = subscribers.map(sub => ({
+                    userId: sub.userId,
+                    title: 'Job Alert: Position Re-opened!',
+                    message: `The job "${job.title}" at ${job.company} is now accepting applications again.`,
+                    type: 'JOB_ALERT',
+                    metadata: { jobId: job.id }
+                }));
+                await Notification.insertMany(notifications);
+                console.log(`Created ${notifications.length} alerts for job ${job.title}`);
+            }
+        }
+
         res.json({ message: `Job status updated to ${status}`, job });
     } catch (err) {
+        console.error("Error updating job status:", err);
         res.status(500).json({ message: 'Failed to update job status', error: err.message });
     }
 });
