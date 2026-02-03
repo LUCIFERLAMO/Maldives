@@ -873,6 +873,8 @@ const AdminDashboard = () => {
       headcount: '',
       description: '',
       requirements: '',
+      companyName: '',
+      address: '',
       required_documents: []
    });
    const [showSuccessNotification, setShowSuccessNotification] = useState(false);
@@ -1021,6 +1023,20 @@ const AdminDashboard = () => {
       const storedApps = JSON.parse(localStorage.getItem('maldives_agent_applications') || '[]');
       return [...storedApps, ...MOCK_NEW_PARTNER_APPS];
    });
+
+   // Agent Rejection Filter State
+   const [agentBlacklistSearchInput, setAgentBlacklistSearchInput] = useState('');
+   const [agentBlacklistSearchQuery, setAgentBlacklistSearchQuery] = useState('');
+   const [isAgentBlacklistSourceOpen, setIsAgentBlacklistSourceOpen] = useState(false);
+   const [isAgentBlacklistDurationOpen, setIsAgentBlacklistDurationOpen] = useState(false);
+   const [isAgentBlacklistFilterOpen, setIsAgentBlacklistFilterOpen] = useState(false);
+   const [agentBlacklistFilters, setAgentBlacklistFilters] = useState({
+      source: 'All', // 'Agency' or others if applicable
+      duration: 'All'
+   });
+
+   const handleAgentBlacklistSearch = () => setAgentBlacklistSearchQuery(agentBlacklistSearchInput);
+
    const [selectedApplication, setSelectedApplication] = useState(null);
    const [approvalStep, setApprovalStep] = useState('NONE');
 
@@ -1068,13 +1084,23 @@ const AdminDashboard = () => {
       const vacancy = {
          id: (jobs.length + 1).toString(),
          ...newVacancy,
+         company: newVacancy.companyName,
+         location: newVacancy.address,
+         salary_range: newVacancy.salary,
          postedDate: new Date().toISOString().split('T')[0],
          status: 'Current Opening',
          isReopened: false,
          requirements: newVacancy.requirements.split(',').map(r => r.trim())
       };
       setJobs([...jobs, vacancy]);
-      setNewVacancy({ title: '', industry: '', salary: '', headcount: '', description: '', requirements: '' });
+      // Update categoryJobs if the new vacancy belongs to the current category
+      if (typeof setCategoryJobs === 'function' && (!selectedCategory || vacancy.industry === selectedCategory)) {
+         setCategoryJobs(prev => [...prev, vacancy]);
+      } else if (typeof setCategoryJobs === 'function') {
+         // Fallback if logic is different, but for now assuming industry match
+      }
+
+      setNewVacancy({ title: '', industry: '', salary: '', headcount: '', description: '', requirements: '', companyName: '', address: '', required_documents: [] });
       setIsAddVacancyOpen(false);
       setShowSuccessNotification(true);
       setTimeout(() => setShowSuccessNotification(false), 3000);
@@ -1417,7 +1443,6 @@ const AdminDashboard = () => {
    };
 
 
-   // Filtering logic for Blacklisted Candidates
    const filteredBlacklistedCandidates = [...auditQueue, ...agentResumes].filter(candidate => {
       // Must be REJECTED
       if (candidate.status !== 'REJECTED') return false;
@@ -1454,10 +1479,61 @@ const AdminDashboard = () => {
       return true;
    });
 
+   // Filtering logic for Agent Rejections
+   const filteredAgentRejections = partnerApplications.filter(app => {
+      // Must be REJECTED
+      if (app.status !== 'REJECTED') return false;
+
+      // Search Filter
+      if (agentBlacklistSearchQuery) {
+         const q = agentBlacklistSearchQuery.toLowerCase();
+         // Match Name, Agency, Region
+         const matches = app.applicant.toLowerCase().includes(q) || app.agency.toLowerCase().includes(q) || app.region.toLowerCase().includes(q);
+         if (!matches) return false;
+      }
+
+      // Source Filter (Agency is inherent, but we can filter by Agency Name presence or specific logic if needed. 
+      // For now replicating generic behavior or filtering by agency name if 'source' selected was specific, 
+      // but keeping it simple as per user request to be "same as first table" which had 'Agency Ref' vs 'Direct'. 
+      // Since these are ALL Agents, maybe source filter is less relevant or should filter by 'Agency Name' vs 'Individual Agent'? 
+      // Let's stick to the requested dropdowns. 
+      // Actually, partner apps usually come from Agencies. 
+      // If the user wants "same options", we might just show them but they might be all "Agency Ref". 
+      // Better: Filter by Agency Name if user selects specific agencies? 
+      // Or just keep it simpler: If user selects 'Direct', show nothing? 
+      // Let's implement generic logic:
+      // If filter is 'Agencies', match all.
+      // If 'Direct', match none (since they are agents). 
+      // This is technically correct based on "same options".
+      if (agentBlacklistFilters.source !== 'All') {
+         if (agentBlacklistFilters.source === 'Direct Application') return false; // Agents are not direct
+         // If 'Agency Ref', all pass.
+      }
+
+      // Duration Filter (Assuming app has a date field, if not, we might need one. 
+      // Mock data `MOCK_NEW_PARTNER_APPS` doesn't explicitly show date in previous view. 
+      // I'll assume `submittedDate` or similar exists or fallback to passing all if missing for now/safety.)
+      if (agentBlacklistFilters.duration !== 'All' && agentBlacklistFilters.duration !== 'All Time') {
+         // Fallback date or real date
+         const date = app.submittedDate || app.date || new Date().toISOString();
+         const appliedTime = new Date(date).getTime();
+         const now = Date.now();
+         const diffHrs = (now - appliedTime) / (1000 * 60 * 60);
+         const diffDays = diffHrs / 24;
+
+         if (agentBlacklistFilters.duration === 'Last 24 Hours' && diffHrs > 24) return false;
+         if (agentBlacklistFilters.duration === 'Last 7 Days' && diffDays > 7) return false;
+         if (agentBlacklistFilters.duration === 'Last 30 Days' && diffDays > 30) return false;
+         if (agentBlacklistFilters.duration === 'Last 3 Months' && diffDays > 90) return false;
+      }
+
+      return true;
+   });
+
    const getPageTitle = () => {
       switch (activeTab) {
          case 'overview': return 'Dashboard Overview';
-         case 'audit': return 'All Resumes';
+         case 'audit': return 'Audit Queue';
          case 'vacancies': return selectedJob ? selectedJob.title : (selectedCategory ? selectedCategory : 'Vacancy Management');
          case 'agents': return 'Agent Ecosystem';
          case 'create_profile': return 'Account Provisioning';
@@ -1752,7 +1828,7 @@ const AdminDashboard = () => {
                               {/* Custom Stats Grid - GOVERNANCE HUB */}
                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                  {[
-                                    { label: "ALL RESUMES", value: auditQueue.length.toString(), icon: null, action: () => setActiveTab('audit') },
+                                    { label: "AUDIT QUEUE", value: auditQueue.length.toString(), icon: null, action: () => setActiveTab('audit') },
                                     { label: "VACANCIES", value: jobs.length.toString(), icon: null, action: () => setActiveTab('vacancies') },
                                     { label: "AGENT FLOW", value: pendingAgencies.length.toString(), icon: null, action: () => setActiveTab('agents') },
                                     { label: "BLACKLISTED", value: allApplications.filter(a => a.status === 'Blacklisted').length.toString(), icon: null, textRed: true, action: () => setActiveTab('blacklisted') },
@@ -1857,7 +1933,7 @@ const AdminDashboard = () => {
                            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                               <div className="bg-white rounded-xl border border-slate-200 shadow-sm relative">
                                  <div className="p-6 border-b border-slate-100 flex justify-between items-center relative rounded-t-xl">
-                                    <h3 className="font-bold text-slate-900 text-2xl">All Resumes</h3>
+                                    <h3 className="font-bold text-slate-900 text-2xl">Audit Queue</h3>
                                     <div className="flex items-center gap-3">
                                        <div className="relative">
                                           <input
@@ -2107,7 +2183,19 @@ const AdminDashboard = () => {
                                                 <div className="p-1">
                                                    <button
                                                       onClick={() => {
-                                                         setNewVacancy(prev => ({ ...prev, industry: selectedCategory }));
+                                                         setNewVacancy({
+                                                            title: '',
+                                                            industry: selectedCategory,
+                                                            salary: '',
+                                                            headcount: '',
+                                                            description: '',
+                                                            headcount: '',
+                                                            description: '',
+                                                            requirements: '',
+                                                            companyName: '',
+                                                            address: '',
+                                                            required_documents: []
+                                                         });
                                                          setIsAddVacancyOpen(true);
                                                          setIsManageJobMenuOpen(false);
                                                       }}
@@ -2554,7 +2642,7 @@ const AdminDashboard = () => {
                                           : 'bg-white text-slate-400 hover:text-slate-600'
                                           }`}
                                     >
-                                       <UserPlus className="w-4 h-4" /> New Applications
+                                       <UserPlus className="w-4 h-4" /> New Agents Applications
                                     </button>
                                  </div>
 
@@ -3163,6 +3251,208 @@ const AdminDashboard = () => {
                                        </table>
                                     </div>
                                  </div>
+
+
+                                 {/* NEW: Application Rejections (Agents) Table */}
+                                 <div className="mt-8 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                                    <div className="p-6 border-b border-slate-100 flex justify-between items-center gap-4">
+                                       <h3 className="font-bold text-slate-900 text-sm uppercase tracking-widest text-red-500 flex items-center gap-2 whitespace-nowrap">
+                                          <Users className="w-4 h-4" /> Application Rejections (Agents)
+                                       </h3>
+
+                                       <div className="flex items-center gap-3 w-full justify-end">
+                                          <div className="relative flex-1 max-w-md">
+                                             <input
+                                                type="text"
+                                                placeholder="Search rejected agent apps..."
+                                                className="w-full pl-4 pr-10 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                                                value={agentBlacklistSearchInput}
+                                                onChange={(e) => setAgentBlacklistSearchInput(e.target.value)}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleAgentBlacklistSearch()}
+                                             />
+                                             <button
+                                                onClick={handleAgentBlacklistSearch}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 transition-colors"
+                                             >
+                                                <Search className="w-4 h-4" />
+                                             </button>
+                                          </div>
+
+                                          <div className="flex items-center gap-2">
+                                             {/* Source Dropdown */}
+                                             <div className="relative">
+                                                <div className="flex items-center gap-0">
+                                                   <button
+                                                      onClick={() => {
+                                                         setIsAgentBlacklistSourceOpen(!isAgentBlacklistSourceOpen);
+                                                         setIsAgentBlacklistDurationOpen(false);
+                                                      }}
+                                                      className={`px-4 py-2 rounded-lg border text-xs font-bold transition-all flex items-center gap-2 ${agentBlacklistFilters.source !== 'All' ? 'bg-red-50 text-red-600 border-red-200 rounded-r-none border-r-0' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}
+                                                   >
+                                                      {agentBlacklistFilters.source === 'All' ? 'Source' : agentBlacklistFilters.source}
+                                                      <ChevronDown className={`w-3 h-3 transition-transform ${isAgentBlacklistSourceOpen ? 'rotate-180' : ''}`} />
+                                                   </button>
+                                                   {agentBlacklistFilters.source !== 'All' && (
+                                                      <button
+                                                         onClick={() => setAgentBlacklistFilters(prev => ({ ...prev, source: 'All' }))}
+                                                         className="h-[34px] px-2 border border-red-200 bg-red-50 text-red-600 rounded-r-lg hover:bg-red-100 transition-colors flex items-center justify-center border-l-0"
+                                                      >
+                                                         <X className="w-3 h-3" />
+                                                      </button>
+                                                   )}
+                                                </div>
+                                                {isAgentBlacklistSourceOpen && (
+                                                   <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                                      {['Direct Application', 'Agency Ref', 'All'].map(source => (
+                                                         <button
+                                                            key={source}
+                                                            onClick={() => {
+                                                               setAgentBlacklistFilters(prev => ({ ...prev, source }));
+                                                               setIsAgentBlacklistSourceOpen(false);
+                                                            }}
+                                                            className={`w-full text-left px-4 py-2.5 text-xs font-bold transition-colors ${agentBlacklistFilters.source === source ? 'bg-red-50 text-red-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                                                         >
+                                                            {source}
+                                                         </button>
+                                                      ))}
+                                                   </div>
+                                                )}
+                                             </div>
+
+                                             {/* Duration Dropdown */}
+                                             <div className="relative">
+                                                <div className="flex items-center gap-0">
+                                                   <button
+                                                      onClick={() => {
+                                                         setIsAgentBlacklistDurationOpen(!isAgentBlacklistDurationOpen);
+                                                         setIsAgentBlacklistSourceOpen(false);
+                                                         setIsAgentBlacklistFilterOpen(false);
+                                                      }}
+                                                      className={`px-4 py-2 rounded-lg border text-xs font-bold transition-all flex items-center gap-2 ${agentBlacklistFilters.duration !== 'All' ? 'bg-red-50 text-red-600 border-red-200 rounded-r-none border-r-0' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}
+                                                   >
+                                                      {agentBlacklistFilters.duration === 'All' ? 'Duration' : (agentBlacklistFilters.duration === 'All Time' ? 'All Time' : agentBlacklistFilters.duration)}
+                                                      <ChevronDown className={`w-3 h-3 transition-transform ${isAgentBlacklistDurationOpen ? 'rotate-180' : ''}`} />
+                                                   </button>
+                                                   {agentBlacklistFilters.duration !== 'All' && agentBlacklistFilters.duration !== 'All Time' && (
+                                                      <button
+                                                         onClick={() => setAgentBlacklistFilters(prev => ({ ...prev, duration: 'All' }))}
+                                                         className="h-[34px] px-2 border border-red-200 bg-red-50 text-red-600 rounded-r-lg hover:bg-red-100 transition-colors flex items-center justify-center border-l-0"
+                                                      >
+                                                         <X className="w-3 h-3" />
+                                                      </button>
+                                                   )}
+                                                </div>
+                                                {isAgentBlacklistDurationOpen && (
+                                                   <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                                      {['Last 24 Hours', 'Last 7 Days', 'Last 30 Days', 'Last 3 Months', 'All Time'].map(duration => (
+                                                         <button
+                                                            key={duration}
+                                                            onClick={() => {
+                                                               setAgentBlacklistFilters(prev => ({ ...prev, duration }));
+                                                               setIsAgentBlacklistDurationOpen(false);
+                                                            }}
+                                                            className={`w-full text-left px-4 py-2.5 text-xs font-bold transition-colors ${agentBlacklistFilters.duration === duration ? 'bg-red-50 text-red-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                                                         >
+                                                            {duration}
+                                                         </button>
+                                                      ))}
+                                                   </div>
+                                                )}
+                                             </div>
+
+                                             {/* Advanced Filter Icon */}
+                                             <div className="relative">
+                                                <button
+                                                   onClick={() => {
+                                                      setIsAgentBlacklistFilterOpen(!isAgentBlacklistFilterOpen);
+                                                      setIsAgentBlacklistSourceOpen(false);
+                                                      setIsAgentBlacklistDurationOpen(false);
+                                                   }}
+                                                   className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${isAgentBlacklistFilterOpen ? 'bg-red-50 text-red-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                                                >
+                                                   <Filter className="w-4 h-4" />
+                                                </button>
+                                                {isAgentBlacklistFilterOpen && (
+                                                   <div className="absolute right-0 top-full mt-4 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                                      <div className="p-6 space-y-6">
+                                                         <div className="space-y-3">
+                                                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Quick Filters</h4>
+                                                            <button
+                                                               onClick={() => {
+                                                                  setAgentBlacklistFilters({ source: 'All', duration: 'All' });
+                                                                  setIsAgentBlacklistFilterOpen(false);
+                                                               }}
+                                                               className="w-full py-2 rounded-lg bg-red-50 text-red-600 text-[10px] font-black uppercase tracking-widest hover:bg-red-100 transition-colors"
+                                                            >
+                                                               Reset All
+                                                            </button>
+                                                         </div>
+                                                      </div>
+                                                   </div>
+                                                )}
+                                             </div>
+                                          </div>
+                                       </div>
+
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                       <table className="w-full text-left">
+                                          <thead>
+                                             <tr className="bg-red-50/50 border-b border-red-100">
+                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest">Agent Name</th>
+                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest">Agency</th>
+                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest">Region</th>
+                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest">Status</th>
+                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest text-right">Review</th>
+                                             </tr>
+                                          </thead>
+                                          <tbody className="divide-y divide-slate-50">
+                                             {filteredAgentRejections.length > 0 ? (
+                                                filteredAgentRejections.map((app) => (
+                                                   <tr key={app.id} className="hover:bg-slate-50/50 transition-colors">
+                                                      <td className="px-6 py-4">
+                                                         <div>
+                                                            <p className="text-sm font-bold text-slate-900">{app.applicant}</p>
+                                                            <p className="text-xs text-slate-400 font-medium">{app.email}</p>
+                                                         </div>
+                                                      </td>
+                                                      <td className="px-6 py-4">
+                                                         <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full uppercase tracking-wider">
+                                                            {app.agency}
+                                                         </span>
+                                                      </td>
+                                                      <td className="px-6 py-4">
+                                                         <div className="flex items-center gap-2 text-slate-500 text-xs font-bold">
+                                                            <MapPin className="w-4 h-4 text-slate-300" />
+                                                            {app.region}
+                                                         </div>
+                                                      </td>
+                                                      <td className="px-6 py-4">
+                                                         <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border bg-slate-100 text-slate-500 border-slate-200">
+                                                            REJECTED
+                                                         </span>
+                                                      </td>
+                                                      <td className="px-6 py-4 text-right">
+                                                         <button
+                                                            onClick={() => setSelectedApplication(app)}
+                                                            className="w-10 h-10 rounded-full bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 flex items-center justify-center transition-all ml-auto shadow-sm"
+                                                         >
+                                                            <Eye className="w-4 h-4" />
+                                                         </button>
+                                                      </td>
+                                                   </tr>
+                                                ))
+                                             ) : (
+                                                <tr>
+                                                   <td colSpan={5} className="px-6 py-12 text-center text-slate-400 text-sm font-medium">
+                                                      No rejected agent applications found.
+                                                   </td>
+                                                </tr>
+                                             )}
+                                          </tbody>
+                                       </table>
+                                    </div>
+                                 </div>
                               </div>
                            )
                         }
@@ -3183,8 +3473,8 @@ const AdminDashboard = () => {
                      </div>
                   </div>
                </main>
-            </div>
-         </div>
+            </div >
+         </div >
 
 
          {/* MODAL */}
@@ -3338,12 +3628,10 @@ const AdminDashboard = () => {
                            <div className="space-y-2">
                               <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Field / Industry</label>
                               <input
-                                 required
                                  type="text"
                                  value={newVacancy.industry}
-                                 onChange={(e) => setNewVacancy({ ...newVacancy, industry: e.target.value })}
-                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all"
-                                 placeholder="Hospitality"
+                                 readOnly
+                                 className="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 cursor-not-allowed outline-none"
                               />
                            </div>
                            <div className="space-y-2">
@@ -3366,6 +3654,28 @@ const AdminDashboard = () => {
                                  onChange={(e) => setNewVacancy({ ...newVacancy, headcount: e.target.value })}
                                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all"
                                  placeholder="e.g. 5"
+                              />
+                           </div>
+                           <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Company Name</label>
+                              <input
+                                 required
+                                 type="text"
+                                 value={newVacancy.companyName}
+                                 onChange={(e) => setNewVacancy({ ...newVacancy, companyName: e.target.value })}
+                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all"
+                                 placeholder="e.g. Grand Maldives Resort"
+                              />
+                           </div>
+                           <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Address</label>
+                              <input
+                                 required
+                                 type="text"
+                                 value={newVacancy.address}
+                                 onChange={(e) => setNewVacancy({ ...newVacancy, address: e.target.value })}
+                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all"
+                                 placeholder="e.g. Male via Ferry"
                               />
                            </div>
                         </div>
