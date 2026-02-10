@@ -1355,6 +1355,9 @@ const AdminDashboard = () => {
 
 
    const filteredPartnerApplications = partnerApplications.filter(app => {
+      // Exclude REJECTED (Moved to Blacklist)
+      if (app.status === 'REJECTED') return false;
+
       // Search Filter
       if (appSearchQuery) {
          const q = appSearchQuery.toLowerCase();
@@ -3208,7 +3211,7 @@ const AdminDashboard = () => {
                                                          </div>
                                                       </td>
                                                       <td className="px-6 py-4">
-                                                         <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full uppercase tracking-wider">
+                                                         <span className="text-sm font-bold text-slate-700">
                                                             {candidate.role}
                                                          </span>
                                                       </td>
@@ -3279,45 +3282,7 @@ const AdminDashboard = () => {
                                           </div>
 
                                           <div className="flex items-center gap-2">
-                                             {/* Source Dropdown */}
-                                             <div className="relative">
-                                                <div className="flex items-center gap-0">
-                                                   <button
-                                                      onClick={() => {
-                                                         setIsAgentBlacklistSourceOpen(!isAgentBlacklistSourceOpen);
-                                                         setIsAgentBlacklistDurationOpen(false);
-                                                      }}
-                                                      className={`px-4 py-2 rounded-lg border text-xs font-bold transition-all flex items-center gap-2 ${agentBlacklistFilters.source !== 'All' ? 'bg-red-50 text-red-600 border-red-200 rounded-r-none border-r-0' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}
-                                                   >
-                                                      {agentBlacklistFilters.source === 'All' ? 'Source' : agentBlacklistFilters.source}
-                                                      <ChevronDown className={`w-3 h-3 transition-transform ${isAgentBlacklistSourceOpen ? 'rotate-180' : ''}`} />
-                                                   </button>
-                                                   {agentBlacklistFilters.source !== 'All' && (
-                                                      <button
-                                                         onClick={() => setAgentBlacklistFilters(prev => ({ ...prev, source: 'All' }))}
-                                                         className="h-[34px] px-2 border border-red-200 bg-red-50 text-red-600 rounded-r-lg hover:bg-red-100 transition-colors flex items-center justify-center border-l-0"
-                                                      >
-                                                         <X className="w-3 h-3" />
-                                                      </button>
-                                                   )}
-                                                </div>
-                                                {isAgentBlacklistSourceOpen && (
-                                                   <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                                      {['Direct Application', 'Agency Ref', 'All'].map(source => (
-                                                         <button
-                                                            key={source}
-                                                            onClick={() => {
-                                                               setAgentBlacklistFilters(prev => ({ ...prev, source }));
-                                                               setIsAgentBlacklistSourceOpen(false);
-                                                            }}
-                                                            className={`w-full text-left px-4 py-2.5 text-xs font-bold transition-colors ${agentBlacklistFilters.source === source ? 'bg-red-50 text-red-600' : 'text-slate-600 hover:bg-slate-50'}`}
-                                                         >
-                                                            {source}
-                                                         </button>
-                                                      ))}
-                                                   </div>
-                                                )}
-                                             </div>
+
 
                                              {/* Duration Dropdown */}
                                              <div className="relative">
@@ -3417,7 +3382,7 @@ const AdminDashboard = () => {
                                                          </div>
                                                       </td>
                                                       <td className="px-6 py-4">
-                                                         <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full uppercase tracking-wider">
+                                                         <span className="text-sm font-bold text-slate-700">
                                                             {app.agency}
                                                          </span>
                                                       </td>
@@ -3435,7 +3400,7 @@ const AdminDashboard = () => {
                                                       <td className="px-6 py-4 text-right">
                                                          <button
                                                             onClick={() => setSelectedApplication(app)}
-                                                            className="w-10 h-10 rounded-full bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 flex items-center justify-center transition-all ml-auto shadow-sm"
+                                                            className="w-10 h-10 rounded-full bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition-all ml-auto shadow-sm"
                                                          >
                                                             <Eye className="w-4 h-4" />
                                                          </button>
