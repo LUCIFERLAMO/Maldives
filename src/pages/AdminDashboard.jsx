@@ -295,12 +295,79 @@ const AdminDashboard = () => {
          requirements: ["PADI CERTIFICATION", "FIRST AID CERTIFIED", "3 YEARS EXPERIENCE"]
       }
    ]);
-   const [jobApplications, setJobApplications] = useState([]);
+   // Removed duplicate jobApplications declaration
    const [isLoadingJobs, setIsLoadingJobs] = useState(false);
    const [isLoadingApplications, setIsLoadingApplications] = useState(false);
    const [agentSubTab, setAgentSubTab] = useState('vacancies');
+
+   // --- DATA MERGING LOGIC ---
+   // 1. Merge MOCK_APPLICATIONS into Audit Queue
+   const getMergedAuditQueue = () => {
+      const merged = [...MOCK_AUDIT_QUEUE];
+      MOCK_APPLICATIONS.forEach(app => {
+         // Avoid duplicates if already exists (naive check by name/email if needed, but IDs are different)
+         // Map Application to Audit Item
+         const job = MOCK_JOBS.find(j => j.id === app.jobId);
+         merged.push({
+            id: `merged-app-${app.id}`,
+            name: app.candidateName,
+            email: app.email,
+            whatsapp: app.contactNumber,
+            nationality: 'Unknown', // Not in App data
+            category: job ? (job.industry || job.category) : 'Other',
+            role: job ? job.title : 'Applicant',
+            agency: app.agentName || 'Direct',
+            region: app.address || 'Unknown',
+            source: app.source,
+            status: (['APPLIED', 'Applied', 'applied'].includes(app.status)) ? 'PROCESSING' : app.status, // Normalize status
+            statusColor: (['APPLIED', 'Applied', 'applied'].includes(app.status) || app.status === 'PROCESSING')
+               ? 'bg-purple-50 text-purple-600 border-purple-100'
+               : (app.status === 'SELECTED' || app.status === 'Selected' || app.status === 'APPROVED')
+                  ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                  : (['HOLD', 'ON HOLD', 'On Hold'].includes(app.status))
+                     ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                     : (app.status === 'REJECTED')
+                        ? 'bg-red-50 text-red-600 border-red-100'
+                        : 'bg-slate-50 text-slate-600 border-slate-100', // Default
+            documents: {},
+            appliedDate: app.appliedDate
+         });
+      });
+      return merged;
+   };
+
+   // 2. Merge MOCK_AUDIT_QUEUE into Job Applications (for Vacancy View)
+   const getMergedApplications = () => {
+      const merged = [...MOCK_APPLICATIONS];
+      MOCK_AUDIT_QUEUE.forEach(candidate => {
+         // Find a suitable job based on Category/Industry
+         // This is a "best guess" to ensuring visibility in Vacancy Manager
+         const job = MOCK_JOBS.find(j => (j.industry === candidate.category || j.category === candidate.category) && j.status === 'OPEN');
+
+         if (job) {
+            merged.push({
+               id: `merged-audit-${candidate.id}`,
+               jobId: job.id, // Assign to first matching job in category
+               candidateName: candidate.name,
+               email: candidate.email,
+               contactNumber: candidate.whatsapp,
+               status: candidate.status === 'PROCESSING' ? 'Applied' : candidate.status,
+               appliedDate: candidate.appliedDate,
+               source: candidate.source,
+               agentName: candidate.agency,
+               address: candidate.region,
+               hasResume: true,
+               hasCerts: true,
+               hasPassport: true
+            });
+         }
+      });
+      return merged;
+   };
+
    const [agentResumes, setAgentResumes] = useState(MOCK_AGENT_RESUMES);
-   const [auditQueue, setAuditQueue] = useState(MOCK_AUDIT_QUEUE);
+   const [auditQueue, setAuditQueue] = useState(getMergedAuditQueue());
+   const [jobApplications, setJobApplications] = useState(getMergedApplications());
 
    // Agency Approval State
    const [pendingAgencies, setPendingAgencies] = useState([]);
@@ -1073,22 +1140,48 @@ const AdminDashboard = () => {
       });
 
       // If rejected and NOT in audit queue independently, add them (moves to blacklist view)
-      if (!candidateFoundInAudit && status === 'Rejected') {
+      if (!candidateFoundInAudit && (status === 'Rejected' || status === 'REJECTED')) {
          updatedAuditQueue.push({
             id: selectedResume.id,
             name: selectedResume.name,
             email: selectedResume.email,
             role: selectedResume.role,
             agency: selectedResume.agency,
-            nationality: selectedResume.nationality, // Ensure we keep extra details if needed
+            nationality: selectedResume.nationality || 'Unknown', // Ensure we keep extra details if needed
             status: 'REJECTED',
             statusColor: 'bg-red-50 text-red-600 border-red-100',
-            source: 'Direct', // Default or derived from resume data if available
-            appliedDate: new Date().toISOString()
+            source: selectedResume.source || 'Direct', // Default or derived from resume data if available
+            appliedDate: selectedResume.appliedDate || new Date().toISOString(),
+            // Ensure other fields are present to avoid rendering errors
+            region: selectedResume.region || selectedResume.address || 'Unknown',
+            category: selectedResume.category || 'Other'
          });
       }
 
       setAuditQueue(updatedAuditQueue);
+
+      // ALSO UPDATE jobApplications state if the candidate exists there (for Vacancy Manager view)
+      setJobApplications(prev => prev.map(app => {
+         const matchesId = (app.id && app.id === selectedResume.id) || (app._id && app._id === selectedResume.id);
+         if (matchesId) {
+            let statusColor = '';
+            const finalStatus = status === 'Rejected' ? 'REJECTED' : status === 'On Hold' ? 'ON HOLD' : status.toUpperCase();
+
+            // Match colors to updated standard
+            if (finalStatus === 'SELECTED' || finalStatus === 'APPROVED') {
+               statusColor = 'bg-emerald-50 text-emerald-600 border-emerald-100';
+            } else if (finalStatus === 'REJECTED') {
+               statusColor = 'bg-red-50 text-red-600 border-red-100';
+            } else if (finalStatus === 'ON HOLD' || finalStatus === 'HOLD') {
+               statusColor = 'bg-yellow-50 text-yellow-700 border-yellow-200';
+            } else if (finalStatus === 'PROCESSING') {
+               statusColor = 'bg-purple-50 text-purple-600 border-purple-100';
+            }
+
+            return { ...app, status: finalStatus, statusColor };
+         }
+         return app;
+      }));
 
       setSelectedResume(null);
       setIsBlacklistReview(false);
@@ -1480,7 +1573,7 @@ const AdminDashboard = () => {
 
    const filteredAuditQueue = auditQueue.filter(candidate => {
       // Exclude Rejected (Moved to Blacklist)
-      if (candidate.status === 'REJECTED') return false;
+      if (candidate.status?.toUpperCase() === 'REJECTED') return false;
 
       // Search Filter
       if (auditSearchQuery) {
@@ -1528,9 +1621,28 @@ const AdminDashboard = () => {
    };
 
 
-   const filteredBlacklistedCandidates = [...auditQueue, ...agentResumes].filter(candidate => {
-      // Must be REJECTED
-      if (candidate.status !== 'REJECTED') return false;
+   const filteredBlacklistedCandidates = (() => {
+      // 1. Combine all sources
+      const allCandidates = [...auditQueue, ...agentResumes, ...jobApplications];
+
+      // 2. Filter for REJECTED status
+      const rejected = allCandidates.filter(c => c.status === 'REJECTED' || c.status === 'Rejected');
+
+      // 3. Deduplicate by ID
+      const uniqueRejectedMap = new Map();
+      rejected.forEach(c => {
+         const id = c.id || c._id;
+         if (id && !uniqueRejectedMap.has(id)) {
+            uniqueRejectedMap.set(id, c);
+         }
+      });
+
+      return Array.from(uniqueRejectedMap.values());
+   })().filter(candidate => {
+      // Logic already filtered for REJECTED above, but keeping structure for search/other filters relies on 'candidate' checks below.
+      // Actually, let's keep the existing filter logic structure but apply it to the unique rejected list.
+
+      // Search Filter
 
       // Search Filter
       if (blacklistSearchQuery) {
@@ -2166,13 +2278,13 @@ const AdminDashboard = () => {
                                                       <span className="text-sm font-medium text-slate-600">{request.source || 'Direct'}</span>
                                                    </td>
                                                    <td className="px-6 py-4">
-                                                      <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${request.status === 'PROCESSING' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                                                      <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${(request.status === 'PROCESSING' || request.status === 'APPLIED' || request.status === 'Applied') ? 'bg-purple-50 text-purple-600 border-purple-100' :
                                                          request.status === 'REJECTED' ? 'bg-red-50 text-red-600 border-red-100' :
-                                                            request.status === 'HOLD' || request.status === 'ON HOLD' ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                                                               request.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                                            request.status === 'HOLD' || request.status === 'ON HOLD' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                                               (request.status === 'APPROVED' || request.status === 'Selected' || request.status === 'SELECTED') ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
                                                                   'bg-slate-50 text-slate-600 border-slate-100'
                                                          }`}>
-                                                         {request.status}
+                                                         {(request.status === 'APPLIED' || request.status === 'Applied') ? 'PROCESSING' : request.status}
                                                       </span>
                                                    </td>
                                                    <td className="px-6 py-4 text-right">
@@ -2608,8 +2720,9 @@ const AdminDashboard = () => {
                                                          <td className="px-6 py-4 text-right">
                                                             <button
                                                                onClick={() => handleViewApplication(app)}
-                                                               className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-bold uppercase tracking-widest rounded-lg transition-colors shadow-sm">
-                                                               View Details
+                                                               className="px-4 py-2 rounded-lg bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20 flex items-center gap-2"
+                                                            >
+                                                               <Eye className="w-3 h-3" /> VIEW DETAILS
                                                             </button>
                                                          </td>
                                                       </tr>
@@ -2835,9 +2948,9 @@ const AdminDashboard = () => {
                                                          <td className="px-6 py-8 text-center align-middle">
                                                             <button
                                                                onClick={() => setSelectedVacancy(job)}
-                                                               className="px-6 py-3 rounded-lg border border-slate-200 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:border-teal-600 hover:text-teal-600 hover:bg-teal-50 transition-all"
+                                                               className="px-6 py-3 rounded-lg bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20 flex items-center justify-center gap-2"
                                                             >
-                                                               View Details
+                                                               <Eye className="w-3 h-3" /> VIEW DETAILS
                                                             </button>
                                                          </td>
                                                          <td className="px-6 py-8 text-right align-middle">
@@ -2972,9 +3085,9 @@ const AdminDashboard = () => {
                                                          <td className="px-6 py-8 text-right align-middle">
                                                             <button
                                                                onClick={() => setSelectedResume(resume)}
-                                                               className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-teal-50 hover:text-teal-600 transition-all inline-flex ml-auto"
+                                                               className="px-4 py-2 rounded-lg bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20 flex items-center gap-2 ml-auto"
                                                             >
-                                                               <Eye className="w-4 h-4" />
+                                                               <Eye className="w-3 h-3" /> VIEW DETAILS
                                                             </button>
                                                          </td>
                                                       </tr>
@@ -3095,9 +3208,9 @@ const AdminDashboard = () => {
                                                          <td className="px-6 py-8 text-right align-middle">
                                                             <button
                                                                onClick={() => setSelectedApplication(app)}
-                                                               className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-teal-50 hover:text-teal-600 transition-all inline-flex ml-auto"
+                                                               className="px-4 py-2 rounded-lg bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20 flex items-center gap-2 ml-auto"
                                                             >
-                                                               <Eye className="w-4 h-4" />
+                                                               <Eye className="w-3 h-3" /> VIEW DETAILS
                                                             </button>
                                                          </td>
                                                       </tr>
@@ -3311,16 +3424,16 @@ const AdminDashboard = () => {
                                                          </div>
                                                       </td>
                                                       <td className="px-6 py-4">
-                                                         <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${candidate.status === 'REJECTED' ? 'bg-red-50 text-red-600 border-red-100' : candidate.statusColor}`}>
+                                                         <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${(candidate.status?.toUpperCase() === 'REJECTED' || candidate.status === 'Rejected') ? 'bg-red-50 text-red-600 border-red-100' : candidate.statusColor}`}>
                                                             {candidate.status}
                                                          </span>
                                                       </td>
                                                       <td className="px-6 py-4 text-right">
                                                          <button
                                                             onClick={() => { setSelectedResume(candidate); setIsBlacklistReview(true); }}
-                                                            className="w-10 h-10 rounded-full bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-600 flex items-center justify-center transition-all ml-auto shadow-sm"
+                                                            className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20 flex items-center gap-2 ml-auto"
                                                          >
-                                                            <Eye className="w-4 h-4" />
+                                                            <Eye className="w-3 h-3" /> VIEW DETAILS
                                                          </button>
                                                       </td>
                                                    </tr>
@@ -3482,9 +3595,9 @@ const AdminDashboard = () => {
                                                       <td className="px-6 py-4 text-right">
                                                          <button
                                                             onClick={() => setSelectedApplication(app)}
-                                                            className="w-10 h-10 rounded-full bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-600 flex items-center justify-center transition-all ml-auto shadow-sm"
+                                                            className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20 flex items-center gap-2 ml-auto"
                                                          >
-                                                            <Eye className="w-4 h-4" />
+                                                            <Eye className="w-3 h-3" /> VIEW DETAILS
                                                          </button>
                                                       </td>
                                                    </tr>
