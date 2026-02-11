@@ -64,7 +64,7 @@ const MOCK_AGENT_RESUMES = [
       role: 'Sous Chef',
       agency: 'GLOBAL TALENT',
       status: 'REJECTED',
-      statusColor: 'bg-slate-100 text-slate-500 border-slate-200',
+      statusColor: 'bg-red-50 text-red-600 border-red-100', // Standardized Red Color
       documents: {
          resume: 'Amit_CV.pdf',
          passport: 'Passport_Amit.pdf',
@@ -463,12 +463,34 @@ const AdminDashboard = () => {
                   id: app._id || app.id
                }));
                setAllApplications(mappedApps);
+
+               setAllApplications(mappedApps);
+
+               // FIX: Populate Audit Queue from Fetched Applications (Persist Rejections)
+               setAuditQueue(prev => {
+                  const existingIds = new Set(prev.map(p => p.id || p._id));
+                  const rejectedAppsFromDB = mappedApps.filter(app =>
+                     (app.status === 'Rejected' || app.status === 'REJECTED') &&
+                     !existingIds.has(app.id || app._id)
+                  ).map(app => ({
+                     ...app,
+                     role: app.jobTitle || 'Applicant', // Ensure role fallback
+                     status: 'REJECTED',
+                     statusColor: 'bg-red-50 text-red-600 border-red-100'
+                  }));
+
+                  if (rejectedAppsFromDB.length > 0) {
+                     return [...prev, ...rejectedAppsFromDB];
+                  }
+                  return prev;
+               });
             }
          }
       } catch (error) {
          console.error('Error fetching all admin data:', error);
       } finally {
          if (showLoading) setIsLoadingJobs(false);
+
       }
    };
 
@@ -593,6 +615,29 @@ const AdminDashboard = () => {
          if (response.ok) {
             // Refresh applications list
             fetchApplicationsByJob(selectedJobId);
+
+            // IF REJECTED: Add to Audit Queue (Blacklist) - Sync with Backend Success
+            if (action === 'reject') {
+               const rejectedApp = jobApplications.find(app => app.id === appId || app._id === appId);
+               if (rejectedApp) {
+                  setAuditQueue(prev => {
+                     // Check if already exists
+                     if (prev.some(c => c.id === rejectedApp.id || c._id === rejectedApp.id)) {
+                        return prev.map(c => (c.id === rejectedApp.id || c._id === rejectedApp.id) ? { ...c, status: 'REJECTED' } : c);
+                     }
+                     // Add new
+                     return [...prev, {
+                        ...rejectedApp,
+                        id: rejectedApp.id || rejectedApp._id,
+                        name: rejectedApp.candidateName || rejectedApp.name,
+                        role: selectedJobTitle || rejectedApp.jobTitle || 'Applicant',
+                        status: 'REJECTED',
+                        statusColor: 'bg-red-50 text-red-600 border-red-100', // Ensure red color
+                        appliedDate: rejectedApp.appliedDate || new Date().toISOString()
+                     }];
+                  });
+               }
+            }
          } else {
             // Local fallback update
             setJobApplications(prev => prev.map(app => {
@@ -975,6 +1020,37 @@ const AdminDashboard = () => {
          return app;
       }));
 
+      // FIX: Update Agent Resumes State
+      setAgentResumes(prev => {
+         if (status === 'Rejected') {
+            // Remove from list if rejected (It moves to Audit Queue/Blacklist)
+            return prev.filter(resume => {
+               const matchesId = (resume.id && resume.id === selectedResume.id) || (resume._id && resume._id === selectedResume.id);
+               return !matchesId;
+            });
+         } else {
+            // Update status otherwise
+            return prev.map(resume => {
+               const matchesId = (resume.id && resume.id === selectedResume.id) || (resume._id && resume._id === selectedResume.id);
+               if (matchesId) {
+                  let statusColor = resume.statusColor;
+                  if (status === 'Selected' || status === 'APPROVED') {
+                     statusColor = 'bg-emerald-50 text-emerald-600 border-emerald-100';
+                  } else if (status === 'On Hold' || status === 'HOLD') {
+                     statusColor = 'bg-amber-50 text-amber-600 border-amber-100';
+                  }
+
+                  return {
+                     ...resume,
+                     status: status === 'On Hold' ? 'ON HOLD' : status.toUpperCase(),
+                     statusColor
+                  };
+               }
+               return resume;
+            });
+         }
+      });
+
       let candidateFoundInAudit = false;
       const updatedAuditQueue = auditQueue.map(candidate => {
          const matchesId = (candidate.id && candidate.id === selectedResume.id) || (candidate._id && candidate._id === selectedResume.id);
@@ -1057,7 +1133,7 @@ const AdminDashboard = () => {
                statusColor = 'bg-emerald-50 text-emerald-600 border-emerald-100';
             }
             if (status === 'REJECTED') {
-               statusColor = 'bg-slate-100 text-slate-500 border-slate-200';
+               statusColor = 'bg-red-50 text-red-600 border-red-100'; // Standardized Red Color
             }
             if (status === 'ON HOLD') {
                statusColor = 'bg-amber-50 text-amber-600 border-amber-100';
@@ -1070,6 +1146,9 @@ const AdminDashboard = () => {
       });
 
       setPartnerApplications(updatedApps);
+      // FIX: Persist to Local Storage
+      localStorage.setItem('maldives_agent_applications', JSON.stringify(updatedApps));
+
       if (status !== 'SELECTED' || approvalStep === 'SUCCESS') {
          setSelectedApplication(null);
          setApprovalStep('NONE');
@@ -1337,6 +1416,9 @@ const AdminDashboard = () => {
    const [isResumeFilterOpen, setIsResumeFilterOpen] = useState(false);
    const [resumeFilters, setResumeFilters] = useState({ status: [], duration: 'All' });
    const filteredAgentResumes = agentResumes.filter(resume => {
+      // Exclude REJECTED (Moved to Blacklist)
+      if (resume.status === 'REJECTED' || resume.status === 'Rejected') return false;
+
       // Search Filter
       if (resumeSearchQuery) {
          const q = resumeSearchQuery.toLowerCase();
@@ -2515,10 +2597,10 @@ const AdminDashboard = () => {
                                                             </div>
                                                          </td>
                                                          <td className="px-6 py-4">
-                                                            <span className={`text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-widest ${(app.status === 'Selected' || app.status === 'Accepted') ? 'bg-green-100 text-green-700' :
-                                                               app.status === 'Rejected' ? 'bg-red-100 text-red-700' :
-                                                                  app.status === 'On Hold' ? 'bg-yellow-100 text-yellow-700' :
-                                                                     'bg-purple-100 text-purple-700'
+                                                            <span className={`text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-widest border ${(app.status === 'Selected' || app.status === 'Accepted') ? 'bg-green-100 text-green-700 border-green-200' :
+                                                               app.status === 'Rejected' ? 'bg-red-50 text-red-600 border-red-100' :
+                                                                  app.status === 'On Hold' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
+                                                                     'bg-purple-100 text-purple-700 border-purple-200'
                                                                }`}>
                                                                {(app.status === 'APPLIED' || app.status === 'Applied' || !app.status) ? 'Processing' : app.status}
                                                             </span>
@@ -2817,7 +2899,7 @@ const AdminDashboard = () => {
                                                          <div className="space-y-3">
                                                             <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">1. Status</h4>
                                                             <div className="space-y-2">
-                                                               {['SELECTED', 'REJECTED', 'PROCESSING'].map(status => (
+                                                               {['SELECTED', 'ON HOLD', 'PROCESSING'].map(status => (
                                                                   <label key={status} className="flex items-center gap-3 cursor-pointer group">
                                                                      <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${resumeFilters.status.includes(status) ? 'bg-teal-600 border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
                                                                         {resumeFilters.status.includes(status) && <CheckCircle2 className="w-3 h-3 text-white" />}
@@ -2883,7 +2965,7 @@ const AdminDashboard = () => {
                                                             </div>
                                                          </td>
                                                          <td className="px-6 py-8 text-center align-middle">
-                                                            <div className={`inline-flex px-4 py-2 rounded-full border ${resume.statusColor} text-[10px] font-black uppercase tracking-widest`}>
+                                                            <div className={`inline-flex px-4 py-2 rounded-full border ${resume.status === 'REJECTED' ? 'bg-red-50 text-red-600 border-red-100' : resume.statusColor} text-[10px] font-black uppercase tracking-widest`}>
                                                                {resume.status}
                                                             </div>
                                                          </td>
@@ -3006,7 +3088,7 @@ const AdminDashboard = () => {
                                                             </div>
                                                          </td>
                                                          <td className="px-6 py-8 text-center align-middle">
-                                                            <div className={`inline-flex px-4 py-2 rounded-full border ${app.statusColor} text-[10px] font-black uppercase tracking-widest`}>
+                                                            <div className={`inline-flex px-4 py-2 rounded-full border ${app.status === 'REJECTED' ? 'bg-red-50 text-red-600 border-red-100' : app.statusColor} text-[10px] font-black uppercase tracking-widest`}>
                                                                {app.status}
                                                             </div>
                                                          </td>
@@ -3050,8 +3132,8 @@ const AdminDashboard = () => {
                               <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                                  <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                                     <div className="p-6 border-b border-slate-100 flex justify-between items-center gap-4">
-                                       <h3 className="font-bold text-slate-900 text-sm uppercase tracking-widest text-red-500 flex items-center gap-2 whitespace-nowrap">
-                                          <ShieldCheck className="w-4 h-4" /> Rejected Candidates
+                                       <h3 className="font-bold text-slate-800 text-sm uppercase tracking-widest flex items-center gap-2 whitespace-nowrap">
+                                          <ShieldCheck className="w-4 h-4 text-red-500" /> Rejected Candidates
                                        </h3>
 
                                        <div className="flex items-center gap-3 w-full justify-end">
@@ -3192,18 +3274,18 @@ const AdminDashboard = () => {
                                     <div className="overflow-x-auto">
                                        <table className="w-full text-left">
                                           <thead>
-                                             <tr className="bg-red-50/50 border-b border-red-100">
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest">Candidate Name</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest">Job Role</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest">Source</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest">Status</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest text-right">Review</th>
+                                             <tr className="bg-slate-50 border-b border-slate-100">
+                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Candidate Name</th>
+                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Job Role</th>
+                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Source</th>
+                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Status</th>
+                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Review</th>
                                              </tr>
                                           </thead>
                                           <tbody className="divide-y divide-slate-50">
                                              {filteredBlacklistedCandidates.length > 0 ? (
                                                 filteredBlacklistedCandidates.map((candidate, idx) => (
-                                                   <tr key={`${candidate.id}-${idx}`} className="hover:bg-red-50/30 transition-colors">
+                                                   <tr key={`${candidate.id}-${idx}`} className="hover:bg-slate-50 transition-colors">
                                                       <td className="px-6 py-4">
                                                          <div>
                                                             <p className="text-sm font-bold text-slate-900">{candidate.name}</p>
@@ -3229,14 +3311,14 @@ const AdminDashboard = () => {
                                                          </div>
                                                       </td>
                                                       <td className="px-6 py-4">
-                                                         <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${candidate.statusColor}`}>
+                                                         <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${candidate.status === 'REJECTED' ? 'bg-red-50 text-red-600 border-red-100' : candidate.statusColor}`}>
                                                             {candidate.status}
                                                          </span>
                                                       </td>
                                                       <td className="px-6 py-4 text-right">
                                                          <button
                                                             onClick={() => { setSelectedResume(candidate); setIsBlacklistReview(true); }}
-                                                            className="w-10 h-10 rounded-full bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition-all ml-auto shadow-sm"
+                                                            className="w-10 h-10 rounded-full bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-600 flex items-center justify-center transition-all ml-auto shadow-sm"
                                                          >
                                                             <Eye className="w-4 h-4" />
                                                          </button>
@@ -3259,8 +3341,8 @@ const AdminDashboard = () => {
                                  {/* NEW: Application Rejections (Agents) Table */}
                                  <div className="mt-8 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                                     <div className="p-6 border-b border-slate-100 flex justify-between items-center gap-4">
-                                       <h3 className="font-bold text-slate-900 text-sm uppercase tracking-widest text-red-500 flex items-center gap-2 whitespace-nowrap">
-                                          <Users className="w-4 h-4" /> Application Rejections (Agents)
+                                       <h3 className="font-bold text-slate-800 text-sm uppercase tracking-widest flex items-center gap-2 whitespace-nowrap">
+                                          <Users className="w-4 h-4 text-red-500" /> Application Rejections (Agents)
                                        </h3>
 
                                        <div className="flex items-center gap-3 w-full justify-end">
@@ -3363,12 +3445,12 @@ const AdminDashboard = () => {
                                     <div className="overflow-x-auto">
                                        <table className="w-full text-left">
                                           <thead>
-                                             <tr className="bg-red-50/50 border-b border-red-100">
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest">Agent Name</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest">Agency</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest">Region</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest">Status</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest text-right">Review</th>
+                                             <tr className="bg-slate-50 border-b border-slate-100">
+                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Agent Name</th>
+                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Agency</th>
+                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Region</th>
+                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Status</th>
+                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Review</th>
                                              </tr>
                                           </thead>
                                           <tbody className="divide-y divide-slate-50">
@@ -3393,14 +3475,14 @@ const AdminDashboard = () => {
                                                          </div>
                                                       </td>
                                                       <td className="px-6 py-4">
-                                                         <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border bg-slate-100 text-slate-500 border-slate-200">
+                                                         <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border bg-red-50 text-red-600 border-red-100">
                                                             REJECTED
                                                          </span>
                                                       </td>
                                                       <td className="px-6 py-4 text-right">
                                                          <button
                                                             onClick={() => setSelectedApplication(app)}
-                                                            className="w-10 h-10 rounded-full bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition-all ml-auto shadow-sm"
+                                                            className="w-10 h-10 rounded-full bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-600 flex items-center justify-center transition-all ml-auto shadow-sm"
                                                          >
                                                             <Eye className="w-4 h-4" />
                                                          </button>
