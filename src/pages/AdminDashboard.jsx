@@ -2163,7 +2163,7 @@ const AdminDashboard = () => {
                                                    <div className="space-y-2">
                                                       <h4 className="text-[9px] font-black uppercase text-slate-400 tracking-widest">1. Status</h4>
                                                       <div className="space-y-1.5">
-                                                         {['Processing', 'On Hold', 'Rejected', 'Selected'].map(status => (
+                                                         {['Processing', 'On Hold', 'Selected'].map(status => (
                                                             <label key={status} className="flex items-center gap-2 cursor-pointer group">
                                                                <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all ${auditFilters.status.includes(status.toUpperCase()) ? 'bg-teal-600 border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
                                                                   {auditFilters.status.includes(status.toUpperCase()) && <CheckCircle2 className="w-2.5 h-2.5 text-white" />}
