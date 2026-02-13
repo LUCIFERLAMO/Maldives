@@ -365,9 +365,34 @@ const AdminDashboard = () => {
       return merged;
    };
 
-   const [agentResumes, setAgentResumes] = useState(MOCK_AGENT_RESUMES);
+   const [agentResumes, setAgentResumes] = useState([]);
    const [auditQueue, setAuditQueue] = useState(getMergedAuditQueue());
    const [jobApplications, setJobApplications] = useState(getMergedApplications());
+
+   // Sync Agent Resumes with All Applications
+   useEffect(() => {
+      const agencyApps = jobApplications.filter(app => {
+         return (app.source === 'Agency' || app.agentName) && app.agentName !== 'Direct';
+      }).map(app => ({
+         id: app.id || app._id,
+         name: app.candidateName || app.name || 'Unknown',
+         email: app.email,
+         role: app.jobTitle || 'Applicant',
+         agency: app.agentName || 'Unknown Agency',
+         status: app.status,
+         statusColor: app.statusColor,
+         appliedDate: app.appliedDate || new Date().toISOString(),
+         documents: app.documents || {
+            resume: app.hasResume ? 'resume.pdf' : null,
+            passport: app.hasPassport ? 'passport.jpg' : null,
+            education: app.hasCerts ? 'certificates.pdf' : null,
+            pcc: null,
+            goodStanding: null
+         },
+         whatsapp: app.contactNumber
+      }));
+      setAgentResumes(agencyApps);
+   }, [jobApplications]);
 
    // Agency Approval State
    const [pendingAgencies, setPendingAgencies] = useState([]);
@@ -399,11 +424,36 @@ const AdminDashboard = () => {
          const response = await fetch('http://localhost:5000/api/admin/applications');
          const data = await response.json();
          const counts = {};
+         const formattedApps = [];
+
          data.forEach(app => {
             const jid = app.job_id;
             counts[jid] = (counts[jid] || 0) + 1;
+
+            // Format for Job Applications State
+            const job = MOCK_JOBS.find(j => j.id == jid);
+            formattedApps.push({
+               id: app._id || app.id,
+               jobId: jid,
+               candidateName: app.candidate_name || app.name || 'Unknown',
+               email: app.email || '',
+               contactNumber: app.contact_number || app.phone || '',
+               status: app.status || 'Applied',
+               appliedDate: app.applied_date || app.createdAt,
+               source: app.source || 'Direct',
+               agentName: app.agent_name || app.agency,
+               hasResume: !!(app.resume || app.hasResume),
+               hasCerts: !!(app.certs || app.hasCerts),
+               hasPassport: !!(app.passport || app.hasPassport),
+               role: job ? job.title : 'Unknown Job',
+               category: job ? (job.industry || job.category) : 'Other'
+            });
          });
+
          setApplicationCounts(counts);
+         if (formattedApps.length > 0) {
+            setJobApplications(formattedApps);
+         }
       } catch (error) {
          console.error('Error fetching application counts:', error);
       }
@@ -1192,6 +1242,8 @@ const AdminDashboard = () => {
       const storedApps = JSON.parse(localStorage.getItem('maldives_agent_applications') || '[]');
       return [...storedApps, ...MOCK_NEW_PARTNER_APPS];
    });
+
+
 
    // Agent Rejection Filter State
    const [agentBlacklistSearchInput, setAgentBlacklistSearchInput] = useState('');
@@ -3134,7 +3186,7 @@ const AdminDashboard = () => {
                                                          <div className="space-y-3">
                                                             <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">1. Status</h4>
                                                             <div className="space-y-2">
-                                                               {['YET TO BE CHECKED', 'ON HOLD', 'SELECTED', 'REJECTED'].map(status => (
+                                                               {['YET TO BE CHECKED', 'ON HOLD', 'SELECTED'].map(status => (
                                                                   <label key={status} className="flex items-center gap-3 cursor-pointer group">
                                                                      <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${appFilters.status.includes(status) ? 'bg-teal-600 border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
                                                                         {appFilters.status.includes(status) && <CheckCircle2 className="w-3 h-3 text-white" />}
