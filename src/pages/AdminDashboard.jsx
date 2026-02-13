@@ -1676,6 +1676,52 @@ const AdminDashboard = () => {
       return true;
    });
 
+   const filteredJobApplications = jobApplications.filter(app => {
+      // 1. Blacklist Check (Always Active)
+      if (app.status === 'Rejected' || app.status === 'REJECTED') return false;
+
+      // 2. Search Query
+      const matchesSearch = (app.candidateName || '').toLowerCase().includes(candidateSearchQuery.toLowerCase()) ||
+         (app.email || '').toLowerCase().includes(candidateSearchQuery.toLowerCase());
+      if (!matchesSearch) return false;
+
+      // 3. Status Filter
+      if (candidateFilters.status.length > 0) {
+         const appStatus = app.status || 'Processing';
+         const matchesStatus = candidateFilters.status.some(filterStatus => {
+            if (filterStatus === 'Approved' && (appStatus === 'Selected' || appStatus === 'Accepted' || appStatus === 'APPROVED')) return true;
+            if (filterStatus === 'Processing' && (appStatus === 'APPLIED' || appStatus === 'Applied' || !appStatus)) return true;
+            if (filterStatus === 'On Hold' && (appStatus === 'On Hold' || appStatus === 'HOLD')) return true;
+            if (filterStatus === 'Rejected') return false;
+            return appStatus === filterStatus;
+         });
+         if (!matchesStatus) return false;
+      }
+
+      // 4. Source Filter
+      if (candidateFilters.source !== 'All') {
+         const isDirect = app.source === 'Direct';
+         if (candidateFilters.source === 'Direct Application' && !isDirect) return false;
+         if (candidateFilters.source === 'Agency Ref' && isDirect) return false;
+      }
+
+      // 5. Duration Filter
+      if (candidateFilters.duration !== 'All') {
+         const appliedDate = new Date(app.appliedDate || new Date());
+         const now = new Date();
+         const diffMs = now - appliedDate;
+         const diffHours = diffMs / (1000 * 60 * 60);
+         const diffDays = diffHours / 24;
+
+         if (candidateFilters.duration === 'Since 1 hr' && diffHours > 1) return false;
+         if (candidateFilters.duration === 'Since 1 week' && diffDays > 7) return false;
+         if (candidateFilters.duration === 'Since 1 month' && diffDays > 30) return false;
+         if (candidateFilters.duration === 'Since 3 months' && diffDays > 90) return false;
+      }
+
+      return true;
+   });
+
    // Filtering logic for Agent Rejections
    const filteredAgentRejections = partnerApplications.filter(app => {
       // Must be REJECTED
@@ -2532,7 +2578,7 @@ const AdminDashboard = () => {
                                                       <div className="space-y-2">
                                                          <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">1. Status</h4>
                                                          <div className="space-y-2">
-                                                            {['Processing', 'On Hold', 'Rejected', 'Approved'].map(status => (
+                                                            {['Processing', 'On Hold', 'Approved'].map(status => (
                                                                <label key={status} className="flex items-center gap-3 cursor-pointer group">
                                                                   <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${candidateFilters.status.includes(status) ? 'bg-teal-600 border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
                                                                      {candidateFilters.status.includes(status) && <CheckCircle2 className="w-3 h-3 text-white" />}
@@ -2632,63 +2678,18 @@ const AdminDashboard = () => {
                                              <p className="text-slate-500 font-medium">Loading applicants...</p>
                                           </div>
                                        ) : (
-                                          <table className="w-full text-left">
-                                             <thead>
-                                                <tr className="bg-slate-50 border-b border-slate-100">
-                                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Candidate Name</th>
-
-                                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Source</th>
-                                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Status</th>
-                                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Actions</th>
-                                                </tr>
-                                             </thead>
-                                             <tbody className="divide-y divide-slate-50">
-                                                {jobApplications.length > 0 ? (
-                                                   jobApplications.filter(app => {
-                                                      // 1. Blacklist Check (Always Active)
-                                                      if (app.status === 'Rejected' || app.status === 'REJECTED') return false;
-
-                                                      // 2. Search Query
-                                                      const matchesSearch = (app.candidateName || '').toLowerCase().includes(candidateSearchQuery.toLowerCase()) ||
-                                                         (app.email || '').toLowerCase().includes(candidateSearchQuery.toLowerCase());
-                                                      if (!matchesSearch) return false;
-
-                                                      // 3. Status Filter
-                                                      if (candidateFilters.status.length > 0) {
-                                                         const appStatus = app.status || 'Processing';
-                                                         const matchesStatus = candidateFilters.status.some(filterStatus => {
-                                                            if (filterStatus === 'Approved' && (appStatus === 'Selected' || appStatus === 'Accepted' || appStatus === 'APPROVED')) return true;
-                                                            if (filterStatus === 'Processing' && (appStatus === 'APPLIED' || appStatus === 'Applied' || !appStatus)) return true;
-                                                            if (filterStatus === 'On Hold' && (appStatus === 'On Hold' || appStatus === 'HOLD')) return true;
-                                                            if (filterStatus === 'Rejected') return false;
-                                                            return appStatus === filterStatus;
-                                                         });
-                                                         if (!matchesStatus) return false;
-                                                      }
-
-                                                      // 4. Source Filter
-                                                      if (candidateFilters.source !== 'All') {
-                                                         const isDirect = app.source === 'Direct';
-                                                         if (candidateFilters.source === 'Direct Application' && !isDirect) return false;
-                                                         if (candidateFilters.source === 'Agency Ref' && isDirect) return false;
-                                                      }
-
-                                                      // 5. Duration Filter
-                                                      if (candidateFilters.duration !== 'All') {
-                                                         const appliedDate = new Date(app.appliedDate || new Date());
-                                                         const now = new Date();
-                                                         const diffMs = now - appliedDate;
-                                                         const diffHours = diffMs / (1000 * 60 * 60);
-                                                         const diffDays = diffHours / 24;
-
-                                                         if (candidateFilters.duration === 'Since 1 hr' && diffHours > 1) return false;
-                                                         if (candidateFilters.duration === 'Since 1 week' && diffDays > 7) return false;
-                                                         if (candidateFilters.duration === 'Since 1 month' && diffDays > 30) return false;
-                                                         if (candidateFilters.duration === 'Since 3 months' && diffDays > 90) return false;
-                                                      }
-
-                                                      return true;
-                                                   }).map((app) => (
+                                          filteredJobApplications.length > 0 ? (
+                                             <table className="w-full text-left">
+                                                <thead>
+                                                   <tr className="bg-slate-50 border-b border-slate-100">
+                                                      <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Candidate Name</th>
+                                                      <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Source</th>
+                                                      <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Status</th>
+                                                      <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Actions</th>
+                                                   </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-50">
+                                                   {filteredJobApplications.map((app) => (
                                                       <tr key={app.id || app._id} className="hover:bg-slate-50/50 transition-colors">
                                                          <td className="px-6 py-4">
                                                             <div>
@@ -2699,7 +2700,6 @@ const AdminDashboard = () => {
                                                                </div>
                                                             </div>
                                                          </td>
-
                                                          <td className="px-6 py-4">
                                                             <div>
                                                                <p className="text-sm font-bold text-slate-900">{app.source === 'Direct' ? 'Direct' : 'Agency'}</p>
@@ -2726,22 +2726,15 @@ const AdminDashboard = () => {
                                                             </button>
                                                          </td>
                                                       </tr>
-                                                   ))
-                                                ) : (
-                                                   <tr>
-                                                      <td colSpan="4" className="px-6 py-12 text-center">
-                                                         <div className="flex flex-col items-center justify-center">
-                                                            <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 mb-4">
-                                                               <Users className="w-8 h-8 opacity-40" />
-                                                            </div>
-                                                            <p className="text-slate-500 font-bold">No candidates found for this job</p>
-                                                            <p className="text-slate-400 text-sm mt-1">Applicants will appear here once they apply.</p>
-                                                         </div>
-                                                      </td>
-                                                   </tr>
-                                                )}
-                                             </tbody>
-                                          </table>
+                                                   ))}
+                                                </tbody>
+                                             </table>
+                                          ) : (
+                                             <div className="py-12 text-center text-slate-400">
+                                                <Search className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                                                <p className="text-sm">No record exist !!</p>
+                                             </div>
+                                          )
                                        )}
                                     </div>
                                  </div>
