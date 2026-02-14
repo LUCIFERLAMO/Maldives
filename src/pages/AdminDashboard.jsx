@@ -2416,12 +2416,22 @@ const AdminDashboard = () => {
                                        {categories.map((industry) => {
                                           // Fix: Use direct filtering instead of missing function
                                           const jobCount = jobs.filter(j => j.industry === industry).length;
+                                          const industryJobs = jobs.filter(j => j.industry === industry);
+                                          const newAppCount = allApplications.filter(a =>
+                                             (a.status === 'APPLIED' || a.status === 'Applied') &&
+                                             industryJobs.some(j => (j._id || j.id) === a.jobId)
+                                          ).length;
                                           return (
                                              <button
                                                 key={industry}
                                                 onClick={() => handleCategoryClick(industry)}
-                                                className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-teal-200 transition-all text-left flex flex-col items-start h-full group"
+                                                className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-teal-200 transition-all text-left flex flex-col items-start h-full group relative"
                                              >
+                                                {newAppCount > 0 && (
+                                                   <span className="absolute top-4 right-4 bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center shadow-sm">
+                                                      {newAppCount > 99 ? '99+' : newAppCount}
+                                                   </span>
+                                                )}
                                                 <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center mb-6 text-slate-400 group-hover:bg-teal-50 group-hover:text-teal-600 transition-colors">
                                                    <Briefcase className="w-7 h-7" />
                                                 </div>
@@ -2518,47 +2528,58 @@ const AdminDashboard = () => {
                                        </div>
                                     ) : categoryJobs.length > 0 ? (
                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                          {categoryJobs.map((job) => (
-                                             <div
-                                                key={job._id || job.id}
-                                                className={`p-6 rounded-2xl border transition-all group flex flex-col h-full ${job.is_premium ? 'bg-white border-amber-200 shadow-lg shadow-amber-500/50 hover:shadow-amber-500/70' : 'bg-white border-slate-200 shadow-sm hover:shadow-md hover:border-teal-200'}`}
-                                             >
-                                                <div className="flex justify-between items-start mb-4">
-                                                   <div>
-                                                      <div className="flex items-center gap-2 mb-1">
-                                                         <h3 className="font-bold text-lg text-slate-900 line-clamp-1" title={job.title}>{job.title}</h3>
-                                                         {job.is_premium && <Star className="w-4 h-4 text-amber-500 fill-amber-500" />}
-                                                      </div>
-                                                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{job.industry}</p>
-                                                   </div>
-                                                   <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${job.status === 'OPEN' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
-                                                      {job.status || 'OPEN'}
-                                                   </span>
-                                                </div>
-
-                                                <div className="space-y-3 mb-6 flex-1">
-                                                   <div className="flex items-center gap-2 text-sm text-slate-600">
-                                                      <Building2 className="w-4 h-4 text-slate-400" />
-                                                      <span className="truncate">{job.company || 'N/A'}</span>
-                                                   </div>
-                                                   <div className="flex items-center gap-2 text-sm text-slate-600">
-                                                      <MapPin className="w-4 h-4 text-slate-400" />
-                                                      <span className="truncate">{job.location || 'N/A'}</span>
-                                                   </div>
-                                                   <div className="flex items-center gap-2 text-sm text-slate-600">
-                                                      <DollarSign className="w-4 h-4 text-slate-400" />
-                                                      <span className="font-bold text-teal-600">{job.salary_range || 'N/A'}</span>
-                                                   </div>
-                                                </div>
-
-                                                <button
-                                                   onClick={() => handleJobClick(job)}
-                                                   className="w-full py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold uppercase tracking-widest hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
+                                          {categoryJobs.map((job) => {
+                                             const jobNewApps = allApplications.filter(a =>
+                                                (a.status === 'APPLIED' || a.status === 'Applied') &&
+                                                (a.jobId === (job._id || job.id))
+                                             ).length;
+                                             return (
+                                                <div
+                                                   key={job._id || job.id}
+                                                   className={`p-6 rounded-2xl border transition-all group flex flex-col h-full relative ${job.is_premium ? 'bg-white border-amber-200 shadow-lg shadow-amber-500/50 hover:shadow-amber-500/70' : 'bg-white border-slate-200 shadow-sm hover:shadow-md hover:border-teal-200'}`}
                                                 >
-                                                   <Users className="w-3 h-3" /> View Applicants
-                                                </button>
-                                             </div>
-                                          ))}
+                                                   {jobNewApps > 0 && (
+                                                      <span className="absolute top-4 right-4 bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center shadow-sm">
+                                                         {jobNewApps > 99 ? '99+' : jobNewApps} New
+                                                      </span>
+                                                   )}
+                                                   <div className="flex justify-between items-start mb-4">
+                                                      <div>
+                                                         <div className="flex items-center gap-2 mb-1">
+                                                            <h3 className="font-bold text-lg text-slate-900 line-clamp-1" title={job.title}>{job.title}</h3>
+                                                            {job.is_premium && <Star className="w-4 h-4 text-amber-500 fill-amber-500" />}
+                                                         </div>
+                                                         <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{job.industry}</p>
+                                                      </div>
+                                                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${job.status === 'OPEN' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+                                                         {job.status || 'OPEN'}
+                                                      </span>
+                                                   </div>
+
+                                                   <div className="space-y-3 mb-6 flex-1">
+                                                      <div className="flex items-center gap-2 text-sm text-slate-600">
+                                                         <Building2 className="w-4 h-4 text-slate-400" />
+                                                         <span className="truncate">{job.company || 'N/A'}</span>
+                                                      </div>
+                                                      <div className="flex items-center gap-2 text-sm text-slate-600">
+                                                         <MapPin className="w-4 h-4 text-slate-400" />
+                                                         <span className="truncate">{job.location || 'N/A'}</span>
+                                                      </div>
+                                                      <div className="flex items-center gap-2 text-sm text-slate-600">
+                                                         <DollarSign className="w-4 h-4 text-slate-400" />
+                                                         <span className="font-bold text-teal-600">{job.salary_range || 'N/A'}</span>
+                                                      </div>
+                                                   </div>
+
+                                                   <button
+                                                      onClick={() => handleJobClick(job)}
+                                                      className="w-full py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold uppercase tracking-widest hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
+                                                   >
+                                                      <Users className="w-3 h-3" /> View Applicants
+                                                   </button>
+                                                </div>
+                                             );
+                                          })}
                                        </div>
                                     ) : (
                                        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
