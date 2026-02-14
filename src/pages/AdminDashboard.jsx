@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import {
    Users,
    Briefcase,
@@ -22,9 +22,6 @@ import {
    ChevronDown,
    RefreshCw,
    Lock,
-<<<<<<< HEAD
-   Trash2
-=======
    Trash2,
 
    Settings,
@@ -32,17 +29,12 @@ import {
    MoreVertical,
    Building2,
    DollarSign
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
 } from 'lucide-react';
-import { usePopup } from '../context/PopupContext';
 
 import { DashboardSidebar } from '../components/DashboardSidebar';
 import { DashboardHeader } from '../components/DashboardHeader';
 import { MOCK_JOBS, MOCK_APPLICATIONS, INDUSTRIES, REQUIRED_DOCUMENT_OPTIONS } from '../constants';
 
-<<<<<<< HEAD
-/* MOCK DATA REMOVED */
-=======
 const MOCK_AGENT_RESUMES = [
    {
       id: 1,
@@ -120,8 +112,8 @@ const MOCK_AGENT_RESUMES = [
       },
       appliedDate: new Date(Date.now() - 86400000 * 45).toISOString() // 45 days ago
    },
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
 
+];
 
 const MOCK_AUDIT_QUEUE = [
    {
@@ -243,40 +235,27 @@ const MOCK_NEW_PARTNER_APPS = [
 
 
 
-const DocumentCard = ({ label, filename, url }) => {
-   if (!filename) return null;
-   return (
-      <div className="flex items-center p-4 border border-slate-200 rounded-2xl bg-white hover:border-teal-500 hover:shadow-md transition-all group">
-         <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mr-4 group-hover:bg-teal-50 group-hover:text-teal-600 transition-colors">
-            <FileText className="w-6 h-6" />
-         </div>
-         <div className="flex-1">
-            <p className="text-slate-900 font-bold text-sm mb-0.5">{filename}</p>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</p>
-         </div>
-         <button
-            onClick={() => window.open(url, '_blank')}
-            className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-teal-50 hover:text-teal-600 transition-colors ml-4"
-            title="Download/View Document"
-         >
-            <Eye className="w-4 h-4" />
-         </button>
+const DocumentCard = ({ label, filename }) => (
+   <div className="flex items-center p-4 border border-slate-200 rounded-2xl bg-white hover:border-teal-500 hover:shadow-md transition-all group">
+      <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mr-4 group-hover:bg-teal-50 group-hover:text-teal-600 transition-colors">
+         <FileText className="w-6 h-6" />
       </div>
-   );
-};
+      <div className="flex-1">
+         <p className="text-slate-900 font-bold text-sm mb-0.5">{filename}</p>
+         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</p>
+      </div>
+      <button
+         onClick={() => window.open('#', '_blank')}
+         className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-teal-50 hover:text-teal-600 transition-colors ml-4"
+      >
+         <Eye className="w-4 h-4" />
+      </button>
+   </div>
+);
 
 const AdminDashboard = () => {
-   const popup = usePopup();
    const [activeTab, setActiveTab] = useState('overview');
    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-<<<<<<< HEAD
-   const [selectedIndustry, setSelectedIndustry] = useState(null);
-   const [selectedJob, setSelectedJob] = useState(null); // Selected job within a category for hierarchical navigation
-   const [agentSubTab, setAgentSubTab] = useState('vacancies');
-   const [agentResumes, setAgentResumes] = useState([]);
-   const [agentApplications, setAgentApplications] = useState([]); // Real Agent Applications
-   const [auditQueue, setAuditQueue] = useState(MOCK_AUDIT_QUEUE);
-=======
 
    // Hierarchical Vacancy Management View State
    const [vacancyViewMode, setVacancyViewMode] = useState('CATEGORIES'); // 'CATEGORIES', 'JOBS', 'CANDIDATES'
@@ -310,7 +289,7 @@ const AdminDashboard = () => {
          openings: 1,
          state: "HIDDEN",
          stateColor: "text-slate-300",
-         region: "Malé, Maldives",
+         region: "Mal├⌐, Maldives",
          sector: "Tourism",
          description: "Responsible for leading diving excursions and ensuring safety protocols for all guests. Must be certified and experienced in open water diving.",
          requirements: ["PADI CERTIFICATION", "FIRST AID CERTIFIED", "3 YEARS EXPERIENCE"]
@@ -414,11 +393,6 @@ const AdminDashboard = () => {
       }));
       setAgentResumes(agencyApps);
    }, [jobApplications]);
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
-
-   // Visibility Requests State (Client Status Request)
-   const [visibilityRequests, setVisibilityRequests] = useState([]);
-   const [isLoadingVisibilityRequests, setIsLoadingVisibilityRequests] = useState(false);
 
    // Agency Approval State
    const [pendingAgencies, setPendingAgencies] = useState([]);
@@ -437,15 +411,6 @@ const AdminDashboard = () => {
    const [isRejectingJob, setIsRejectingJob] = useState(false);
 
    // Category Filter State
-<<<<<<< HEAD
-   const [selectedCategory, setSelectedCategory] = useState('All');
-   const [liveJobs, setLiveJobs] = useState([]);
-   const [isLoadingJobs, setIsLoadingJobs] = useState(false);
-
-   // Job Applications State (Real applications from database)
-   const [jobApplications, setJobApplications] = useState([]);
-   const [isLoadingApplications, setIsLoadingApplications] = useState(false);
-=======
    const [isManageJobMenuOpen, setIsManageJobMenuOpen] = useState(false);
    const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
    const [isDeleteJobsModalOpen, setIsDeleteJobsModalOpen] = useState(false);
@@ -540,16 +505,11 @@ const AdminDashboard = () => {
    };
 
    // Job Applications State (Real applications from database)
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
    const [candidateStatusFilter, setCandidateStatusFilter] = useState('ALL'); // ALL, PENDING, APPROVED, REJECTED, HOLD
 
    // Blacklist Filter State (needed for dropdown close handler)
    const [isBlacklistSourceOpen, setIsBlacklistSourceOpen] = useState(false);
    const [isBlacklistDurationOpen, setIsBlacklistDurationOpen] = useState(false);
-<<<<<<< HEAD
-
-=======
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
    // Refs for flexible dropdowns
    const blacklistSourceRef = useRef(null);
    const blacklistDurationRef = useRef(null);
@@ -566,37 +526,6 @@ const AdminDashboard = () => {
       };
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
-   }, []);
-
-   const fetchJobs = async () => {
-      setIsLoadingJobs(true);
-      try {
-         const response = await fetch('http://localhost:5000/api/jobs');
-         const data = await response.json();
-         setLiveJobs(data);
-      } catch (error) {
-         console.error('Error fetching jobs:', error);
-      } finally {
-         setIsLoadingJobs(false);
-      }
-   };
-
-   const fetchAgentApplications = async () => {
-      try {
-         const response = await fetch('http://localhost:5000/api/admin/applications');
-         const data = await response.json();
-         // Filter for agent-submitted applications (has agent_id or source is 'Agency')
-         const agencyApps = data.filter(app => app.agent_id || app.source === 'Agency');
-         setAgentApplications(agencyApps);
-      } catch (error) {
-         console.error('Error fetching agent applications:', error);
-      }
-   };
-
-   // Fetch agent applications on mount or tab change
-   useEffect(() => {
-      fetchAgentApplications();
-      fetchJobs();
    }, []);
 
    // Fetch pending agents function (reusable for refresh)
@@ -685,87 +614,47 @@ const AdminDashboard = () => {
    // Fetch on mount
    useEffect(() => {
       fetchPendingAgents();
-<<<<<<< HEAD
-      fetchPendingJobRequests();
-      fetchPendingJobRequestsCount();
-      fetchLiveJobs();
-=======
       fetchAllData();
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
    }, []);
 
-   // Fetch pending job requests (reusable for refresh)
-   const fetchPendingJobRequests = async (showLoading = false) => {
-      if (showLoading) setIsRefreshingJobRequests(true);
-      try {
-         const response = await fetch('http://localhost:5000/api/admin/job-requests?status=PENDING');
-         const data = await response.json();
-         setPendingJobRequests(data);
-      } catch (error) {
-         console.error('Error fetching pending job requests:', error);
-      } finally {
-         if (showLoading) setIsRefreshingJobRequests(false);
+   // Handle Delete Vacancy
+   const handleDeleteVacancy = (jobId) => {
+      if (window.confirm('Are you sure you want to delete this vacancy?')) {
+         // Update local state
+         setJobs(prevJobs => prevJobs.filter(job => job.id !== jobId && job._id !== jobId));
+         // Update filtering state if active
+         setCategoryJobs(prev => prev.filter(job => job.id !== jobId && job._id !== jobId));
+
+         // In a real app, you would also call API to delete
+         // fetch(`http://localhost:5000/api/jobs/${jobId}`, { method: 'DELETE' });
       }
    };
 
-   // Fetch pending job requests count
-   const fetchPendingJobRequestsCount = async () => {
-      try {
-         const response = await fetch('http://localhost:5000/api/admin/job-requests/pending/count');
-         const data = await response.json();
-         setPendingJobRequestsCount(data.count);
-      } catch (error) {
-         console.error('Error fetching pending count:', error);
-      }
-   };
-
-   // Fetch live jobs (with optional category filter)
-   const fetchLiveJobs = async (category = 'All') => {
+   // Fetch jobs by category for hierarchical view
+   const fetchJobsByCategory = async (category) => {
       setIsLoadingJobs(true);
       try {
-         const url = category && category !== 'All'
-            ? `http://localhost:5000/api/jobs?category=${category}`
-            : 'http://localhost:5000/api/jobs';
-         const response = await fetch(url);
-         const data = await response.json();
-         setLiveJobs(data);
+         // Using local state for consistency
+         // In a real app with working backend, we would fetch here
+
+         // Simulate network delay
+         setTimeout(() => {
+            const filteredJobs = jobs.filter(j => j.industry === category);
+            setCategoryJobs(filteredJobs);
+            setIsLoadingJobs(false);
+         }, 500);
       } catch (error) {
-         console.error('Error fetching jobs:', error);
-      } finally {
+         console.error('Error fetching jobs by category:', error);
+         const filteredJobs = jobs.filter(j => j.industry === category);
+         setCategoryJobs(filteredJobs);
          setIsLoadingJobs(false);
       }
    };
 
-   // Fetch applications for a specific job
-   const fetchJobApplications = async (job) => {
+   // Fetch applications by job ID for hierarchical view
+   const fetchApplicationsByJob = async (jobId) => {
       setIsLoadingApplications(true);
       try {
-<<<<<<< HEAD
-         const response = await fetch('http://localhost:5000/api/admin/applications');
-         const data = await response.json();
-         // Filter applications for this specific job (match against custom ID or MongoDB _id)
-         const jobApps = (data || []).filter(app =>
-            app.job_id === job.id || app.job_id === job._id || app.job_id === String(job._id)
-         ).map(app => ({
-            id: app._id || app.id,
-            jobId: app.job_id,
-            candidateName: app.candidate_name || 'Unknown',
-            email: app.email,
-            contactNumber: app.contact_number,
-            status: app.status || 'PENDING',
-            appliedDate: app.applied_at ? new Date(app.applied_at).toLocaleDateString() : 'N/A',
-            source: app.agent_id ? 'Agency' : 'Direct',
-            agentId: app.agent_id,
-            hasResume: !!app.resume,
-            hasCerts: !!app.certificates,
-            resumeFilename: app.resume?.filename,
-            certsFilename: app.certificates?.filename
-         }));
-         setJobApplications(jobApps);
-      } catch (error) {
-         console.error('Error fetching applications:', error);
-         setJobApplications([]);
-=======
          const response = await fetch(`http://localhost:5000/api/applications?job_id=${encodeURIComponent(jobId)}`);
          if (response.ok) {
             const data = await response.json();
@@ -798,235 +687,49 @@ const AdminDashboard = () => {
             filteredApps = MOCK_APPLICATIONS.filter(app => ['6', '2'].includes(app.jobId));
          }
          setJobApplications(filteredApps);
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
       } finally {
          setIsLoadingApplications(false);
       }
    };
 
-   // Handle category change
-   const handleCategoryChange = (category) => {
+   // Handle category click - navigate to JOBS view
+   const handleCategoryClick = (category) => {
       setSelectedCategory(category);
-      fetchLiveJobs(category);
+      setVacancyViewMode('JOBS');
+      fetchJobsByCategory(category);
    };
 
-   // Handle Close Job
-   const handleCloseJob = async () => {
-      if (!selectedJob) return;
-      if (!await popup.confirm('Are you sure you want to close this job? Candidates will no longer be able to apply.', 'Close Job', 'Close', 'Cancel')) return;
+   // Handle job click - navigate to CANDIDATES view
+   const handleJobClick = (job) => {
+      setSelectedJobId(job.id);
+      setSelectedJobTitle(job.title);
+      setVacancyViewMode('CANDIDATES');
+      fetchApplicationsByJob(job.id);
+   };
 
+   // Handle back to categories
+   const handleBackToCategories = () => {
+      setVacancyViewMode('CATEGORIES');
+      setSelectedCategory(null);
+      setCategoryJobs([]);
+   };
+
+   // Handle back to jobs
+   const handleBackToJobs = () => {
+      setVacancyViewMode('JOBS');
+      setSelectedJobId(null);
+      setSelectedJobTitle('');
+      setJobApplications([]);
+   };
+
+   // Handle application status update (Approve/Reject)
+   const handleApplicationAction = async (appId, action) => {
       try {
-         const response = await fetch(`http://localhost:5000/api/jobs/${selectedJob.id || selectedJob._id}/status`, {
+         const response = await fetch(`http://localhost:5000/api/applications/${appId}/${action}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'CLOSED' })
+            headers: { 'Content-Type': 'application/json' }
          });
-
          if (response.ok) {
-<<<<<<< HEAD
-            // Update local state
-            setSelectedJob(prev => ({ ...prev, status: 'CLOSED' }));
-            // Refresh job list
-            fetchLiveJobs(selectedCategory);
-            popup.success('Job closed successfully.');
-         } else {
-            popup.error('Failed to close job.');
-         }
-      } catch (error) {
-         console.error('Error closing job:', error);
-         popup.error('Error closing job.');
-      }
-   };
-
-   // Handle Delete Job
-   const handleDeleteJob = async () => {
-      if (!selectedJob) return;
-      if (!await popup.confirm('Are you sure you want to PERMANENTLY DELETE this job? This action cannot be undone.', 'Delete Job', 'Delete', 'Cancel')) return;
-
-      try {
-         const response = await fetch(`http://localhost:5000/api/jobs/${selectedJob.id || selectedJob._id}`, {
-            method: 'DELETE'
-         });
-
-         if (response.ok) {
-            // Clear selection and refresh list
-            setSelectedJob(null);
-            setJobApplications([]);
-            fetchLiveJobs(selectedCategory);
-            popup.success('Job deleted successfully.');
-         } else {
-            popup.error('Failed to delete job.');
-         }
-      } catch (error) {
-         console.error('Error deleting job:', error);
-         popup.error('Error deleting job.');
-      }
-   };
-
-   // ============ VISIBILITY REQUESTS (Client Status Request) ============
-
-   // Fetch pending visibility requests
-   const fetchVisibilityRequests = async () => {
-      setIsLoadingVisibilityRequests(true);
-      try {
-         const response = await fetch('http://localhost:5000/api/admin/visibility-requests');
-         const data = await response.json();
-         if (response.ok) {
-            setVisibilityRequests(data);
-         }
-      } catch (error) {
-         console.error('Error fetching visibility requests:', error);
-      } finally {
-         setIsLoadingVisibilityRequests(false);
-      }
-   };
-
-   // Approve visibility request
-   const handleApproveVisibilityRequest = async (requestId) => {
-      try {
-         const response = await fetch(`http://localhost:5000/api/admin/visibility-requests/${requestId}/approve`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ reviewed_by: 'Admin' })
-         });
-
-         if (response.ok) {
-            popup.success('✅ Visibility request approved!');
-            fetchVisibilityRequests(); // Refresh the list
-         } else {
-            const data = await response.json();
-            popup.error(`❌ Failed: ${data.message}`);
-         }
-      } catch (error) {
-         console.error('Error approving visibility request:', error);
-         popup.error('Error approving request.');
-      }
-   };
-
-   // Reject visibility request
-   const handleRejectVisibilityRequest = async (requestId) => {
-      if (!await popup.confirm('Are you sure you want to reject this visibility request? The candidate will not be able to request again for this job.', 'Reject Request', 'Reject', 'Cancel')) return;
-
-      try {
-         const response = await fetch(`http://localhost:5000/api/admin/visibility-requests/${requestId}/reject`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ reviewed_by: 'Admin' })
-         });
-
-         if (response.ok) {
-            popup.success('Visibility request rejected.');
-            fetchVisibilityRequests(); // Refresh the list
-         } else {
-            const data = await response.json();
-            popup.error(`Failed: ${data.message}`);
-         }
-      } catch (error) {
-         console.error('Error rejecting visibility request:', error);
-         popup.error('Error rejecting request.');
-      }
-   };
-
-   // Fetch visibility requests when audit tab is selected
-   useEffect(() => {
-      if (activeTab === 'audit') {
-         fetchVisibilityRequests();
-      }
-   }, [activeTab]);
-
-
-   // Handle job selection (fetch applications for the job)
-   const handleJobSelect = (job) => {
-      setSelectedJob(job);
-      fetchJobApplications(job);
-   };
-
-   // Approve job request handler
-   const handleApproveJobRequest = async (request) => {
-      setIsApprovingJob(true);
-      try {
-         const response = await fetch(`http://localhost:5000/api/admin/job-requests/${request._id}/approve`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-               reviewed_by: 'Admin',
-               review_notes: 'Approved'
-            })
-         });
-         const data = await response.json();
-         if (response.ok) {
-            popup.success(`✅ Job request approved! "${request.title}" is now live.`);
-            setPendingJobRequests(prev => prev.filter(r => r._id !== request._id));
-            setPendingJobRequestsCount(prev => prev - 1);
-            fetchLiveJobs(selectedCategory);
-         } else {
-            popup.error('Failed to approve: ' + data.message);
-         }
-      } catch (error) {
-         console.error('Error approving job request:', error);
-         popup.error('Error approving job request');
-      } finally {
-         setIsApprovingJob(false);
-      }
-   };
-
-   // Handle Application Status Update (Approve/Reject Candidate)
-   const handleApplicationAction = async (appId, newStatus, candidateName) => {
-      // Confirmation
-      if (!await popup.confirm(`Are you sure you want to mark ${candidateName} as ${newStatus}?`, 'Update Status', 'Confirm', 'Cancel')) return;
-
-      try {
-         const response = await fetch(`http://localhost:5000/api/admin/applications/${appId}/status`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: newStatus, reviewed_by: 'Admin' })
-         });
-
-         if (response.ok) {
-            // Optimistic Update
-            setJobApplications(prev => prev.map(app =>
-               app.id === appId ? { ...app, status: newStatus } : app
-            ));
-            popup.success(`Candidate ${newStatus === 'APPROVED' ? 'Approved' : 'Rejected'} successfully.`);
-         } else {
-            popup.error('Failed to update application status.');
-         }
-      } catch (error) {
-         console.error('Error updating application status:', error);
-         popup.error('Network error. Failed to update status.');
-      }
-   };
-
-   // Reject job request handler
-   const handleRejectJobRequest = async () => {
-      if (!selectedJobRequest) return;
-      setIsRejectingJob(true);
-      try {
-         const response = await fetch(`http://localhost:5000/api/admin/job-requests/${selectedJobRequest._id}/reject`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-               reviewed_by: 'Admin',
-               review_notes: rejectReason || 'Rejected by admin'
-            })
-         });
-         const data = await response.json();
-         if (response.ok) {
-            popup.success(`❌ Job request "${selectedJobRequest.title}" has been rejected.`);
-            setPendingJobRequests(prev => prev.filter(r => r._id !== selectedJobRequest._id));
-            setPendingJobRequestsCount(prev => prev - 1);
-            setShowRejectModal(false);
-            setSelectedJobRequest(null);
-            setRejectReason('');
-         } else {
-            popup.error('Failed to reject: ' + data.message);
-         }
-      } catch (error) {
-         console.error('Error rejecting job request:', error);
-         popup.error('Error rejecting job request');
-      } finally {
-         setIsRejectingJob(false);
-=======
             // Refresh applications list
             fetchApplicationsByJob(selectedJobId);
 
@@ -1114,7 +817,6 @@ const AdminDashboard = () => {
                });
             }
          }
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
       }
    };
 
@@ -1179,11 +881,11 @@ const AdminDashboard = () => {
          });
 
          if (response.ok) {
-            alert('✅ Visibility request approved!');
+            alert('Γ£à Visibility request approved!');
             fetchVisibilityRequests(); // Refresh the list
          } else {
             const data = await response.json();
-            alert(`❌ Failed: ${data.message}`);
+            alert(`Γ¥î Failed: ${data.message}`);
          }
       } catch (error) {
          console.error('Error approving visibility request:', error);
@@ -1271,7 +973,7 @@ const AdminDashboard = () => {
          });
          const data = await response.json();
          if (response.ok) {
-            alert(`✅ Job request approved! "${request.title}" is now live.`);
+            alert(`Γ£à Job request approved! "${request.title}" is now live.`);
             setPendingJobRequests(prev => prev.filter(r => r._id !== request._id));
             setPendingJobRequestsCount(prev => prev - 1);
             fetchJobsByCategory(selectedCategory);
@@ -1301,7 +1003,7 @@ const AdminDashboard = () => {
          });
          const data = await response.json();
          if (response.ok) {
-            alert(`❌ Job request "${selectedJobRequest.title}" has been rejected.`);
+            alert(`Γ¥î Job request "${selectedJobRequest.title}" has been rejected.`);
             setPendingJobRequests(prev => prev.filter(r => r._id !== selectedJobRequest._id));
             setPendingJobRequestsCount(prev => prev - 1);
             setShowRejectModal(false);
@@ -1323,13 +1025,8 @@ const AdminDashboard = () => {
    const [isBlacklistReview, setIsBlacklistReview] = useState(false);
    const [allApplications, setAllApplications] = useState(MOCK_APPLICATIONS);
    const [industries, setIndustries] = useState(INDUSTRIES);
-   // Add back category state that was accidentally removed
    const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
-<<<<<<< HEAD
-   const [jobs, setJobs] = useState(MOCK_JOBS);
-=======
    // jobs moved to top
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
    const [isAddVacancyOpen, setIsAddVacancyOpen] = useState(false);
    const [newVacancy, setNewVacancy] = useState({
       title: '',
@@ -1604,81 +1301,8 @@ const AdminDashboard = () => {
    };
 
 
-<<<<<<< HEAD
-   const handleAddVacancy = async (e) => {
-      e.preventDefault();
-      try {
-         const response = await fetch('http://localhost:5000/api/jobs', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-               title: newVacancy.title,
-               company: 'Maldives Resort', // Default company
-               location: 'Maldives',       // Default location
-               category: newVacancy.industry, // Backend expects 'category', frontend uses 'industry'
-               salary_range: newVacancy.salary, // Backend expects 'salary_range'
-               description: newVacancy.description,
-               requirements: newVacancy.requirements,
-               headcount: newVacancy.headcount || 1
-            })
-         });
 
-         if (response.ok) {
-            await fetchJobs(); // Refresh job list
-            setNewVacancy({ title: '', industry: '', salary: '', headcount: '', description: '', requirements: '' });
-            setIsAddVacancyOpen(false);
-            setShowSuccessNotification(true);
-            setTimeout(() => setShowSuccessNotification(false), 3000);
-         } else {
-            const err = await response.json();
-            popup.error('Failed to add job: ' + (err.message || 'Unknown error'));
-         }
-      } catch (error) {
-         console.error('Error adding job:', error);
-         popup.error('Error adding job');
-      }
-   };
-=======
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
 
-   // Handle Delete Category with validation
-   const handleDeleteCategory = async (categoryName, forceDelete = false) => {
-      try {
-         const url = `http://localhost:5000/api/jobs/categories/${encodeURIComponent(categoryName)}${forceDelete ? '?force=true' : ''}`;
-         const response = await fetch(url, {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' }
-         });
-
-<<<<<<< HEAD
-         const data = await response.json();
-
-         if (response.ok) {
-            // Success - refresh categories and go back
-            popup.success(data.message);
-            fetchCategories();
-            setSelectedIndustry(null);
-            fetchJobs(); // Refresh job list since jobs were deleted
-         } else if (data.canForceDelete) {
-            // Has closed jobs - ask user to confirm force delete
-            const confirmDelete = await popup.confirm(
-               `⚠️ ${data.message}\n\nDo you want to permanently delete this category and all ${data.totalJobsCount} job(s)?`,
-               "Force Delete Category",
-               "Delete All",
-               "Cancel"
-            );
-            if (confirmDelete) {
-               handleDeleteCategory(categoryName, true); // Retry with force delete
-            }
-         } else {
-            // Has OPEN jobs - must close them first
-            popup.error(`❌ ${data.message}`);
-         }
-      } catch (error) {
-         console.error('Error deleting category:', error);
-         popup.error('Failed to delete category. Network error.');
-      }
-=======
    const handleAddVacancy = (e) => {
       e.preventDefault();
       const vacancy = {
@@ -1704,7 +1328,6 @@ const AdminDashboard = () => {
       setIsAddVacancyOpen(false);
       setShowSuccessNotification(true);
       setTimeout(() => setShowSuccessNotification(false), 3000);
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
    };
 
    const handleGenerateCredentials = () => {
@@ -1725,14 +1348,14 @@ const AdminDashboard = () => {
          const data = await response.json();
          if (response.ok) {
             // Show success message (agent already has password from registration)
-            popup.success(`Agent "${agent.full_name}" approved successfully!\nThey can now login with their registered email: ${agent.email}`);
+            alert(`Agent "${agent.full_name}" approved successfully!\nThey can now login with their registered email: ${agent.email}`);
             setPendingAgencies(prev => prev.filter(a => a._id !== agent._id));
          } else {
-            popup.error('Failed to approve agent: ' + data.message);
+            alert('Failed to approve agent: ' + data.message);
          }
       } catch (error) {
          console.error('Error approving agent:', error);
-         popup.error('Error approving agent');
+         alert('Error approving agent');
       }
    };
 
@@ -1744,14 +1367,14 @@ const AdminDashboard = () => {
          });
          if (response.ok) {
             setPendingAgencies(prev => prev.filter(a => a._id !== agent._id));
-            popup.success('Agent rejected and blocked.');
+            alert('Agent rejected and blocked.');
          } else {
             const data = await response.json();
-            popup.error('Failed to reject agent: ' + data.message);
+            alert('Failed to reject agent: ' + data.message);
          }
       } catch (error) {
          console.error('Error rejecting agent:', error);
-         popup.error('Error rejecting agent');
+         alert('Error rejecting agent');
       }
    };
 
@@ -1767,14 +1390,6 @@ const AdminDashboard = () => {
    const [newCategoryName, setNewCategoryName] = useState('');
    const [categoryError, setCategoryError] = useState('');
 
-<<<<<<< HEAD
-   // --- CATEGORY MANAGEMENT STATE ---
-   const [categories, setCategories] = useState([]);
-   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-   const [newCategoryName, setNewCategoryName] = useState('');
-
-=======
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
    const fetchCategories = async () => {
       try {
          const res = await fetch('http://localhost:5000/api/jobs/categories');
@@ -1793,8 +1408,6 @@ const AdminDashboard = () => {
 
    const handleAddCategory = async () => {
       if (!newCategoryName.trim()) return;
-<<<<<<< HEAD
-=======
 
       // Duplicate Check (Case-insensitive)
       if (categories.some(c => c.toLowerCase() === newCategoryName.trim().toLowerCase())) {
@@ -1802,7 +1415,6 @@ const AdminDashboard = () => {
          return;
       }
 
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
       try {
          const res = await fetch('http://localhost:5000/api/jobs/categories', {
             method: 'POST',
@@ -1812,18 +1424,6 @@ const AdminDashboard = () => {
          if (res.ok) {
             await fetchCategories();
             setNewCategoryName('');
-<<<<<<< HEAD
-         } else {
-            const err = await res.json();
-            popup.error(err.message);
-         }
-      } catch (e) {
-         popup.error("Error adding category");
-      }
-   }
-
-
-=======
             setCategoryError('');
             setIsCategoryModalOpen(false); // Close modal on success
          } else {
@@ -1862,7 +1462,6 @@ const AdminDashboard = () => {
          alert("Error deleting category");
       }
    };
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
    const handleVacancyStateChange = (state) => {
       if (!selectedVacancy) return;
 
@@ -1898,7 +1497,7 @@ const AdminDashboard = () => {
 
    const handleProvisionAccount = (e) => {
       e.preventDefault();
-      popup.success(`Account for ${provisioningType === 'candidate' ? profileForm.name : profileForm.company} successfully provisioned.`);
+      alert(`Account for ${provisioningType === 'candidate' ? profileForm.name : profileForm.company} successfully provisioned.`);
       setProfileForm({ name: '', email: '', sector: 'Hospitality', location: '', company: '', website: '', phone: '' });
    };
 
@@ -1934,10 +1533,6 @@ const AdminDashboard = () => {
    const handleBlacklistSearch = () => setBlacklistSearchQuery(blacklistSearchInput);
 
    const [isBlacklistFilterOpen, setIsBlacklistFilterOpen] = useState(false);
-<<<<<<< HEAD
-   // isBlacklistSourceOpen and isBlacklistDurationOpen moved to top of component
-=======
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
    const [blacklistFilters, setBlacklistFilters] = useState({ source: 'All', duration: 'All' });
 
    // --- AGENT ECOSYSTEM FILTERS ---
@@ -1965,27 +1560,15 @@ const AdminDashboard = () => {
    // 2. RESUMES FILTER
    const [isResumeFilterOpen, setIsResumeFilterOpen] = useState(false);
    const [resumeFilters, setResumeFilters] = useState({ status: [], duration: 'All' });
-<<<<<<< HEAD
-   const filteredAgentResumes = agentApplications.filter(resume => {
-=======
    const filteredAgentResumes = agentResumes.filter(resume => {
       // Exclude REJECTED (Moved to Blacklist)
       if (resume.status === 'REJECTED' || resume.status === 'Rejected') return false;
 
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
       // Search Filter
       if (resumeSearchQuery) {
          const q = resumeSearchQuery.toLowerCase();
          // Match Name, Email, Role, Agency
-         const name = resume.candidate_name || resume.name || '';
-         const email = resume.email || '';
-         const role = resume.job?.title || resume.role || '';
-         const agency = resume.agency_name || resume.agency || '';
-
-         const matches = name.toLowerCase().includes(q) ||
-            email.toLowerCase().includes(q) ||
-            role.toLowerCase().includes(q) ||
-            agency.toLowerCase().includes(q);
+         const matches = resume.name.toLowerCase().includes(q) || resume.email.toLowerCase().includes(q) || resume.role.toLowerCase().includes(q) || resume.agency.toLowerCase().includes(q);
          if (!matches) return false;
       }
       // Status Filter
@@ -2022,16 +1605,11 @@ const AdminDashboard = () => {
    const toggleAppFilter = (val) => setAppFilters(prev => ({ ...prev, status: prev.status.includes(val) ? prev.status.filter(s => s !== val) : [...prev.status, val] }));
 
 
-<<<<<<< HEAD
-   // Vacancy Logic - Use liveJobs from API and filter by category field
-   const getJobsByIndustry = (industry) => liveJobs.filter(j => j.category === industry);
-=======
    // Vacancy Logic
    const getJobsByIndustry = (industry) => {
       if (!industry) return [];
       return jobs.filter(j => (j.industry || j.category || '').toLowerCase() === industry.toLowerCase());
    };
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
 
    const getCandidatesForIndustry = (industry) => {
       const jobs = getJobsByIndustry(industry);
@@ -2250,13 +1828,8 @@ const AdminDashboard = () => {
    const getPageTitle = () => {
       switch (activeTab) {
          case 'overview': return 'Dashboard Overview';
-<<<<<<< HEAD
-         case 'audit': return 'Client Status Request';
-         case 'vacancies': return selectedJob ? selectedJob.title : (selectedIndustry ? selectedIndustry : 'Vacancy Management');
-=======
          case 'audit': return 'Audit Queue';
          case 'vacancies': return selectedJob ? selectedJob.title : (selectedCategory ? selectedCategory : 'Vacancy Management');
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
          case 'agents': return 'Agent Ecosystem';
          case 'create_profile': return 'Account Provisioning';
          case 'blacklisted': return 'Blacklisted Candidates';
@@ -2282,55 +1855,6 @@ const AdminDashboard = () => {
 
             {/* CATEGORY MANAGEMENT MODAL */}
             {isCategoryModalOpen && (
-<<<<<<< HEAD
-               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200] animate-in fade-in duration-200">
-                  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 animate-in zoom-in-95 duration-300 max-h-[80vh] flex flex-col">
-                     <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-lg font-bold text-slate-900">Manage Categories</h3>
-                        <button onClick={() => setIsCategoryModalOpen(false)} className="text-slate-400 hover:text-slate-600">
-                           <X className="w-5 h-5" />
-                        </button>
-                     </div>
-
-                     <div className="flex gap-2 mb-6">
-                        <input
-                           type="text"
-                           value={newCategoryName}
-                           onChange={(e) => setNewCategoryName(e.target.value)}
-                           placeholder="New Category Name"
-                           className="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-                        />
-                        <button
-                           onClick={handleAddCategory}
-                           disabled={!newCategoryName.trim()}
-                           className="px-4 py-2 bg-teal-600 text-white rounded-xl font-bold text-sm hover:bg-teal-700 disabled:opacity-50"
-                        >
-                           Add
-                        </button>
-                     </div>
-
-                     <div className="flex-1 overflow-y-auto space-y-2 pr-2">
-                        {categories.map((cat) => (
-                           <div key={cat} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 hover:border-slate-200 transition-colors">
-                              <span className="font-bold text-sm text-slate-700">{cat}</span>
-                              <button
-                                 onClick={() => handleDeleteCategory(cat)}
-                                 className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                                 title="Delete Category"
-                              >
-                                 <Trash2 className="w-4 h-4" />
-                              </button>
-                           </div>
-                        ))}
-                     </div>
-                  </div>
-               </div>
-            )}
-
-            {/* CREDENTIALS MODAL */}
-            {showCredentialsModal && approvedCredentials && (
-=======
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200] animate-in fade-in duration-200">
                   <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 animate-in zoom-in-95 duration-300 max-h-[80vh] flex flex-col">
                      <div className="flex items-center justify-between mb-6">
@@ -2586,24 +2110,9 @@ const AdminDashboard = () => {
                               <div className="mb-6"></div>
                            )}
 
-<<<<<<< HEAD
-                           {activeTab === 'vacancies' && selectedIndustry && (
-                              <button
-                                 onClick={() => {
-                                    if (selectedJob) {
-                                       setSelectedJob(null); // Go back to jobs list
-                                    } else {
-                                       setSelectedIndustry(null); // Go back to categories
-                                    }
-                                 }}
-                                 className="text-sm font-bold text-slate-500 hover:text-slate-900 mb-6"
-                              >
-                                 {selectedJob ? '← Back to Jobs' : '← Back to Categories'}
-=======
                            {activeTab === 'vacancies' && selectedCategory && (
                               <button onClick={() => setSelectedCategory(null)} className="text-sm font-bold text-slate-500 hover:text-slate-900 mb-6">
                                  Back to Categories
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
                               </button>
                            )}
                         </div>
@@ -2614,32 +2123,21 @@ const AdminDashboard = () => {
                               {/* Custom Stats Grid - GOVERNANCE HUB */}
                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                  {[
-<<<<<<< HEAD
-                                    { label: "AUDIT QUEUE", value: "2", icon: null, action: () => setActiveTab('audit') },
-                                    { label: "VACANCIES", value: liveJobs.length.toString(), icon: null, action: () => setActiveTab('vacancies') },
-                                    { label: "AGENT FLOW", value: pendingAgencies.length.toString(), icon: null, action: () => setActiveTab('agents') },
-                                    { label: "BLACKLISTED", value: "1", icon: null, textRed: true, action: () => setActiveTab('blacklisted') },
-=======
                                     { label: "AUDIT QUEUE", value: auditQueue.length.toString(), icon: null, action: () => setActiveTab('audit') },
                                     { label: "VACANCIES", value: jobs.length.toString(), icon: null, action: () => setActiveTab('vacancies') },
                                     { label: "AGENT FLOW", value: pendingAgencies.length.toString(), icon: null, action: () => setActiveTab('agents') },
                                     { label: "BLACKLISTED", value: allApplications.filter(a => a.status === 'Blacklisted').length.toString(), icon: null, textRed: true, action: () => setActiveTab('blacklisted') },
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
                                  ].map((stat, idx) => (
                                     <div
                                        key={idx}
                                        onClick={stat.action}
-<<<<<<< HEAD
-                                       className={`bg-white rounded-[2rem] p-8 shadow-[0_2px_20px_rgba(0,0,0,0.02)] border border-slate-100 flex flex-col justify-center h-56 relative overflow-hidden group hover:shadow-xl cursor-pointer transition-all ${stat.textRed ? 'hover:border-red-500' : 'hover:border-emerald-500'}`}
-=======
                                        className={`bg-white rounded-3xl p-8 shadow-[0_2px_20px_rgba(0,0,0,0.02)] border border-slate-100 flex flex-col justify-center h-48 relative overflow-hidden group hover:shadow-lg ${stat.textRed ? 'hover:border-red-500' : 'hover:border-emerald-500'} cursor-pointer transition-all`}
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
                                     >
-                                       <div className="absolute right-0 top-0 h-full w-28 bg-slate-50/50 skew-x-12 translate-x-12 transition-transform duration-500 group-hover:translate-x-6"></div>
-                                       <p className={`text-[11px] font-black uppercase tracking-[0.25em] mb-5 transition-colors ${stat.textRed ? 'text-red-500 group-hover:text-red-600' : stat.textAmber ? 'text-amber-500 group-hover:text-amber-600' : 'text-slate-400 group-hover:text-emerald-500'}`}>
+                                       <div className="absolute right-0 top-0 h-full w-24 bg-slate-50/50 skew-x-12 translate-x-12"></div>
+                                       <p className={`text-[10px] font-black uppercase tracking-[0.2em] mb-4 ${stat.textRed ? 'text-red-500' : 'text-slate-400'}`}>
                                           {stat.label}
                                        </p>
-                                       <h2 className={`text-7xl font-black tracking-tight z-10 ${stat.textRed ? 'text-red-500' : stat.textAmber ? 'text-amber-500' : 'text-slate-900'}`}>
+                                       <h2 className={`text-6xl font-black tracking-tight z-10 ${stat.textRed ? 'text-red-500' : 'text-slate-900'} ${idx === 1 ? 'text-teal-600' : ''} ${idx === 2 ? 'text-amber-500' : ''}`}>
                                           {stat.value}
                                        </h2>
                                        <div className="absolute right-6 bottom-6 opacity-5">
@@ -2676,7 +2174,7 @@ const AdminDashboard = () => {
                                        <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center mb-4">
                                           <CheckCircle2 className="w-8 h-8" />
                                        </div>
-                                       <h4 className="font-bold text-slate-900 text-sm mb-1">All caught up! ✅</h4>
+                                       <h4 className="font-bold text-slate-900 text-sm mb-1">All caught up! Γ£à</h4>
                                        <p className="text-xs text-slate-500">No pending approvals at this time.</p>
                                     </div>
                                  ) : (
@@ -2730,11 +2228,7 @@ const AdminDashboard = () => {
                            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                               <div className="bg-white rounded-xl border border-slate-200 shadow-sm relative">
                                  <div className="p-6 border-b border-slate-100 flex justify-between items-center relative rounded-t-xl">
-<<<<<<< HEAD
-                                    <h3 className="font-bold text-slate-900 text-sm uppercase tracking-widest">Client Status Requests</h3>
-=======
                                     <h3 className="font-bold text-slate-900 text-2xl">Audit Queue</h3>
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
                                     <div className="flex items-center gap-3">
                                        <div className="relative">
                                           <input
@@ -2843,42 +2337,15 @@ const AdminDashboard = () => {
                                                 </div>
                                              </div>
                                           )}
-<<<<<<< HEAD
-                                       </div>
-                                    </div>
-                                 </div>
-                                 {/* VISIBILITY REQUESTS LIST */}
-=======
                                        </div >
                                     </div > {/* This closes the flex items-center gap-3 div */}
                                  </div> {/* This closes the p-6 border-b div */}
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
                                  <div className="overflow-x-auto">
                                     {isLoadingVisibilityRequests ? (
                                        <div className="py-12 text-center text-slate-400">
                                           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
                                           <p className="text-sm">Loading requests...</p>
                                        </div>
-<<<<<<< HEAD
-                                    ) : visibilityRequests.length > 0 ? (
-                                       <table className="w-full text-left">
-                                          <thead>
-                                             <tr className="bg-slate-50 border-b border-slate-100">
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Candidate</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Job Applied</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Request Date</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Current Status</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Actions</th>
-                                             </tr>
-                                          </thead>
-                                          <tbody className="divide-y divide-slate-50">
-                                             {visibilityRequests.map((request) => (
-                                                <tr key={request._id || request.id} className="hover:bg-slate-50/50 transition-colors">
-                                                   <td className="px-6 py-4">
-                                                      <div>
-                                                         <p className="text-sm font-bold text-slate-900">{request.candidate_name}</p>
-                                                         <p className="text-xs text-slate-400 font-medium">{request.email}</p>
-=======
                                     ) : filteredAuditQueue.length > 0 ? (
                                        <table className="w-full text-left">
                                           <thead>
@@ -2897,29 +2364,10 @@ const AdminDashboard = () => {
                                                       <div>
                                                          <p className="text-sm font-bold text-slate-900">{request.name}</p>
                                                          <p className="text-xs text-slate-400 font-medium">{request.region || 'Unknown Location'}</p>
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
                                                       </div>
                                                    </td>
                                                    <td className="px-6 py-4">
                                                       <div>
-<<<<<<< HEAD
-                                                         <p className="text-sm font-bold text-slate-700">{request.job?.title || 'N/A'}</p>
-                                                         <p className="text-xs text-slate-400">{request.job?.company || ''}</p>
-                                                      </div>
-                                                   </td>
-                                                   <td className="px-6 py-4">
-                                                      <span className="text-xs font-medium text-slate-500">
-                                                         {request.visibility_requested_at ? new Date(request.visibility_requested_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
-                                                      </span>
-                                                   </td>
-                                                   <td className="px-6 py-4">
-                                                      <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${request.status === 'PENDING' ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                                                         request.status === 'HOLD' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                                            request.status === 'REVIEWING' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                                               'bg-slate-50 text-slate-600 border-slate-100'
-                                                         }`}>
-                                                         {request.status === 'HOLD' || request.status === 'REVIEWING' ? 'In Review' : request.status}
-=======
                                                          <p className="text-sm font-bold text-slate-900">{request.category || 'N/A'}</p>
                                                          <p className="text-xs text-slate-500 font-medium">{request.role || 'General'}</p>
                                                       </div>
@@ -2935,29 +2383,15 @@ const AdminDashboard = () => {
                                                                   'bg-slate-50 text-slate-600 border-slate-100'
                                                          }`}>
                                                          {(request.status === 'APPLIED' || request.status === 'Applied') ? 'PROCESSING' : request.status}
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
                                                       </span>
                                                    </td>
                                                    <td className="px-6 py-4 text-right">
                                                       <div className="flex items-center justify-end gap-2">
                                                          <button
-<<<<<<< HEAD
-                                                            onClick={() => handleApproveVisibilityRequest(request._id || request.id)}
-                                                            className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-100 transition-all flex items-center gap-1.5"
-                                                         >
-                                                            <CheckCircle2 className="w-3 h-3" /> Approve
-                                                         </button>
-                                                         <button
-                                                            onClick={() => handleRejectVisibilityRequest(request._id || request.id)}
-                                                            className="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 border border-red-100 text-[10px] font-black uppercase tracking-widest hover:bg-red-100 transition-all flex items-center gap-1.5"
-                                                         >
-                                                            <X className="w-3 h-3" /> Reject
-=======
                                                             onClick={() => setSelectedResume(request)}
                                                             className="px-4 py-2 rounded-lg bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-all flex items-center gap-1.5 shadow-md shadow-teal-600/20"
                                                          >
                                                             <Eye className="w-3 h-3" /> View Details
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
                                                          </button>
                                                       </div>
                                                    </td>
@@ -2966,18 +2400,9 @@ const AdminDashboard = () => {
                                           </tbody>
                                        </table>
                                     ) : (
-<<<<<<< HEAD
-                                       <div className="py-12 text-center">
-                                          <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 mx-auto mb-4">
-                                             <Clock className="w-8 h-8" />
-                                          </div>
-                                          <p className="text-slate-500 font-bold text-lg mb-2">No Pending Requests</p>
-                                          <p className="text-sm text-slate-400">There are no visibility requests awaiting review.</p>
-=======
                                        <div className="py-12 text-center text-slate-400">
                                           <Search className="w-8 h-8 mx-auto mb-2 opacity-20" />
                                           <p className="text-sm">No record exist !!</p>
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
                                        </div>
                                     )}
                                  </div>
@@ -2985,13 +2410,15 @@ const AdminDashboard = () => {
                            </div>
                         )}
 
-                        {/* VACANCIES CONTENT */}
+                        {/* VACANCIES CONTENT - HIERARCHICAL VIEW */}
                         {activeTab === 'vacancies' && (
                            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                              {!selectedIndustry ? (
+
+                              {/* VIEW 1: CATEGORIES (Default) */}
+                              {vacancyViewMode === 'CATEGORIES' && (
                                  <>
                                     <div className="flex justify-between items-center mb-6">
-                                       <h2 className="text-2xl font-bold text-slate-900">Vacancy Categories</h2>
+                                       <h2 className="text-2xl font-bold text-slate-900">Vacancy Management</h2>
                                        <button
                                           onClick={() => setIsCategoryModalOpen(true)}
                                           className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-bold shadow-lg shadow-slate-900/20 hover:bg-slate-800 transition-all flex items-center gap-2"
@@ -3000,19 +2427,6 @@ const AdminDashboard = () => {
                                        </button>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-<<<<<<< HEAD
-                                       {industries.map((industry) => {
-                                          const jobCount = getJobsByIndustry(industry).length;
-                                          return (
-                                             <button
-                                                key={industry}
-                                                onClick={() => {
-                                                   setSelectedIndustry(industry);
-                                                   setSelectedJob(null);
-                                                   setJobApplications([]);
-                                                }}
-                                                className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-teal-200 transition-all text-left group"
-=======
                                        {categories.map((industry) => {
                                           // Fix: Use direct filtering instead of missing function
                                           const jobCount = jobs.filter(j => j.industry === industry).length;
@@ -3021,43 +2435,32 @@ const AdminDashboard = () => {
                                                 key={industry}
                                                 onClick={() => handleCategoryClick(industry)}
                                                 className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-teal-200 transition-all text-left flex flex-col items-start h-full group"
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
                                              >
                                                 <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center mb-6 text-slate-400 group-hover:bg-teal-50 group-hover:text-teal-600 transition-colors">
                                                    <Briefcase className="w-7 h-7" />
                                                 </div>
                                                 <h3 className="text-xl font-bold text-slate-900 mb-2">{industry}</h3>
                                                 <p className="text-sm text-slate-500 font-medium">{jobCount} Active Jobs</p>
-<<<<<<< HEAD
-                                                <div className="mt-6 flex items-center text-xs font-bold text-teal-600 uppercase tracking-wider opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all">
-                                                   View Candidates <ArrowRight className="w-3 h-3 ml-2" />
-                                                </div>
-=======
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
                                              </button>
                                           );
                                        })}
                                     </div>
                                  </>
-                              ) : selectedIndustry && !selectedJob ? (
-                                 // JOBS LIST VIEW - Show jobs in selected category
-                                 <>
-                                    <div className="flex justify-between items-center mb-6">
+                              )}
+
+                              {/* VIEW 2: JOBS LIST */}
+                              {vacancyViewMode === 'JOBS' && (
+                                 <div className="space-y-6">
+                                    {/* Back Button & Header */}
+                                    <div className="flex items-center justify-between">
                                        <div className="flex items-center gap-4">
                                           <button
-                                             onClick={() => setSelectedIndustry(null)}
-                                             className="w-10 h-10 rounded-lg flex items-center justify-center bg-white border border-slate-200 text-slate-400 hover:text-slate-600 hover:border-teal-500 hover:shadow-md transition-all"
+                                             onClick={handleBackToCategories}
+                                             className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors"
                                           >
                                              <ArrowLeft className="w-5 h-5" />
                                           </button>
                                           <div>
-<<<<<<< HEAD
-                                             <h2 className="text-2xl font-bold text-slate-900">{selectedIndustry} Jobs</h2>
-                                             <p className="text-sm text-slate-500 mt-1">{getJobsByIndustry(selectedIndustry).length} Active Jobs</p>
-                                          </div>
-                                       </div>
-                                       <div className="flex items-center gap-2">
-=======
                                              <h2 className="text-2xl font-bold text-slate-900">{selectedCategory} Jobs</h2>
                                              <p className="text-sm text-slate-500 mt-1">{categoryJobs.length} Active Jobs</p>
                                           </div>
@@ -3186,288 +2589,17 @@ const AdminDashboard = () => {
                                  <div className="space-y-6">
                                     <div className="flex items-center justify-between">
                                        <div className="flex items-center gap-4">
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
                                           <button
-                                             onClick={() => {
-                                                setNewVacancy(prev => ({ ...prev, industry: selectedIndustry }));
-                                                setIsAddVacancyOpen(true);
-                                             }}
-                                             className="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-bold shadow-lg shadow-teal-600/20 hover:bg-teal-700 transition-all flex items-center gap-2"
+                                             onClick={handleBackToJobs}
+                                             className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors"
                                           >
-                                             <Plus className="w-4 h-4" /> Add Job
+                                             <ArrowLeft className="w-4 h-4" /> Back to Jobs
                                           </button>
-                                          <button
-                                             onClick={() => handleDeleteCategory(selectedIndustry)}
-                                             className="px-4 py-2 rounded-lg bg-red-50 text-red-600 border border-red-200 text-sm font-bold hover:bg-red-100 transition-all flex items-center gap-2"
-                                             title="Delete this category"
-                                          >
-                                             <Trash2 className="w-4 h-4" /> Delete Category
-                                          </button>
+                                          <span className="text-slate-300">|</span>
+                                          <h2 className="text-xl font-bold text-slate-900">Candidates for: {selectedJobTitle}</h2>
                                        </div>
                                     </div>
 
-<<<<<<< HEAD
-                                    {getJobsByIndustry(selectedIndustry).length > 0 ? (
-                                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                          {getJobsByIndustry(selectedIndustry).map((job) => (
-                                             <button
-                                                key={job._id || job.id}
-                                                onClick={() => handleJobSelect(job)}
-                                                className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-teal-200 transition-all text-left group"
-                                             >
-                                                <div className="flex items-start justify-between mb-4">
-                                                   <div className="w-10 h-10 bg-teal-50 rounded-lg flex items-center justify-center group-hover:bg-teal-100 transition-colors">
-                                                      <Briefcase className="w-5 h-5 text-teal-600" />
-                                                   </div>
-                                                   <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${job.status === 'OPEN' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
-                                                      {job.status || 'OPEN'}
-                                                   </span>
-                                                </div>
-                                                <h3 className="text-lg font-bold text-slate-900 mb-2">{job.title}</h3>
-                                                <p className="text-sm text-slate-500 mb-1">{job.company}</p>
-                                                <p className="text-xs text-slate-400 mb-4">{job.location}</p>
-                                                {job.salary_range && (
-                                                   <p className="text-sm font-bold text-teal-600 mb-4">{job.salary_range}</p>
-                                                )}
-                                                <div className="flex items-center text-xs font-bold text-teal-600 uppercase tracking-wider opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all">
-                                                   View Candidates <ArrowRight className="w-3 h-3 ml-2" />
-                                                </div>
-                                             </button>
-                                          ))}
-                                       </div>
-                                    ) : (
-                                       <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
-                                          <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mx-auto mb-4">
-                                             <Briefcase className="w-8 h-8 text-slate-300" />
-                                          </div>
-                                          <h3 className="text-lg font-bold text-slate-900 mb-2">No Jobs Yet</h3>
-                                          <p className="text-sm text-slate-500 mb-4">No jobs have been created in the {selectedIndustry} category.</p>
-                                          <button
-                                             onClick={() => {
-                                                setNewVacancy(prev => ({ ...prev, industry: selectedIndustry }));
-                                                setIsAddVacancyOpen(true);
-                                             }}
-                                             className="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-bold shadow-lg shadow-teal-600/20 hover:bg-teal-700 transition-all inline-flex items-center gap-2"
-                                          >
-                                             <Plus className="w-4 h-4" /> Add First Job
-                                          </button>
-                                       </div>
-                                    )}
-                                 </>
-                              ) : (
-                                 // CANDIDATES VIEW - Show candidates for selected job
-                                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm relative">
-                                    <div className="p-6 border-b border-slate-100 flex justify-between items-center relative rounded-t-xl">
-                                       <div className="flex items-center gap-4">
-                                          <button
-                                             onClick={() => { setSelectedJob(null); setJobApplications([]); }}
-                                             className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all border border-transparent hover:border-slate-200"
-                                          >
-                                             <ArrowLeft className="w-5 h-5" />
-                                          </button>
-                                          <div>
-                                             <h3 className="font-bold text-slate-900 text-sm uppercase tracking-widest">Candidates for {selectedJob?.title}</h3>
-                                             <p className="text-xs text-slate-500 mt-1">{selectedJob?.company} • {selectedJob?.location}</p>
-                                          </div>
-                                       </div>
-                                       <div className="flex items-center gap-3">
-                                          <div className="relative">
-                                             <input
-                                                type="text"
-                                                placeholder="Search candidates..."
-                                                className="pl-4 pr-10 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 w-64"
-                                                value={candidateSearchInput}
-                                                onChange={(e) => setCandidateSearchInput(e.target.value)}
-                                                onKeyDown={(e) => e.key === 'Enter' && handleCandidateSearch()}
-                                             />
-                                             <button
-                                                onClick={handleCandidateSearch}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors"
-                                             >
-                                                <Search className="w-4 h-4" />
-                                             </button>
-                                          </div>
-
-                                          {/* Close/Delete Actions */}
-                                          <div className="flex items-center gap-2">
-                                             {selectedJob?.status !== 'CLOSED' && (
-                                                <button
-                                                   onClick={handleCloseJob}
-                                                   className="px-3 py-2 rounded-lg bg-amber-50 text-amber-600 border border-amber-200 text-xs font-bold uppercase tracking-wider hover:bg-amber-100 transition-all flex items-center gap-2"
-                                                   title="Close Job for Applications"
-                                                >
-                                                   <Lock className="w-3 h-3" /> Close
-                                                </button>
-                                             )}
-                                             <button
-                                                onClick={handleDeleteJob}
-                                                className="px-3 py-2 rounded-lg bg-red-50 text-red-600 border border-red-200 text-xs font-bold uppercase tracking-wider hover:bg-red-100 transition-all flex items-center gap-2"
-                                                title="Permanently Delete Job"
-                                             >
-                                                <Trash2 className="w-3 h-3" /> Delete
-                                             </button>
-                                          </div>
-
-                                          <div className="relative">
-                                             <button
-                                                onClick={() => setIsCandidateFilterOpen(!isCandidateFilterOpen)}
-                                                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isCandidateFilterOpen ? 'bg-teal-50 text-teal-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
-                                             >
-                                                <Filter className="w-4 h-4" />
-                                             </button>
-
-                                             {/* FILTER DROPDOWN */}
-                                             {isCandidateFilterOpen && (
-                                                <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                                   <div className="max-h-[60vh] overflow-y-auto custom-scrollbar p-3 space-y-3">
-
-                                                      {/* 1. Status */}
-                                                      <div className="space-y-2">
-                                                         <h4 className="text-[9px] font-black uppercase text-slate-400 tracking-widest">1. Status</h4>
-                                                         <div className="space-y-1.5">
-                                                            {['Processing', 'On Hold', 'Rejected', 'Selected'].map(status => (
-                                                               <label key={status} className="flex items-center gap-2 cursor-pointer group">
-                                                                  <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all ${candidateFilters.status.includes(status.toUpperCase()) ? 'bg-teal-600 border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
-                                                                     {candidateFilters.status.includes(status.toUpperCase()) && <CheckCircle2 className="w-2.5 h-2.5 text-white" />}
-                                                                  </div>
-                                                                  <input
-                                                                     type="checkbox"
-                                                                     className="hidden"
-                                                                     checked={candidateFilters.status.includes(status.toUpperCase())}
-                                                                     onChange={() => toggleCandidateStatusFilter(status.toUpperCase())}
-                                                                  />
-                                                                  <span className="text-xs font-bold text-slate-700">{status}</span>
-                                                               </label>
-                                                            ))}
-                                                         </div>
-                                                      </div>
-
-                                                      {/* 2. Source */}
-                                                      <div className="space-y-2">
-                                                         <h4 className="text-[9px] font-black uppercase text-slate-400 tracking-widest">2. Source</h4>
-                                                         <div className="space-y-1.5">
-                                                            {['Direct Application', 'Agency Ref'].map(source => (
-                                                               <label key={source} className="flex items-center gap-2 cursor-pointer group">
-                                                                  <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${candidateFilters.source === source ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
-                                                                     {candidateFilters.source === source && <div className="w-1.5 h-1.5 rounded-full bg-teal-600" />}
-                                                                  </div>
-                                                                  <input
-                                                                     type="radio"
-                                                                     className="hidden"
-                                                                     checked={candidateFilters.source === source}
-                                                                     onChange={() => setCandidateFilters({ ...candidateFilters, source })}
-                                                                  />
-                                                                  <span className="text-xs font-bold text-slate-700">{source}</span>
-                                                               </label>
-                                                            ))}
-                                                         </div>
-                                                      </div>
-                                                   </div>
-
-                                                   <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
-                                                      <button
-                                                         onClick={() => setCandidateFilters({ status: [], source: 'All', duration: 'All' })}
-                                                         className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors"
-                                                      >
-                                                         Clear
-                                                      </button>
-                                                      <button
-                                                         onClick={() => setIsCandidateFilterOpen(false)}
-                                                         className="flex-1 py-2 rounded-lg bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20"
-                                                      >
-                                                         Apply
-                                                      </button>
-                                                   </div>
-                                                </div>
-                                             )}
-                                          </div>
-                                       </div>
-                                    </div>
-
-                                    {/* STATUS FILTER TABS */}
-                                    <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-                                       <div className="flex items-center gap-2 flex-wrap">
-                                          {[
-                                             { key: 'ALL', label: 'All', color: 'slate' },
-                                             { key: 'PENDING', label: 'Pending', color: 'amber' },
-                                             { key: 'APPROVED', label: 'Selected', color: 'teal' },
-                                             { key: 'REJECTED', label: 'Rejected', color: 'red' },
-                                             { key: 'HOLD', label: 'On Hold', color: 'purple' }
-                                          ].map(tab => {
-                                             const count = tab.key === 'ALL'
-                                                ? jobApplications.length
-                                                : jobApplications.filter(app => app.status === tab.key || (tab.key === 'APPROVED' && (app.status === 'APPROVED' || app.status === 'SELECTED' || app.status === 'ACCEPTED'))).length;
-                                             const isActive = candidateStatusFilter === tab.key;
-                                             return (
-                                                <button
-                                                   key={tab.key}
-                                                   onClick={() => setCandidateStatusFilter(tab.key)}
-                                                   className={`
-                                                      px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2
-                                                      ${isActive
-                                                         ? `bg-${tab.color}-600 text-white shadow-lg shadow-${tab.color}-600/20`
-                                                         : `bg-white text-${tab.color}-600 border border-${tab.color}-200 hover:bg-${tab.color}-50`
-                                                      }
-                                                   `}
-                                                   style={{
-                                                      backgroundColor: isActive
-                                                         ? (tab.color === 'slate' ? '#475569' : tab.color === 'amber' ? '#d97706' : tab.color === 'teal' ? '#0d9488' : tab.color === 'red' ? '#dc2626' : '#9333ea')
-                                                         : 'white',
-                                                      color: isActive ? 'white' : (tab.color === 'slate' ? '#475569' : tab.color === 'amber' ? '#d97706' : tab.color === 'teal' ? '#0d9488' : tab.color === 'red' ? '#dc2626' : '#9333ea'),
-                                                      borderColor: tab.color === 'slate' ? '#cbd5e1' : tab.color === 'amber' ? '#fcd34d' : tab.color === 'teal' ? '#5eead4' : tab.color === 'red' ? '#fca5a5' : '#c4b5fd'
-                                                   }}
-                                                >
-                                                   {tab.label}
-                                                   <span className={`
-                                                      px-1.5 py-0.5 rounded text-[10px] font-black
-                                                      ${isActive ? 'bg-white/20' : 'bg-slate-100'}
-                                                   `}>
-                                                      {count}
-                                                   </span>
-                                                </button>
-                                             );
-                                          })}
-                                       </div>
-                                    </div>
-
-                                    <div className="overflow-x-auto">
-                                       <table className="w-full text-left">
-                                          <thead>
-                                             <tr className="bg-slate-50 border-b border-slate-100">
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Applicant Profile</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Source</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Application State</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Actions</th>
-                                             </tr>
-                                          </thead>
-                                          <tbody className="divide-y divide-slate-50">
-                                             {isLoadingApplications ? (
-                                                <tr>
-                                                   <td colSpan="4" className="px-6 py-12 text-center">
-                                                      <div className="flex flex-col items-center justify-center gap-2">
-                                                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
-                                                         <p className="text-sm text-slate-500">Loading applications...</p>
-                                                      </div>
-                                                   </td>
-                                                </tr>
-                                             ) : jobApplications.length > 0 ? (
-                                                jobApplications
-                                                   .filter(app => {
-                                                      if (candidateStatusFilter === 'ALL') return true;
-                                                      if (candidateStatusFilter === 'APPROVED') {
-                                                         return app.status === 'APPROVED' || app.status === 'SELECTED' || app.status === 'ACCEPTED';
-                                                      }
-                                                      return app.status === candidateStatusFilter;
-                                                   })
-                                                   .map((app) => (
-                                                      <tr key={app.id} className="hover:bg-slate-50/50 transition-colors">
-                                                         <td className="px-6 py-4">
-                                                            <div>
-                                                               <p className="text-sm font-bold text-slate-900">{app.candidateName}</p>
-                                                               <p className="text-xs text-slate-400 font-medium">{app.email}</p>
-                                                               {app.contactNumber && (
-                                                                  <p className="text-xs text-slate-400 font-medium">{app.contactNumber}</p>
-=======
                                     {/* Candidates Table */}
                                     <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
 
@@ -3625,103 +2757,10 @@ const AdminDashboard = () => {
                                                                <p className="text-sm font-bold text-slate-900">{app.source === 'Direct' ? 'Direct' : 'Agency'}</p>
                                                                {app.source !== 'Direct' && app.agentName && (
                                                                   <p className="text-xs text-slate-500 font-medium mt-0.5">{app.agentName}</p>
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
                                                                )}
                                                             </div>
                                                          </td>
                                                          <td className="px-6 py-4">
-<<<<<<< HEAD
-                                                            <div className="flex flex-col">
-                                                               <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 flex items-center gap-1.5">
-                                                                  <span className={`w-1.5 h-1.5 rounded-full ${app.source === 'Direct' ? 'bg-blue-400' : 'bg-amber-400'}`}></span>
-                                                                  {app.source === 'Direct' ? 'Direct' : 'Agent'}
-                                                               </span>
-                                                               <span className="text-[10px] font-medium text-slate-400 pl-3">
-                                                                  {app.source === 'Direct' ? 'Portal Application' : 'Agent Submitted'}
-                                                               </span>
-                                                            </div>
-                                                         </td>
-                                                         <td className="px-6 py-4">
-                                                            <span className={`
-                                                      px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest
-                                                      ${app.status === 'PENDING' ? 'bg-amber-50 text-amber-600' : ''}
-                                                      ${app.status === 'Applied' ? 'bg-blue-50 text-blue-600' : ''}
-                                                      ${app.status === 'Processing' || app.status === 'ON HOLD' ? 'bg-purple-50 text-purple-600' : ''}
-                                                      ${app.status === 'APPROVED' || app.status === 'Selected' ? 'bg-teal-50 text-teal-600' : ''}
-                                                      ${app.status === 'REJECTED' || app.status === 'Rejected' ? 'bg-red-50 text-red-600' : ''}
-                                                   `}>
-                                                               {app.status}
-                                                            </span>
-                                                         </td>
-                                                         <td className="px-6 py-4 text-right">
-                                                            <div className="flex items-center justify-end gap-2">
-
-                                                               {/* View Resume Button */}
-                                                               <button
-                                                                  onClick={() => setSelectedResume({
-                                                                     ...app,
-                                                                     name: app.candidateName,
-                                                                     role: selectedJob?.title || 'Unknown Role',
-                                                                     whatsapp: app.contactNumber,
-                                                                     nationality: 'Applicant',
-                                                                     agency: app.source === 'Direct' ? 'Direct Application' : 'Agent Submission',
-                                                                     statusColor: '',
-                                                                     documents: {
-                                                                        resume: { filename: app.resumeFilename || 'Resume.pdf', url: `http://localhost:5000/api/applications/${app.id}/resume` },
-                                                                        certificates: app.certsFilename ? { filename: app.certsFilename, url: `http://localhost:5000/api/applications/${app.id}/certificates` } : null
-                                                                     }
-                                                                  })}
-                                                                  className="px-3 py-1.5 rounded-lg bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900 text-[10px] font-bold uppercase tracking-widest transition-all"
-                                                               >
-                                                                  View
-                                                               </button>
-
-                                                               {/* Action Buttons - Only show if pending or processing */}
-                                                               {(app.status === 'PENDING' || app.status === 'PROCESSING' || app.status === 'Applied' || app.status === 'ON HOLD') && (
-                                                                  <>
-                                                                     <button
-                                                                        onClick={() => handleApplicationAction(app.id, 'APPROVED', app.candidateName)}
-                                                                        className="px-4 py-1.5 rounded-lg bg-teal-600 text-white hover:bg-teal-700 text-[10px] font-black uppercase tracking-widest transition-all shadow-md shadow-teal-500/20"
-                                                                     >
-                                                                        Approve
-                                                                     </button>
-                                                                     <button
-                                                                        onClick={() => handleApplicationAction(app.id, 'ON HOLD', app.candidateName)}
-                                                                        className="px-4 py-1.5 rounded-lg bg-amber-400 text-white hover:bg-amber-500 text-[10px] font-black uppercase tracking-widest transition-all shadow-md shadow-amber-500/20"
-                                                                     >
-                                                                        Hold
-                                                                     </button>
-                                                                     <button
-                                                                        onClick={() => handleApplicationAction(app.id, 'REJECTED', app.candidateName)}
-                                                                        className="px-4 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 text-[10px] font-black uppercase tracking-widest transition-all shadow-md shadow-red-500/20"
-                                                                     >
-                                                                        Reject
-                                                                     </button>
-                                                                  </>
-                                                               )}
-                                                            </div>
-                                                         </td>
-                                                      </tr>
-                                                   ))
-                                             ) : (
-                                                <tr>
-                                                   <td colSpan="4" className="px-6 py-12 text-center">
-                                                      <div className="flex flex-col items-center justify-center gap-2">
-                                                         <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400">
-                                                            <Users className="w-6 h-6 opacity-40" />
-                                                         </div>
-                                                         <p className="text-slate-500 font-bold">No candidates yet</p>
-                                                         <p className="text-xs text-slate-400">No one has applied for this position yet.</p>
-                                                      </div>
-                                                   </td>
-                                                </tr>
-                                             )}
-                                          </tbody>
-                                       </table>
-                                    </div>
-                                 </div>
-                              )}
-=======
                                                             <span className={`text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-widest border ${(app.status === 'Selected' || app.status === 'Accepted') ? 'bg-green-100 text-green-700 border-green-200' :
                                                                app.status === 'Rejected' ? 'bg-red-50 text-red-600 border-red-100' :
                                                                   app.status === 'On Hold' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
@@ -3753,7 +2792,6 @@ const AdminDashboard = () => {
                                  </div>
                               )
                               }
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
                            </div>
                         )}
 
@@ -3813,43 +2851,6 @@ const AdminDashboard = () => {
                                     </form>
                                  </div>
                               </div>
-<<<<<<< HEAD
-                           </div>
-                        )}
-
-                        {/* AGENT ECOSYSTEM */}
-                        {activeTab === 'agents' && (
-                           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                              {/* Sub-tabs */}
-                              <div className="flex items-center gap-4 mb-8">
-                                 <button
-                                    onClick={() => setAgentSubTab('vacancies')}
-                                    className={`flex items-center gap-2 px-6 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${agentSubTab === 'vacancies'
-                                       ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/20'
-                                       : 'bg-white text-slate-400 hover:text-slate-600'
-                                       }`}
-                                 >
-                                    <Briefcase className="w-4 h-4" /> Agent Vacancies
-                                 </button>
-                                 <button
-                                    onClick={() => setAgentSubTab('resumes')}
-                                    className={`flex items-center gap-2 px-6 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${agentSubTab === 'resumes'
-                                       ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/20'
-                                       : 'bg-white text-slate-400 hover:text-slate-600'
-                                       }`}
-                                 >
-                                    <Users className="w-4 h-4" /> Agent Resumes
-                                 </button>
-                                 <button
-                                    onClick={() => setAgentSubTab('new_apps')}
-                                    className={`flex items-center gap-2 px-6 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${agentSubTab === 'new_apps'
-                                       ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/20'
-                                       : 'bg-white text-slate-400 hover:text-slate-600'
-                                       }`}
-                                 >
-                                    <UserPlus className="w-4 h-4" /> New Applications
-                                 </button>
-=======
                            )
                         }
 
@@ -3974,7 +2975,7 @@ const AdminDashboard = () => {
                                                             <div>
                                                                <h4 className="font-bold text-slate-900 text-base mb-1">{job.title}</h4>
                                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                                                  {job.ref} <span className="mx-1">•</span> {job.date}
+                                                                  {job.ref} <span className="mx-1">ΓÇó</span> {job.date}
                                                                </p>
                                                             </div>
                                                          </td>
@@ -4278,17 +3279,10 @@ const AdminDashboard = () => {
 
 
                                  </div>
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
                               </div>
+                           )
+                        }
 
-<<<<<<< HEAD
-                              {/* Content Area */}
-                              <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-8">
-                                 {agentSubTab === 'vacancies' && (
-                                    <div className="space-y-4">
-                                       <div className="flex justify-end items-center gap-3">
-                                          <div className="relative">
-=======
 
                         {/* BLACKLISTED CONTENT */}
                         {
@@ -4302,86 +3296,142 @@ const AdminDashboard = () => {
 
                                        <div className="flex items-center gap-3 w-full justify-end">
                                           <div className="relative flex-1 max-w-md">
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
                                              <input
                                                 type="text"
-                                                placeholder="Search vacancies..."
-                                                className="pl-4 pr-10 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 w-64"
-                                                value={vacancySearchInput}
-                                                onChange={(e) => setVacancySearchInput(e.target.value)}
-                                                onKeyDown={(e) => e.key === 'Enter' && handleVacancySearch()}
+                                                placeholder="Search blacklisted candidates..."
+                                                className="w-full pl-4 pr-10 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                                                value={blacklistSearchInput}
+                                                onChange={(e) => setBlacklistSearchInput(e.target.value)}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleBlacklistSearch()}
                                              />
                                              <button
-                                                onClick={handleVacancySearch}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors"
+                                                onClick={handleBlacklistSearch}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 transition-colors"
                                              >
                                                 <Search className="w-4 h-4" />
                                              </button>
                                           </div>
-                                          <div className="relative">
-                                             <button
-                                                onClick={() => setIsVacancyFilterOpen(!isVacancyFilterOpen)}
-                                                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isVacancyFilterOpen ? 'bg-teal-50 text-teal-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
-                                             >
-                                                <Filter className="w-4 h-4" />
-                                             </button>
-                                             {isVacancyFilterOpen && (
-                                                <div className="absolute right-0 top-full mt-4 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                                   <div className="max-h-[60vh] overflow-y-auto custom-scrollbar p-6 space-y-6">
-                                                      <div className="space-y-3">
-                                                         <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">1. Status</h4>
-                                                         <div className="space-y-2">
-                                                            {['HIDDEN', 'LIVE TO PUBLIC', 'STILL IN HOLD'].map(status => (
-                                                               <label key={status} className="flex items-center gap-3 cursor-pointer group">
-                                                                  <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${vacancyFilters.status.includes(status) ? 'bg-teal-600 border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
-                                                                     {vacancyFilters.status.includes(status) && <CheckCircle2 className="w-3 h-3 text-white" />}
-                                                                  </div>
-                                                                  <input type="checkbox" className="hidden" checked={vacancyFilters.status.includes(status)} onChange={() => toggleVacancyFilter(status)} />
-                                                                  <span className="text-xs font-bold text-slate-700">{status}</span>
-                                                               </label>
-                                                            ))}
-                                                         </div>
-                                                      </div>
-                                                      <div className="space-y-3">
-                                                         <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">2. Duration</h4>
-                                                         <div className="space-y-2">
-                                                            {['Since 1 hr', 'Since 1 week', 'Since 1 month', 'Since 3 months', 'All'].map(duration => (
-                                                               <label key={duration} className="flex items-center gap-3 cursor-pointer group">
-                                                                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${vacancyFilters.duration === duration ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
-                                                                     {vacancyFilters.duration === duration && <div className="w-2 h-2 rounded-full bg-teal-600" />}
-                                                                  </div>
-                                                                  <input type="radio" className="hidden" checked={vacancyFilters.duration === duration} onChange={() => setVacancyFilters({ ...vacancyFilters, duration })} />
-                                                                  <span className="text-xs font-bold text-slate-700">{duration}</span>
-                                                               </label>
-                                                            ))}
-                                                         </div>
-                                                      </div>
-                                                   </div>
-                                                   <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
-                                                      <button onClick={() => setVacancyFilters({ status: [], duration: 'All' })} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">Clear</button>
-                                                      <button onClick={() => setIsVacancyFilterOpen(false)} className="flex-1 py-2 rounded-lg bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20">Apply</button>
-                                                   </div>
+
+                                          <div className="flex items-center gap-2">
+                                             {/* Source Dropdown */}
+                                             <div className="relative" ref={blacklistSourceRef}>
+                                                <div className="flex items-center gap-0">
+                                                   <button
+                                                      onClick={() => {
+                                                         setIsBlacklistSourceOpen(!isBlacklistSourceOpen);
+                                                         setIsBlacklistDurationOpen(false);
+                                                         setIsBlacklistFilterOpen(false);
+                                                      }}
+                                                      className={`px-4 py-2 rounded-lg border text-xs font-bold transition-all flex items-center gap-2 ${blacklistFilters.source !== 'All' ? 'bg-red-50 text-red-600 border-red-200 rounded-r-none border-r-0' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}
+                                                   >
+                                                      {blacklistFilters.source === 'All' ? 'Source' : blacklistFilters.source}
+                                                      <ChevronDown className={`w-3 h-3 transition-transform ${isBlacklistSourceOpen ? 'rotate-180' : ''}`} />
+                                                   </button>
+                                                   {blacklistFilters.source !== 'All' && (
+                                                      <button
+                                                         onClick={() => setBlacklistFilters(prev => ({ ...prev, source: 'All' }))}
+                                                         className="h-[34px] px-2 border border-red-200 bg-red-50 text-red-600 rounded-r-lg hover:bg-red-100 transition-colors flex items-center justify-center border-l-0"
+                                                      >
+                                                         <X className="w-3 h-3" />
+                                                      </button>
+                                                   )}
                                                 </div>
-                                             )}
+                                                {isBlacklistSourceOpen && (
+                                                   <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                                      {['Direct Application', 'Agency Ref', 'All'].map(source => (
+                                                         <button
+                                                            key={source}
+                                                            onClick={() => {
+                                                               setBlacklistFilters(prev => ({ ...prev, source }));
+                                                               setIsBlacklistSourceOpen(false);
+                                                            }}
+                                                            className={`w-full text-left px-4 py-2.5 text-xs font-bold transition-colors ${blacklistFilters.source === source ? 'bg-red-50 text-red-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                                                         >
+                                                            {source}
+                                                         </button>
+                                                      ))}
+                                                   </div>
+                                                )}
+                                             </div>
+
+                                             {/* Duration Dropdown */}
+                                             <div className="relative" ref={blacklistDurationRef}>
+                                                <div className="flex items-center gap-0">
+                                                   <button
+                                                      onClick={() => {
+                                                         setIsBlacklistDurationOpen(!isBlacklistDurationOpen);
+                                                         setIsBlacklistSourceOpen(false);
+                                                         setIsBlacklistFilterOpen(false);
+                                                      }}
+                                                      className={`px-4 py-2 rounded-lg border text-xs font-bold transition-all flex items-center gap-2 ${blacklistFilters.duration !== 'All' ? 'bg-red-50 text-red-600 border-red-200 rounded-r-none border-r-0' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}
+                                                   >
+                                                      {blacklistFilters.duration === 'All' ? 'Duration' : (blacklistFilters.duration === 'All Time' ? 'All Time' : blacklistFilters.duration)}
+                                                      <ChevronDown className={`w-3 h-3 transition-transform ${isBlacklistDurationOpen ? 'rotate-180' : ''}`} />
+                                                   </button>
+                                                   {blacklistFilters.duration !== 'All' && blacklistFilters.duration !== 'All Time' && (
+                                                      <button
+                                                         onClick={() => setBlacklistFilters(prev => ({ ...prev, duration: 'All' }))}
+                                                         className="h-[34px] px-2 border border-red-200 bg-red-50 text-red-600 rounded-r-lg hover:bg-red-100 transition-colors flex items-center justify-center border-l-0"
+                                                      >
+                                                         <X className="w-3 h-3" />
+                                                      </button>
+                                                   )}
+                                                </div>
+                                                {isBlacklistDurationOpen && (
+                                                   <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                                      {['Last 24 Hours', 'Last 7 Days', 'Last 30 Days', 'Last 3 Months', 'All Time'].map(duration => (
+                                                         <button
+                                                            key={duration}
+                                                            onClick={() => {
+                                                               setBlacklistFilters(prev => ({ ...prev, duration }));
+                                                               setIsBlacklistDurationOpen(false);
+                                                            }}
+                                                            className={`w-full text-left px-4 py-2.5 text-xs font-bold transition-colors ${blacklistFilters.duration === duration ? 'bg-red-50 text-red-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                                                         >
+                                                            {duration}
+                                                         </button>
+                                                      ))}
+                                                   </div>
+                                                )}
+                                             </div>
+
+                                             {/* Advanced Filter Icon (Optional/Extra) */}
+                                             <div className="relative">
+                                                <button
+                                                   onClick={() => {
+                                                      setIsBlacklistFilterOpen(!isBlacklistFilterOpen);
+                                                      setIsBlacklistSourceOpen(false);
+                                                      setIsBlacklistDurationOpen(false);
+                                                   }}
+                                                   className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${isBlacklistFilterOpen ? 'bg-red-50 text-red-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                                                >
+                                                   <Filter className="w-4 h-4" />
+                                                </button>
+                                                {isBlacklistFilterOpen && (
+                                                   <div className="absolute right-0 top-full mt-4 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                                      <div className="p-6 space-y-6">
+                                                         <div className="space-y-3">
+                                                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Quick Filters</h4>
+                                                            <button
+                                                               onClick={() => {
+                                                                  setBlacklistFilters({ source: 'All', duration: 'All' });
+                                                                  setIsBlacklistFilterOpen(false);
+                                                               }}
+                                                               className="w-full py-2 rounded-lg bg-red-50 text-red-600 text-[10px] font-black uppercase tracking-widest hover:bg-red-100 transition-colors"
+                                                            >
+                                                               Reset All
+                                                            </button>
+                                                         </div>
+                                                      </div>
+                                                   </div>
+                                                )}
+                                             </div>
                                           </div>
                                        </div>
-                                       <table className="w-full text-left border-collapse">
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                       <table className="w-full text-left">
                                           <thead>
-<<<<<<< HEAD
-                                             <tr>
-                                                <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Vacancy Details</th>
-                                                <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Spoke Agency</th>
-                                                <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-center">Openings</th>
-                                                <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-center">View Vacancy</th>
-                                                <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-right">Public State</th>
-                                             </tr>
-                                          </thead>
-                                          <tbody className="divide-y divide-slate-50">
-                                             {filteredAgentVacancies.length > 0 ? (
-                                                filteredAgentVacancies.map((job) => (
-                                                   <tr key={job.id} className="group hover:bg-slate-50 transition-colors">
-                                                      <td className="px-6 py-8 align-middle">
-=======
                                              <tr className="bg-slate-50 border-b border-slate-100">
                                                 <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Candidate Name</th>
                                                 <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Job Role</th>
@@ -4395,26 +3445,11 @@ const AdminDashboard = () => {
                                                 filteredBlacklistedCandidates.map((candidate, idx) => (
                                                    <tr key={`${candidate.id}-${idx}`} className="hover:bg-slate-50 transition-colors">
                                                       <td className="px-6 py-4">
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
                                                          <div>
-                                                            <h4 className="font-bold text-slate-900 text-base mb-1">{job.title}</h4>
-                                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                                               {job.ref} <span className="mx-1">•</span> {job.date}
-                                                            </p>
+                                                            <p className="text-sm font-bold text-slate-900">{candidate.name}</p>
+                                                            <p className="text-xs text-slate-400 font-medium">{candidate.email}</p>
                                                          </div>
                                                       </td>
-<<<<<<< HEAD
-                                                      <td className="px-6 py-8 align-middle">
-                                                         <div className="flex items-center gap-4">
-                                                            <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center">
-                                                               <Globe2 className="w-5 h-5" />
-                                                            </div>
-                                                            <span className="font-bold text-slate-700 text-sm">{job.agency}</span>
-                                                         </div>
-                                                      </td>
-                                                      <td className="px-6 py-8 text-center bg-transparent align-middle">
-                                                         <span className="font-black text-slate-900 text-xl">{job.openings}</span>
-=======
                                                       <td className="px-6 py-4">
                                                          <span className="text-sm font-bold text-slate-700">
                                                             {candidate.role}
@@ -4437,160 +3472,11 @@ const AdminDashboard = () => {
                                                          <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${(candidate.status?.toUpperCase() === 'REJECTED' || candidate.status === 'Rejected') ? 'bg-red-50 text-red-600 border-red-100' : candidate.statusColor}`}>
                                                             {candidate.status}
                                                          </span>
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
                                                       </td>
-                                                      <td className="px-6 py-8 text-center align-middle">
+                                                      <td className="px-6 py-4 text-right">
                                                          <button
-<<<<<<< HEAD
-                                                            onClick={() => setSelectedVacancy(job)}
-                                                            className="px-6 py-3 rounded-lg border border-slate-200 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:border-teal-600 hover:text-teal-600 hover:bg-teal-50 transition-all"
-                                                         >
-                                                            View Details
-                                                         </button>
-                                                      </td>
-                                                      <td className="px-6 py-8 text-right align-middle">
-                                                         <div className={`inline-flex items-center gap-2 ${job.stateColor} text-[10px] font-black uppercase tracking-widest`}>
-                                                            {job.state === 'HIDDEN' && <AlertCircle className="w-4 h-4" />}
-                                                            {job.state === 'LIVE TO PUBLIC' && <Globe2 className="w-4 h-4" />}
-                                                            {job.state === 'STILL IN HOLD' && <Clock className="w-4 h-4" />}
-                                                            {job.state}
-                                                         </div>
-                                                      </td>
-                                                   </tr>
-                                                ))
-                                             ) : (
-                                                <tr>
-                                                   <td colSpan="5" className="px-6 py-12 text-center">
-                                                      <div className="flex flex-col items-center justify-center gap-2">
-                                                         <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400">
-                                                            <Search className="w-6 h-6 opacity-40" />
-                                                         </div>
-                                                         <p className="text-slate-500 font-bold">No record exist !!</p>
-                                                      </div>
-                                                   </td>
-                                                </tr>
-                                             )}
-                                          </tbody>
-                                       </table>
-                                    </div>
-                                 )}
-
-                                 {agentSubTab === 'resumes' && (
-                                    <div className="space-y-4">
-                                       <div className="flex justify-end items-center gap-3">
-                                          <div className="relative">
-                                             <input
-                                                type="text"
-                                                placeholder="Search candidate or email..."
-                                                className="pl-4 pr-10 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 w-64"
-                                                value={resumeSearchInput}
-                                                onChange={(e) => setResumeSearchInput(e.target.value)}
-                                                onKeyDown={(e) => e.key === 'Enter' && handleResumeSearch()}
-                                             />
-                                             <button
-                                                onClick={handleResumeSearch}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors"
-                                             >
-                                                <Search className="w-4 h-4" />
-                                             </button>
-                                          </div>
-                                          <div className="relative">
-                                             <button
-                                                onClick={() => setIsResumeFilterOpen(!isResumeFilterOpen)}
-                                                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isResumeFilterOpen ? 'bg-teal-50 text-teal-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
-                                             >
-                                                <Filter className="w-4 h-4" />
-                                             </button>
-                                             {isResumeFilterOpen && (
-                                                <div className="absolute right-0 top-full mt-4 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                                   <div className="max-h-[60vh] overflow-y-auto custom-scrollbar p-6 space-y-6">
-                                                      <div className="space-y-3">
-                                                         <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">1. Status</h4>
-                                                         <div className="space-y-2">
-                                                            {['SELECTED', 'REJECTED', 'PROCESSING'].map(status => (
-                                                               <label key={status} className="flex items-center gap-3 cursor-pointer group">
-                                                                  <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${resumeFilters.status.includes(status) ? 'bg-teal-600 border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
-                                                                     {resumeFilters.status.includes(status) && <CheckCircle2 className="w-3 h-3 text-white" />}
-                                                                  </div>
-                                                                  <input type="checkbox" className="hidden" checked={resumeFilters.status.includes(status)} onChange={() => toggleResumeFilter(status)} />
-                                                                  <span className="text-xs font-bold text-slate-700">{status}</span>
-                                                               </label>
-                                                            ))}
-                                                         </div>
-                                                      </div>
-                                                      <div className="space-y-3">
-                                                         <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">2. Duration</h4>
-                                                         <div className="space-y-2">
-                                                            {['Since 1 hr', 'Since 1 week', 'Since 1 month', 'Since 3 months', 'All'].map(duration => (
-                                                               <label key={duration} className="flex items-center gap-3 cursor-pointer group">
-                                                                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${resumeFilters.duration === duration ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
-                                                                     {resumeFilters.duration === duration && <div className="w-2 h-2 rounded-full bg-teal-600" />}
-                                                                  </div>
-                                                                  <input type="radio" className="hidden" checked={resumeFilters.duration === duration} onChange={() => setResumeFilters({ ...resumeFilters, duration })} />
-                                                                  <span className="text-xs font-bold text-slate-700">{duration}</span>
-                                                               </label>
-                                                            ))}
-                                                         </div>
-                                                      </div>
-                                                   </div>
-                                                   <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
-                                                      <button onClick={() => setResumeFilters({ status: [], duration: 'All' })} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">Clear</button>
-                                                      <button onClick={() => setIsResumeFilterOpen(false)} className="flex-1 py-2 rounded-lg bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20">Apply</button>
-                                                   </div>
-                                                </div>
-                                             )}
-                                          </div>
-                                       </div>
-                                       <table className="w-full text-left border-collapse">
-                                          <thead>
-                                             <tr>
-                                                <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Agent Candidate</th>
-                                                <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Job Role</th>
-                                                <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Spoke Agency</th>
-                                                <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-center">Status</th>
-                                                <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-right">Admin Action</th>
-                                             </tr>
-                                          </thead>
-                                          <tbody className="divide-y divide-slate-50">
-                                             {filteredAgentResumes.length > 0 ? (
-                                                filteredAgentResumes.map((resume) => (
-                                                   <tr key={resume.id || resume._id} className="group hover:bg-slate-50 transition-colors">
-                                                      <td className="px-6 py-8 align-middle">
-                                                         <div>
-                                                            <h4 className="font-bold text-slate-900 text-base mb-1">{resume.candidate_name || resume.name}</h4>
-                                                            <p className="text-sm font-medium text-slate-400">
-                                                               {resume.email}
-                                                            </p>
-                                                         </div>
-                                                      </td>
-                                                      <td className="px-6 py-8 align-middle">
-                                                         <span className="font-bold text-slate-700 text-sm">{resume.job?.title || resume.role || 'Unknown'}</span>
-                                                      </td>
-                                                      <td className="px-6 py-8 align-middle">
-                                                         <div className="flex items-center gap-3">
-                                                            <span className={`w-2 h-2 rounded-full ${resume.agency_name ? 'bg-indigo-400' : 'bg-slate-300'}`}></span>
-                                                            <span className="font-bold text-slate-700 text-xs tracking-wider uppercase">{resume.agency_name || resume.agency || 'AGENCY'}</span>
-                                                         </div>
-                                                      </td>
-                                                      <td className="px-6 py-8 text-center align-middle">
-                                                         <div className={`inline-flex px-4 py-2 rounded-full border ${resume.statusColor} text-[10px] font-black uppercase tracking-widest`}>
-                                                            {resume.status}
-                                                         </div>
-                                                      </td>
-                                                      <td className="px-6 py-8 text-right align-middle">
-                                                         <button
-                                                            onClick={() => setSelectedResume({
-                                                               ...resume,
-                                                               documents: {
-                                                                  resume: { filename: resume.resumeFilename || 'Resume.pdf', url: `http://localhost:5000/api/applications/${resume.id || resume._id}/resume` },
-                                                                  certificates: resume.certsFilename ? { filename: resume.certsFilename, url: `http://localhost:5000/api/applications/${resume.id || resume._id}/certificates` } : null
-                                                               }
-                                                            })}
-                                                            className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-teal-50 hover:text-teal-600 transition-all inline-flex ml-auto"
-=======
                                                             onClick={() => { setSelectedResume(candidate); setIsBlacklistReview(true); }}
                                                             className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20 flex items-center gap-2 ml-auto"
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
                                                          >
                                                             <Eye className="w-3 h-3" /> VIEW DETAILS
                                                          </button>
@@ -4599,357 +3485,14 @@ const AdminDashboard = () => {
                                                 ))
                                              ) : (
                                                 <tr>
-                                                   <td colSpan="5" className="px-6 py-12 text-center">
-                                                      <div className="flex flex-col items-center justify-center gap-2">
-                                                         <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400">
-                                                            <Search className="w-6 h-6 opacity-40" />
-                                                         </div>
-                                                         <p className="text-slate-500 font-bold">No record exist !!</p>
-                                                      </div>
+                                                   <td colSpan={5} className="px-6 py-12 text-center text-slate-400 text-sm font-medium">
+                                                      No blacklisted candidates found.
                                                    </td>
                                                 </tr>
                                              )}
                                           </tbody>
                                        </table>
                                     </div>
-                                 )}
-
-                                 {agentSubTab === 'new_apps' && (
-                                    <div className="space-y-4">
-                                       <div className="flex justify-end items-center gap-3">
-                                          <div className="relative">
-                                             <input
-                                                type="text"
-                                                placeholder="Search applications..."
-                                                className="pl-4 pr-10 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 w-64"
-                                                value={appSearchInput}
-                                                onChange={(e) => setAppSearchInput(e.target.value)}
-                                                onKeyDown={(e) => e.key === 'Enter' && handleAppSearch()}
-                                             />
-                                             <button
-                                                onClick={handleAppSearch}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors"
-                                             >
-                                                <Search className="w-4 h-4" />
-                                             </button>
-                                          </div>
-                                          <div className="relative">
-                                             <button
-                                                onClick={() => setIsAppFilterOpen(!isAppFilterOpen)}
-                                                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isAppFilterOpen ? 'bg-teal-50 text-teal-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
-                                             >
-                                                <Filter className="w-4 h-4" />
-                                             </button>
-                                             {isAppFilterOpen && (
-                                                <div className="absolute right-0 top-full mt-4 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                                   <div className="max-h-[60vh] overflow-y-auto custom-scrollbar p-6 space-y-6">
-                                                      <div className="space-y-3">
-                                                         <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">1. Status</h4>
-                                                         <div className="space-y-2">
-                                                            {['YET TO BE CHECKED', 'ON HOLD', 'SELECTED', 'REJECTED'].map(status => (
-                                                               <label key={status} className="flex items-center gap-3 cursor-pointer group">
-                                                                  <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${appFilters.status.includes(status) ? 'bg-teal-600 border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
-                                                                     {appFilters.status.includes(status) && <CheckCircle2 className="w-3 h-3 text-white" />}
-                                                                  </div>
-                                                                  <input type="checkbox" className="hidden" checked={appFilters.status.includes(status)} onChange={() => toggleAppFilter(status)} />
-                                                                  <span className="text-xs font-bold text-slate-700">{status}</span>
-                                                               </label>
-                                                            ))}
-                                                         </div>
-                                                      </div>
-                                                      <div className="space-y-3">
-                                                         <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">2. Duration</h4>
-                                                         <div className="space-y-2">
-                                                            {['Since 1 hr', 'Since 1 week', 'Since 1 month', 'Since 3 months', 'All'].map(duration => (
-                                                               <label key={duration} className="flex items-center gap-3 cursor-pointer group">
-                                                                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${appFilters.duration === duration ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
-                                                                     {appFilters.duration === duration && <div className="w-2 h-2 rounded-full bg-teal-600" />}
-                                                                  </div>
-                                                                  <input type="radio" className="hidden" checked={appFilters.duration === duration} onChange={() => setAppFilters({ ...appFilters, duration })} />
-                                                                  <span className="text-xs font-bold text-slate-700">{duration}</span>
-                                                               </label>
-                                                            ))}
-                                                         </div>
-                                                      </div>
-                                                   </div>
-                                                   <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
-                                                      <button onClick={() => setAppFilters({ status: [], duration: 'All' })} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">Clear</button>
-                                                      <button onClick={() => setIsAppFilterOpen(false)} className="flex-1 py-2 rounded-lg bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20">Apply</button>
-                                                   </div>
-                                                </div>
-                                             )}
-                                          </div>
-                                       </div>
-                                       <table className="w-full text-left border-collapse">
-                                          <thead>
-                                             <tr>
-                                                <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Applicant / Agency</th>
-                                                <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Target Region</th>
-                                                <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-center">Application Status</th>
-                                                <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-right">Action</th>
-                                             </tr>
-                                          </thead>
-                                          <tbody className="divide-y divide-slate-50">
-                                             {filteredPartnerApplications.length > 0 ? (
-                                                filteredPartnerApplications.map((app) => (
-                                                   <tr key={app.id} className="group hover:bg-slate-50 transition-colors">
-                                                      <td className="px-6 py-8 align-middle">
-                                                         <div>
-                                                            <h4 className="font-bold text-slate-900 text-base mb-1">{app.applicant}</h4>
-                                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{app.agency}</p>
-                                                         </div>
-                                                      </td>
-                                                      <td className="px-6 py-8 align-middle">
-                                                         <div className="flex items-center gap-2 text-slate-500 text-xs font-bold">
-                                                            <MapPin className="w-4 h-4 text-slate-300" />
-                                                            {app.region}
-                                                         </div>
-                                                      </td>
-                                                      <td className="px-6 py-8 text-center align-middle">
-                                                         <div className={`inline-flex px-4 py-2 rounded-full border ${app.statusColor} text-[10px] font-black uppercase tracking-widest`}>
-                                                            {app.status}
-                                                         </div>
-                                                      </td>
-                                                      <td className="px-6 py-8 text-right align-middle">
-                                                         <button
-                                                            onClick={() => setSelectedApplication(app)}
-                                                            className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-teal-50 hover:text-teal-600 transition-all inline-flex ml-auto"
-                                                         >
-                                                            <Eye className="w-4 h-4" />
-                                                         </button>
-                                                      </td>
-                                                   </tr>
-                                                ))
-                                             ) : (
-                                                <tr>
-                                                   <td colSpan="4" className="px-6 py-12 text-center">
-                                                      <div className="flex flex-col items-center justify-center gap-2">
-                                                         <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400">
-                                                            <Search className="w-6 h-6 opacity-40" />
-                                                         </div>
-                                                         <p className="text-slate-500 font-bold">No record exist !!</p>
-                                                      </div>
-                                                   </td>
-                                                </tr>
-                                             )}
-                                          </tbody>
-                                       </table>
-                                    </div>
-                                 )}
-
-
-                              </div>
-                           </div>
-                        )}
-
-
-                        {/* BLACKLISTED CONTENT */}
-                        {activeTab === 'blacklisted' && (
-                           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                                 <div className="p-6 border-b border-slate-100 flex justify-between items-center gap-4">
-                                    <h3 className="font-bold text-slate-900 text-sm uppercase tracking-widest text-red-500 flex items-center gap-2 whitespace-nowrap">
-                                       <ShieldCheck className="w-4 h-4" /> Rejected Candidates
-                                    </h3>
-
-                                    <div className="flex items-center gap-3 w-full justify-end">
-                                       <div className="relative flex-1 max-w-md">
-                                          <input
-                                             type="text"
-                                             placeholder="Search blacklisted candidates..."
-                                             className="w-full pl-4 pr-10 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20"
-                                             value={blacklistSearchInput}
-                                             onChange={(e) => setBlacklistSearchInput(e.target.value)}
-                                             onKeyDown={(e) => e.key === 'Enter' && handleBlacklistSearch()}
-                                          />
-                                          <button
-                                             onClick={handleBlacklistSearch}
-                                             className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 transition-colors"
-                                          >
-                                             <Search className="w-4 h-4" />
-                                          </button>
-                                       </div>
-
-                                       <div className="flex items-center gap-2">
-                                          {/* Source Dropdown */}
-                                          <div className="relative" ref={blacklistSourceRef}>
-                                             <div className="flex items-center gap-0">
-                                                <button
-                                                   onClick={() => {
-                                                      setIsBlacklistSourceOpen(!isBlacklistSourceOpen);
-                                                      setIsBlacklistDurationOpen(false);
-                                                      setIsBlacklistFilterOpen(false);
-                                                   }}
-                                                   className={`px-4 py-2 rounded-lg border text-xs font-bold transition-all flex items-center gap-2 ${blacklistFilters.source !== 'All' ? 'bg-red-50 text-red-600 border-red-200 rounded-r-none border-r-0' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}
-                                                >
-                                                   {blacklistFilters.source === 'All' ? 'Source' : blacklistFilters.source}
-                                                   <ChevronDown className={`w-3 h-3 transition-transform ${isBlacklistSourceOpen ? 'rotate-180' : ''}`} />
-                                                </button>
-                                                {blacklistFilters.source !== 'All' && (
-                                                   <button
-                                                      onClick={() => setBlacklistFilters(prev => ({ ...prev, source: 'All' }))}
-                                                      className="h-[34px] px-2 border border-red-200 bg-red-50 text-red-600 rounded-r-lg hover:bg-red-100 transition-colors flex items-center justify-center border-l-0"
-                                                   >
-                                                      <X className="w-3 h-3" />
-                                                   </button>
-                                                )}
-                                             </div>
-                                             {isBlacklistSourceOpen && (
-                                                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                                   {['Direct Application', 'Agency Ref', 'All'].map(source => (
-                                                      <button
-                                                         key={source}
-                                                         onClick={() => {
-                                                            setBlacklistFilters(prev => ({ ...prev, source }));
-                                                            setIsBlacklistSourceOpen(false);
-                                                         }}
-                                                         className={`w-full text-left px-4 py-2.5 text-xs font-bold transition-colors ${blacklistFilters.source === source ? 'bg-red-50 text-red-600' : 'text-slate-600 hover:bg-slate-50'}`}
-                                                      >
-                                                         {source}
-                                                      </button>
-                                                   ))}
-                                                </div>
-                                             )}
-                                          </div>
-
-                                          {/* Duration Dropdown */}
-                                          <div className="relative" ref={blacklistDurationRef}>
-                                             <div className="flex items-center gap-0">
-                                                <button
-                                                   onClick={() => {
-                                                      setIsBlacklistDurationOpen(!isBlacklistDurationOpen);
-                                                      setIsBlacklistSourceOpen(false);
-                                                      setIsBlacklistFilterOpen(false);
-                                                   }}
-                                                   className={`px-4 py-2 rounded-lg border text-xs font-bold transition-all flex items-center gap-2 ${blacklistFilters.duration !== 'All' ? 'bg-red-50 text-red-600 border-red-200 rounded-r-none border-r-0' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}
-                                                >
-                                                   {blacklistFilters.duration === 'All' ? 'Duration' : (blacklistFilters.duration === 'All Time' ? 'All Time' : blacklistFilters.duration)}
-                                                   <ChevronDown className={`w-3 h-3 transition-transform ${isBlacklistDurationOpen ? 'rotate-180' : ''}`} />
-                                                </button>
-                                                {blacklistFilters.duration !== 'All' && blacklistFilters.duration !== 'All Time' && (
-                                                   <button
-                                                      onClick={() => setBlacklistFilters(prev => ({ ...prev, duration: 'All' }))}
-                                                      className="h-[34px] px-2 border border-red-200 bg-red-50 text-red-600 rounded-r-lg hover:bg-red-100 transition-colors flex items-center justify-center border-l-0"
-                                                   >
-                                                      <X className="w-3 h-3" />
-                                                   </button>
-                                                )}
-                                             </div>
-                                             {isBlacklistDurationOpen && (
-                                                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                                   {['Last 24 Hours', 'Last 7 Days', 'Last 30 Days', 'Last 3 Months', 'All Time'].map(duration => (
-                                                      <button
-                                                         key={duration}
-                                                         onClick={() => {
-                                                            setBlacklistFilters(prev => ({ ...prev, duration }));
-                                                            setIsBlacklistDurationOpen(false);
-                                                         }}
-                                                         className={`w-full text-left px-4 py-2.5 text-xs font-bold transition-colors ${blacklistFilters.duration === duration ? 'bg-red-50 text-red-600' : 'text-slate-600 hover:bg-slate-50'}`}
-                                                      >
-                                                         {duration}
-                                                      </button>
-                                                   ))}
-                                                </div>
-                                             )}
-                                          </div>
-
-                                          {/* Advanced Filter Icon (Optional/Extra) */}
-                                          <div className="relative">
-                                             <button
-                                                onClick={() => {
-                                                   setIsBlacklistFilterOpen(!isBlacklistFilterOpen);
-                                                   setIsBlacklistSourceOpen(false);
-                                                   setIsBlacklistDurationOpen(false);
-                                                }}
-                                                className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${isBlacklistFilterOpen ? 'bg-red-50 text-red-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
-                                             >
-                                                <Filter className="w-4 h-4" />
-                                             </button>
-                                             {isBlacklistFilterOpen && (
-                                                <div className="absolute right-0 top-full mt-4 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                                   <div className="p-6 space-y-6">
-                                                      <div className="space-y-3">
-                                                         <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Quick Filters</h4>
-                                                         <button
-                                                            onClick={() => {
-                                                               setBlacklistFilters({ source: 'All', duration: 'All' });
-                                                               setIsBlacklistFilterOpen(false);
-                                                            }}
-                                                            className="w-full py-2 rounded-lg bg-red-50 text-red-600 text-[10px] font-black uppercase tracking-widest hover:bg-red-100 transition-colors"
-                                                         >
-                                                            Reset All
-                                                         </button>
-                                                      </div>
-                                                   </div>
-                                                </div>
-                                             )}
-                                          </div>
-                                       </div>
-                                    </div>
-                                 </div>
-                                 <div className="overflow-x-auto">
-                                    <table className="w-full text-left">
-                                       <thead>
-                                          <tr className="bg-red-50/50 border-b border-red-100">
-                                             <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest">Candidate Name</th>
-                                             <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest">Job Role</th>
-                                             <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest">Source</th>
-                                             <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest">Status</th>
-                                             <th className="px-6 py-4 text-[10px] font-black uppercase text-red-400 tracking-widest text-right">Review</th>
-                                          </tr>
-                                       </thead>
-                                       <tbody className="divide-y divide-slate-50">
-                                          {filteredBlacklistedCandidates.length > 0 ? (
-                                             filteredBlacklistedCandidates.map((candidate, idx) => (
-                                                <tr key={`${candidate.id}-${idx}`} className="hover:bg-red-50/30 transition-colors">
-                                                   <td className="px-6 py-4">
-                                                      <div>
-                                                         <p className="text-sm font-bold text-slate-900">{candidate.name}</p>
-                                                         <p className="text-xs text-slate-400 font-medium">{candidate.email}</p>
-                                                      </div>
-                                                   </td>
-                                                   <td className="px-6 py-4">
-                                                      <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full uppercase tracking-wider">
-                                                         {candidate.role}
-                                                      </span>
-                                                   </td>
-                                                   <td className="px-6 py-4">
-                                                      <div className="flex flex-col">
-                                                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 flex items-center gap-1.5">
-                                                            <span className={`w-1.5 h-1.5 rounded-full ${'source' in candidate && candidate.source === 'Direct' ? 'bg-blue-400' : 'bg-amber-400'}`}></span>
-                                                            {'source' in candidate && candidate.source === 'Direct' ? 'Direct' : 'Agency'}
-                                                         </span>
-                                                         {'agency' in candidate && (
-                                                            <span className="text-[10px] font-medium text-slate-400 pl-3">
-                                                               {candidate.agency}
-                                                            </span>
-                                                         )}
-                                                      </div>
-                                                   </td>
-                                                   <td className="px-6 py-4">
-                                                      <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${candidate.statusColor}`}>
-                                                         {candidate.status}
-                                                      </span>
-                                                   </td>
-                                                   <td className="px-6 py-4 text-right">
-                                                      <button
-                                                         onClick={() => { setSelectedResume(candidate); setIsBlacklistReview(true); }}
-                                                         className="w-10 h-10 rounded-full bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition-all ml-auto shadow-sm"
-                                                      >
-                                                         <Eye className="w-4 h-4" />
-                                                      </button>
-                                                   </td>
-                                                </tr>
-                                             ))
-                                          ) : (
-                                             <tr>
-                                                <td colSpan={5} className="px-6 py-12 text-center text-slate-400 text-sm font-medium">
-                                                   No blacklisted candidates found.
-                                                </td>
-                                             </tr>
-                                          )}
-                                       </tbody>
-                                    </table>
                                  </div>
 
 
@@ -5116,25 +3659,22 @@ const AdminDashboard = () => {
                                     </div>
                                  </div>
                               </div>
-                           </div>
-                        )}
+                           )
+                        }
 
 
                         {/* PLACEHOLDER FOR OTHER TABS */}
-                        {activeTab === 'network' && (
-                           <div className="flex flex-col items-center justify-center p-20 bg-white rounded-xl border-2 border-dashed border-slate-200 text-center">
-                              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                                 <Briefcase className="w-8 h-8 text-slate-300" />
+                        {
+                           activeTab === 'network' && (
+                              <div className="flex flex-col items-center justify-center p-20 bg-white rounded-xl border-2 border-dashed border-slate-200 text-center">
+                                 <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                                    <Briefcase className="w-8 h-8 text-slate-300" />
+                                 </div>
+                                 <h3 className="text-lg font-bold text-slate-900 mb-2">Section Under Development</h3>
+                                 <p className="text-slate-500 max-w-md mx-auto">This module is currently being optimized for better performance and usability. Check back soon.</p>
                               </div>
-<<<<<<< HEAD
-                              <h3 className="text-lg font-bold text-slate-900 mb-2">Section Under Development</h3>
-                              <p className="text-slate-500 max-w-md mx-auto">This module is currently being optimized for better performance and usability. Check back soon.</p>
-                           </div>
-                        )}
-=======
                            )
                         }
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
                      </div>
                   </div>
                </main>
@@ -5627,76 +4167,6 @@ const AdminDashboard = () => {
                                  </div>
                               </div>
                            </div>
-<<<<<<< HEAD
-                           <button
-                              onClick={() => { setSelectedResume(null); setIsBlacklistReview(false); }}
-                              className="w-10 h-10 bg-slate-50 hover:bg-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
-                           >
-                              <X className="w-5 h-5" />
-                           </button>
-                        </div>
-
-                        <div className="p-8 space-y-10">
-                           {/* 1. Identity Details */}
-                           <section>
-                              <h3 className="text-xs font-black text-teal-600 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                                 <Users className="w-4 h-4" /> 1. Identity Details
-                              </h3>
-                              <div className="grid grid-cols-2 gap-6">
-                                 <div>
-                                    <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Candidate Full Name *</label>
-                                    <div className="p-4 bg-slate-50 rounded-xl font-bold text-slate-700">{selectedResume.name}</div>
-                                 </div>
-                                 <div>
-                                    <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Email Address *</label>
-                                    <div className="p-4 bg-slate-50 rounded-xl font-bold text-slate-700">{selectedResume.email}</div>
-                                 </div>
-                                 <div>
-                                    <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">WhatsApp Number *</label>
-                                    <div className="p-4 bg-slate-50 rounded-xl font-bold text-slate-700">{selectedResume.whatsapp}</div>
-                                 </div>
-                                 <div>
-                                    <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Nationality *</label>
-                                    <div className="p-4 bg-slate-50 rounded-xl font-bold text-slate-700">{selectedResume.nationality}</div>
-                                 </div>
-                              </div>
-                           </section>
-
-                           {/* 2. Mandatory Document Bundle */}
-                           <section>
-                              <h3 className="text-xs font-black text-teal-600 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                                 <ShieldCheck className="w-4 h-4" /> 2. Mandatory Document Bundle
-                              </h3>
-                              <div className="grid grid-cols-2 gap-6">
-                                 <DocumentCard label="Resume / CV *" filename={selectedResume.documents.resume?.filename} url={selectedResume.documents.resume?.url} />
-                                 {selectedResume.documents.certificates && (
-                                    <DocumentCard label="Educational Certificates" filename={selectedResume.documents.certificates.filename} url={selectedResume.documents.certificates.url} />
-                                 )}
-                              </div>
-                           </section>
-
-                           {/* 3. Compliance & Governance */}
-                           <section>
-                              <h3 className="text-xs font-black text-teal-600 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                                 <ShieldCheck className="w-4 h-4" /> 3. Compliance & Governance
-                              </h3>
-                              <div className="grid grid-cols-2 gap-6">
-                                 <DocumentCard label="Police Clearance (PCC)" filename={selectedResume.documents.pcc} />
-                                 <DocumentCard label="Good Standing Certificate" filename={selectedResume.documents.goodStanding} />
-                              </div>
-                           </section>
-                        </div>
-
-                        {/* Actions Footer */}
-                        <div className="p-8 bg-slate-50/50 border-t border-slate-100 flex items-center justify-end gap-4">
-                           <button
-                              onClick={() => { setSelectedResume(null); setIsBlacklistReview(false); }}
-                              className="px-8 py-4 rounded-xl bg-white border border-slate-200 text-slate-500 text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-colors"
-                           >
-                              Close View
-                           </button>
-                        </div>
-=======
                         ) : (
                            <div className="w-full"></div> // Spacer to keep close button aligned right if needed
                         )}
@@ -5709,7 +4179,6 @@ const AdminDashboard = () => {
                         >
                            <X className="w-5 h-5" />
                         </button>
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
                      </div>
 
                      {/* Step 1: CONFIRMATION */}
@@ -5838,64 +4307,6 @@ const AdminDashboard = () => {
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
       `}</style>
-<<<<<<< HEAD
-
-            {/* REJECT JOB REQUEST MODAL */}
-            {
-               showRejectModal && selectedJobRequest && (
-                  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200] animate-in fade-in duration-200">
-                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 animate-in zoom-in-95 duration-300">
-                        <div className="flex items-center gap-3 mb-6">
-                           <div className="w-12 h-12 rounded-xl bg-red-100 text-red-600 flex items-center justify-center">
-                              <X className="w-6 h-6" />
-                           </div>
-                           <div>
-                              <h3 className="text-lg font-bold text-slate-900">Reject Job Request</h3>
-                              <p className="text-sm text-slate-500">{selectedJobRequest.title}</p>
-                           </div>
-                        </div>
-
-                        <div className="mb-6">
-                           <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">
-                              Rejection Reason
-                           </label>
-                           <textarea
-                              value={rejectReason}
-                              onChange={(e) => setRejectReason(e.target.value)}
-                              placeholder="Please provide a reason for rejection..."
-                              className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 resize-none"
-                              rows={4}
-                           />
-                        </div>
-
-                        <div className="flex gap-3">
-                           <button
-                              onClick={() => {
-                                 setShowRejectModal(false);
-                                 setSelectedJobRequest(null);
-                                 setRejectReason('');
-                              }}
-                              className="flex-1 py-3 bg-slate-100 text-slate-600 text-xs font-bold uppercase tracking-wider rounded-xl hover:bg-slate-200 transition-colors"
-                           >
-                              Cancel
-                           </button>
-                           <button
-                              onClick={handleRejectJobRequest}
-                              disabled={isRejectingJob}
-                              className="flex-1 py-3 bg-red-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                           >
-                              {isRejectingJob ? (
-                                 <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : null}
-                              Reject
-                           </button>
-                        </div>
-                     </div>
-                  </div>
-               )
-            }
-         </div >
-=======
          {/* REJECT JOB REQUEST MODAL */}
          {
             showRejectModal && selectedJobRequest && (
@@ -5950,7 +4361,6 @@ const AdminDashboard = () => {
                </div>
             )
          }
->>>>>>> 22949603766abc99c88faf0891db3253676b7c12
       </>
    );
 };
