@@ -136,7 +136,8 @@ export const MOCK_APPLICATIONS = [
         hasPCC: false,
         hasGoodStanding: false,
         statusAccessGranted: false,
-        statusRequestStatus: 'pending'
+        statusRequestStatus: 'pending',
+        address: 'Kochi, India'
     },
     {
         id: 'app-2',
@@ -153,25 +154,73 @@ export const MOCK_APPLICATIONS = [
         hasPCC: true,
         hasGoodStanding: true,
         statusAccessGranted: false,
-        statusRequestStatus: 'none'
+        statusRequestStatus: 'none',
+        address: 'Jakarta, Indonesia'
     },
     {
         id: 'app-blocked-1',
         jobId: '2',
-        candidateName: 'John Fraudster',
-        contactNumber: '+1 234567890',
-        email: 'john.f@fake.com',
-        status: ApplicationStatus.APPLIED,
-        appliedDate: '2023-11-05',
-        source: 'Direct',
-        hasResume: true,
+        candidateName: 'John Doe',
+        contactNumber: '+1 1234567890',
+        email: 'john.doe@example.com',
+        status: ApplicationStatus.REJECTED, // Blocked/Rejected
+        appliedDate: '2024-01-10',
+        source: 'Agency',
+        agentName: 'Global Recruiters',
+        hasResume: false,
         hasCerts: false,
-        hasPassport: true,
+        hasPassport: false,
         hasPCC: false,
         hasGoodStanding: false,
         statusAccessGranted: false,
-        blockedReason: 'Submitted fake educational certificates from a non-existent university.'
+        statusRequestStatus: 'none',
+        address: 'New York, USA'
+    },
+    {
+        id: 'app-site-mgr',
+        jobId: '6',
+        candidateName: 'Ahmed Riza',
+        contactNumber: '+960 7771122',
+        email: 'ahmed.riza@example.mv',
+        status: ApplicationStatus.APPLIED,
+        appliedDate: '2024-02-14',
+        source: 'Direct',
+        hasResume: true,
+        hasCerts: true,
+        hasPassport: true,
+        address: 'Addu City, Maldives'
+    },
+    {
+        id: 'app-site-mgr-2',
+        jobId: '6',
+        candidateName: 'Maria Garcia',
+        contactNumber: '+34 612345678',
+        email: 'maria.g@example.com',
+        status: 'On Hold', // Custom status
+        appliedDate: '2024-02-15',
+        source: 'Agency',
+        agentName: 'EuroTalent',
+        hasResume: true,
+        resumeUrl: '#',
+        hasCerts: true,
+        hasPassport: true,
+        address: 'Madrid, Spain'
+    },
+    {
+        id: 'app-site-mgr-3',
+        jobId: '6',
+        candidateName: 'Kenji Tanaka',
+        contactNumber: '+81 9012345678',
+        email: 'kenji.t@example.jp',
+        status: ApplicationStatus.APPLIED,
+        appliedDate: '2024-02-16',
+        source: 'Direct',
+        hasResume: false,
+        hasCerts: true,
+        hasPassport: true,
+        address: 'Tokyo, Japan'
     }
+
 ];
 
 export const INDUSTRIES = [
@@ -186,4 +235,12 @@ export const INDUSTRIES = [
     'Fishing',
     'Agriculture',
     'Other'
+];
+
+export const REQUIRED_DOCUMENT_OPTIONS = [
+    'Resume',
+    'Passport/ID Copy',
+    'Educational Certificate',
+    'Police Clearance (PCC)',
+    'Good Standing Certificate'
 ];

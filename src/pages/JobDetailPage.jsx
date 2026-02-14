@@ -49,7 +49,8 @@ const JobDetailPage = () => {
                     salaryRange: data.salary_range,
                     postedDate: data.posted_date,
                     status: data.status === 'OPEN' ? JobStatus.OPEN : JobStatus.CLOSED,
-                    industry: data.category
+                    industry: data.category,
+                    required_documents: data.required_documents && data.required_documents.length > 0 ? data.required_documents : ['Resume']
                 };
                 setJob(mappedJob);
             } catch (error) {
@@ -206,8 +207,20 @@ const JobDetailPage = () => {
             case 'certs': return `Certificates_Combined.pdf`;
             case 'passport': return `Passport_Front_Page.jpg`;
             case 'pcc': return `Police_Clearance_2023.pdf`;
+            case 'goodStanding': return `Good_Standing_Cert.pdf`;
             default: return null;
         }
+    };
+
+    const getFileKey = (docName) => {
+        if (!docName) return null;
+        const lower = docName.toLowerCase();
+        if (lower.includes('resume')) return 'resume';
+        if (lower.includes('passport') || lower.includes('id')) return 'passport';
+        if (lower.includes('education') || lower.includes('certificate')) return 'certs';
+        if (lower.includes('police') || lower.includes('pcc')) return 'pcc';
+        if (lower.includes('standing')) return 'goodStanding';
+        return null;
     };
 
     const handleSubmit = async (e) => {
@@ -226,12 +239,19 @@ const JobDetailPage = () => {
                 formDataPayload.append('agent_id', user._id);
             }
 
-            if (files.resume) {
-                formDataPayload.append('resume', files.resume);
-            } else {
-                popup.warning('Please upload a resume');
-                setIsSubmitting(false);
-                return;
+            // Validate and Append Required Documents
+            const requiredDocs = job.required_documents || ['Resume'];
+            for (const docType of requiredDocs) {
+                const key = getFileKey(docType);
+                if (key) {
+                    if (files[key]) {
+                        formDataPayload.append(key, files[key]);
+                    } else {
+                        alert(`Please upload your ${docType}`);
+                        setIsSubmitting(false);
+                        return;
+                    }
+                }
             }
 
             if (files.certs) {
@@ -508,28 +528,29 @@ const JobDetailPage = () => {
                             <div className="space-y-4">
                                 <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2">Documents</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <FileUpload
-                                        id="resume"
-                                        label="Resume / CV *"
-                                        required
-                                        currentFile={files.resume}
-                                        defaultFileName={files.resume ? files.resume.name : getDefaultFileName('resume')}
-                                        onChange={(f) => handleFileChange('resume', f)}
-                                    />
-                                    {files.resume && (
-                                        <p className="text-xs text-green-600 font-bold -mt-3 mb-3 ml-1">
-                                            {files.resume.name === user?.name?.split(' ')[0] + '_CV_2024.pdf' ?
-                                                "" : "✓ Auto-attached from Profile"
-                                            }
-                                        </p>
-                                    )}
-                                    <FileUpload
-                                        id="certs"
-                                        label="Certificates"
-                                        currentFile={files.certs}
-                                        defaultFileName={files.certs ? files.certs.name : getDefaultFileName('certs')}
-                                        onChange={(f) => handleFileChange('certs', f)}
-                                    />
+                                    {(job.required_documents || ['Resume']).map((docType) => {
+                                        const key = getFileKey(docType);
+                                        if (!key) return null;
+                                        return (
+                                            <div key={key}>
+                                                <FileUpload
+                                                    id={key}
+                                                    label={`${docType} *`}
+                                                    required
+                                                    currentFile={files[key]}
+                                                    defaultFileName={files[key] ? files[key].name : getDefaultFileName(key)}
+                                                    onChange={(f) => handleFileChange(key, f)}
+                                                />
+                                                {key === 'resume' && files.resume && (
+                                                    <p className="text-xs text-green-600 font-bold -mt-3 mb-3 ml-1">
+                                                        {files.resume.name === user?.name?.split(' ')[0] + '_CV_2024.pdf' ?
+                                                            "" : "✓ Auto-attached from Profile"
+                                                        }
+                                                    </p>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
 
