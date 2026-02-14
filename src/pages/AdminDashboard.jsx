@@ -300,6 +300,27 @@ const AdminDashboard = () => {
    const [isLoadingApplications, setIsLoadingApplications] = useState(false);
    const [agentSubTab, setAgentSubTab] = useState('vacancies');
 
+   // --- Viewed Application Tracking (localStorage) ---
+   const [viewedApplicationIds, setViewedApplicationIds] = useState(() => {
+      try {
+         const stored = localStorage.getItem('admin_viewed_applications');
+         return stored ? JSON.parse(stored) : [];
+      } catch { return []; }
+   });
+
+   const markApplicationsViewed = (appIds) => {
+      setViewedApplicationIds(prev => {
+         const updated = [...new Set([...prev, ...appIds])];
+         localStorage.setItem('admin_viewed_applications', JSON.stringify(updated));
+         return updated;
+      });
+   };
+
+   const isAppUnviewed = (app) => {
+      const appId = app._id || app.id;
+      return !viewedApplicationIds.includes(appId);
+   };
+
    // Helper for Standardized Status Colors
    const getStatusColor = (status) => {
       const s = (status || '').toUpperCase();
@@ -712,10 +733,15 @@ const AdminDashboard = () => {
 
    // Handle job click - navigate to CANDIDATES view
    const handleJobClick = (job) => {
-      setSelectedJobId(job.id);
+      setSelectedJobId(job.id || job._id);
       setSelectedJobTitle(job.title);
       setVacancyViewMode('CANDIDATES');
-      fetchApplicationsByJob(job.id);
+      fetchApplicationsByJob(job.id || job._id);
+      // Mark all applications for this job as viewed
+      const jobAppIds = allApplications
+         .filter(a => a.jobId === (job.id || job._id))
+         .map(a => a._id || a.id);
+      if (jobAppIds.length > 0) markApplicationsViewed(jobAppIds);
    };
 
    // Handle back to categories
@@ -2072,13 +2098,29 @@ const AdminDashboard = () => {
                {/* SIDEBAR */}
                <DashboardSidebar
                   activeTab={activeTab}
-                  setActiveTab={(tab) => { setActiveTab(tab); setSelectedCategory(null); }}
+                  setActiveTab={(tab) => {
+                     setActiveTab(tab);
+                     setSelectedCategory(null);
+                     // Mark items as viewed when navigating to a tab
+                     if (tab === 'audit') {
+                        const auditIds = auditQueue.filter(i => i.status === 'PROCESSING' || i.status === 'Processing').map(i => i._id || i.id);
+                        if (auditIds.length > 0) markApplicationsViewed(auditIds);
+                     } else if (tab === 'agents') {
+                        const agentIds = [
+                           ...agentVacancies.map(v => v._id || v.id),
+                           ...agentResumes.map(r => r._id || r.id),
+                           ...pendingAgencies.map(p => p._id || p.id),
+                           ...partnerApplications.filter(a => a.status === 'YET TO BE CHECKED').map(a => a._id || a.id)
+                        ];
+                        if (agentIds.length > 0) markApplicationsViewed(agentIds);
+                     }
+                  }}
                   isOpen={isSidebarOpen}
                   onClose={() => setIsSidebarOpen(false)}
                   notificationCounts={{
-                     audit: auditQueue.filter(i => i.status === 'PROCESSING' || i.status === 'Processing').length,
-                     vacancies: allApplications.filter(a => a.status === 'APPLIED' || a.status === 'Applied').length,
-                     agents: agentVacancies.length + agentResumes.length + pendingAgencies.length + partnerApplications.filter(a => a.status === 'YET TO BE CHECKED').length
+                     audit: auditQueue.filter(i => (i.status === 'PROCESSING' || i.status === 'Processing') && isAppUnviewed(i)).length,
+                     vacancies: allApplications.filter(a => (a.status === 'APPLIED' || a.status === 'Applied') && isAppUnviewed(a)).length,
+                     agents: agentVacancies.filter(v => isAppUnviewed(v)).length + agentResumes.filter(r => isAppUnviewed(r)).length + pendingAgencies.filter(p => isAppUnviewed(p)).length + partnerApplications.filter(a => a.status === 'YET TO BE CHECKED' && isAppUnviewed(a)).length
                   }}
                />
 
@@ -2419,7 +2461,8 @@ const AdminDashboard = () => {
                                           const industryJobs = jobs.filter(j => j.industry === industry);
                                           const newAppCount = allApplications.filter(a =>
                                              (a.status === 'APPLIED' || a.status === 'Applied') &&
-                                             industryJobs.some(j => (j._id || j.id) === a.jobId)
+                                             industryJobs.some(j => (j._id || j.id) === a.jobId) &&
+                                             isAppUnviewed(a)
                                           ).length;
                                           return (
                                              <button
@@ -2531,7 +2574,8 @@ const AdminDashboard = () => {
                                           {categoryJobs.map((job) => {
                                              const jobNewApps = allApplications.filter(a =>
                                                 (a.status === 'APPLIED' || a.status === 'Applied') &&
-                                                (a.jobId === (job._id || job.id))
+                                                (a.jobId === (job._id || job.id)) &&
+                                                isAppUnviewed(a)
                                              ).length;
                                              return (
                                                 <div
