@@ -300,10 +300,24 @@ const AdminDashboard = () => {
    const [isLoadingApplications, setIsLoadingApplications] = useState(false);
    const [agentSubTab, setAgentSubTab] = useState('vacancies');
 
+   // Helper for Standardized Status Colors
+   const getStatusColor = (status) => {
+      const s = (status || '').toUpperCase();
+      if (['SELECTED', 'APPROVED', 'HIRED', 'ACCEPTED'].includes(s)) return 'bg-emerald-50 text-emerald-600 border-emerald-100'; // Green
+      if (['ON HOLD', 'HOLD', 'On Hold'].includes(s)) return 'bg-amber-50 text-amber-600 border-amber-100'; // Yellow (Amber)
+      if (['PROCESSING', 'APPLIED', 'Applied', 'Processing', 'YET TO BE CHECKED', 'PENDING'].includes(s)) return 'bg-purple-50 text-purple-600 border-purple-100'; // Purple
+      if (['REJECTED', 'Rejected'].includes(s)) return 'bg-red-50 text-red-600 border-red-100'; // Red
+      return 'bg-slate-50 text-slate-600 border-slate-100'; // Default
+   };
+
    // --- DATA MERGING LOGIC ---
    // 1. Merge MOCK_APPLICATIONS into Audit Queue
    const getMergedAuditQueue = () => {
-      const merged = [...MOCK_AUDIT_QUEUE];
+      const merged = [...MOCK_AUDIT_QUEUE].map(item => ({
+         ...item,
+         statusColor: getStatusColor(item.status)
+      }));
+
       MOCK_APPLICATIONS.forEach(app => {
          // Avoid duplicates if already exists (naive check by name/email if needed, but IDs are different)
          // Map Application to Audit Item
@@ -320,15 +334,7 @@ const AdminDashboard = () => {
             region: app.address || 'Unknown',
             source: app.source,
             status: (['APPLIED', 'Applied', 'applied'].includes(app.status)) ? 'PROCESSING' : app.status, // Normalize status
-            statusColor: (['APPLIED', 'Applied', 'applied'].includes(app.status) || app.status === 'PROCESSING')
-               ? 'bg-purple-50 text-purple-600 border-purple-100'
-               : (app.status === 'SELECTED' || app.status === 'Selected' || app.status === 'APPROVED')
-                  ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                  : (['HOLD', 'ON HOLD', 'On Hold'].includes(app.status))
-                     ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
-                     : (app.status === 'REJECTED')
-                        ? 'bg-red-50 text-red-600 border-red-100'
-                        : 'bg-slate-50 text-slate-600 border-slate-100', // Default
+            statusColor: getStatusColor((['APPLIED', 'Applied', 'applied'].includes(app.status)) ? 'PROCESSING' : app.status),
             documents: {},
             appliedDate: app.appliedDate
          });
@@ -338,7 +344,11 @@ const AdminDashboard = () => {
 
    // 2. Merge MOCK_AUDIT_QUEUE into Job Applications (for Vacancy View)
    const getMergedApplications = () => {
-      const merged = [...MOCK_APPLICATIONS];
+      const merged = [...MOCK_APPLICATIONS].map(item => ({
+         ...item,
+         statusColor: getStatusColor(item.status)
+      }));
+
       MOCK_AUDIT_QUEUE.forEach(candidate => {
          // Find a suitable job based on Category/Industry
          // This is a "best guess" to ensuring visibility in Vacancy Manager
@@ -352,6 +362,7 @@ const AdminDashboard = () => {
                email: candidate.email,
                contactNumber: candidate.whatsapp,
                status: candidate.status === 'PROCESSING' ? 'Applied' : candidate.status,
+               statusColor: getStatusColor(candidate.status === 'PROCESSING' ? 'Applied' : candidate.status),
                appliedDate: candidate.appliedDate,
                source: candidate.source,
                agentName: candidate.agency,
@@ -380,7 +391,7 @@ const AdminDashboard = () => {
          role: app.jobTitle || 'Applicant',
          agency: app.agentName || 'Unknown Agency',
          status: app.status,
-         statusColor: app.statusColor,
+         statusColor: getStatusColor(app.status),
          appliedDate: app.appliedDate || new Date().toISOString(),
          documents: app.documents || {
             resume: app.hasResume ? 'resume.pdf' : null,
@@ -1150,17 +1161,10 @@ const AdminDashboard = () => {
             return prev.map(resume => {
                const matchesId = (resume.id && resume.id === selectedResume.id) || (resume._id && resume._id === selectedResume.id);
                if (matchesId) {
-                  let statusColor = resume.statusColor;
-                  if (status === 'Selected' || status === 'APPROVED') {
-                     statusColor = 'bg-emerald-50 text-emerald-600 border-emerald-100';
-                  } else if (status === 'On Hold' || status === 'HOLD') {
-                     statusColor = 'bg-amber-50 text-amber-600 border-amber-100';
-                  }
-
                   return {
                      ...resume,
                      status: status === 'On Hold' ? 'ON HOLD' : status.toUpperCase(),
-                     statusColor
+                     statusColor: getStatusColor(status === 'On Hold' ? 'ON HOLD' : status.toUpperCase())
                   };
                }
                return resume;
@@ -1173,18 +1177,8 @@ const AdminDashboard = () => {
          const matchesId = (candidate.id && candidate.id === selectedResume.id) || (candidate._id && candidate._id === selectedResume.id);
          if (matchesId) {
             candidateFoundInAudit = true;
-            let statusColor = '';
             const finalStatus = status === 'Rejected' ? 'REJECTED' : status.toUpperCase();
-
-            if (status === 'Selected' || status === 'APPROVED') {
-               statusColor = 'bg-emerald-50 text-emerald-600 border-emerald-100';
-            } else if (status === 'Rejected') {
-               statusColor = 'bg-red-50 text-red-600 border-red-100';
-            } else if (status === 'On Hold' || status === 'HOLD') {
-               statusColor = 'bg-purple-50 text-purple-600 border-purple-100';
-            }
-
-            return { ...candidate, status: finalStatus, statusColor };
+            return { ...candidate, status: finalStatus, statusColor: getStatusColor(finalStatus) };
          }
          return candidate;
       });
@@ -1214,21 +1208,8 @@ const AdminDashboard = () => {
       setJobApplications(prev => prev.map(app => {
          const matchesId = (app.id && app.id === selectedResume.id) || (app._id && app._id === selectedResume.id);
          if (matchesId) {
-            let statusColor = '';
             const finalStatus = status === 'Rejected' ? 'REJECTED' : status === 'On Hold' ? 'ON HOLD' : status.toUpperCase();
-
-            // Match colors to updated standard
-            if (finalStatus === 'SELECTED' || finalStatus === 'APPROVED') {
-               statusColor = 'bg-emerald-50 text-emerald-600 border-emerald-100';
-            } else if (finalStatus === 'REJECTED') {
-               statusColor = 'bg-red-50 text-red-600 border-red-100';
-            } else if (finalStatus === 'ON HOLD' || finalStatus === 'HOLD') {
-               statusColor = 'bg-yellow-50 text-yellow-700 border-yellow-200';
-            } else if (finalStatus === 'PROCESSING') {
-               statusColor = 'bg-purple-50 text-purple-600 border-purple-100';
-            }
-
-            return { ...app, status: finalStatus, statusColor };
+            return { ...app, status: finalStatus, statusColor: getStatusColor(finalStatus) };
          }
          return app;
       }));
@@ -1240,7 +1221,18 @@ const AdminDashboard = () => {
 
    const [partnerApplications, setPartnerApplications] = useState(() => {
       const storedApps = JSON.parse(localStorage.getItem('maldives_agent_applications') || '[]');
-      return [...storedApps, ...MOCK_NEW_PARTNER_APPS];
+      const apps = [...storedApps, ...MOCK_NEW_PARTNER_APPS];
+      // Apply correct colors AND normalize text
+      return apps.map(app => {
+         let normalizedStatus = app.status;
+         if (app.status === 'YET TO BE CHECKED') normalizedStatus = 'PROCESSING';
+
+         return {
+            ...app,
+            status: normalizedStatus,
+            statusColor: getStatusColor(normalizedStatus)
+         };
+      });
    });
 
 
@@ -1271,21 +1263,11 @@ const AdminDashboard = () => {
 
       const updatedApps = partnerApplications.map(app => {
          if (app.id === selectedApplication.id) {
-            let statusColor = '';
             let displayStatus = status;
-
-            if (status === 'SELECTED') {
-               statusColor = 'bg-emerald-50 text-emerald-600 border-emerald-100';
-            }
-            if (status === 'REJECTED') {
-               statusColor = 'bg-red-50 text-red-600 border-red-100'; // Standardized Red Color
-            }
             if (status === 'ON HOLD') {
-               statusColor = 'bg-amber-50 text-amber-600 border-amber-100';
                displayStatus = 'ON HOLD';
             }
-
-            return { ...app, status: displayStatus, statusColor };
+            return { ...app, status: displayStatus, statusColor: getStatusColor(displayStatus) };
          }
          return app;
       });
@@ -1775,55 +1757,59 @@ const AdminDashboard = () => {
    });
 
    // Filtering logic for Agent Rejections
-   const filteredAgentRejections = partnerApplications.filter(app => {
-      // Must be REJECTED
-      if (app.status !== 'REJECTED') return false;
+   const filteredAgentRejections = partnerApplications
+      .filter((app, index, self) =>
+         index === self.findIndex(t => (t.id || t._id) === (app.id || app._id))
+      )
+      .filter(app => {
+         // Must be REJECTED
+         if (app.status !== 'REJECTED') return false;
 
-      // Search Filter
-      if (agentBlacklistSearchQuery) {
-         const q = agentBlacklistSearchQuery.toLowerCase();
-         // Match Name, Agency, Region
-         const matches = app.applicant.toLowerCase().includes(q) || app.agency.toLowerCase().includes(q) || app.region.toLowerCase().includes(q);
-         if (!matches) return false;
-      }
+         // Search Filter
+         if (agentBlacklistSearchQuery) {
+            const q = agentBlacklistSearchQuery.toLowerCase();
+            // Match Name, Agency, Region
+            const matches = app.applicant.toLowerCase().includes(q) || app.agency.toLowerCase().includes(q) || app.region.toLowerCase().includes(q);
+            if (!matches) return false;
+         }
 
-      // Source Filter (Agency is inherent, but we can filter by Agency Name presence or specific logic if needed. 
-      // For now replicating generic behavior or filtering by agency name if 'source' selected was specific, 
-      // but keeping it simple as per user request to be "same as first table" which had 'Agency Ref' vs 'Direct'. 
-      // Since these are ALL Agents, maybe source filter is less relevant or should filter by 'Agency Name' vs 'Individual Agent'? 
-      // Let's stick to the requested dropdowns. 
-      // Actually, partner apps usually come from Agencies. 
-      // If the user wants "same options", we might just show them but they might be all "Agency Ref". 
-      // Better: Filter by Agency Name if user selects specific agencies? 
-      // Or just keep it simpler: If user selects 'Direct', show nothing? 
-      // Let's implement generic logic:
-      // If filter is 'Agencies', match all.
-      // If 'Direct', match none (since they are agents). 
-      // This is technically correct based on "same options".
-      if (agentBlacklistFilters.source !== 'All') {
-         if (agentBlacklistFilters.source === 'Direct Application') return false; // Agents are not direct
-         // If 'Agency Ref', all pass.
-      }
+         // Source Filter (Agency is inherent, but we can filter by Agency Name presence or specific logic if needed. 
+         // For now replicating generic behavior or filtering by agency name if 'source' selected was specific, 
+         // but keeping it simple as per user request to be "same as first table" which had 'Agency Ref' vs 'Direct'. 
+         // Since these are ALL Agents, maybe source filter is less relevant or should filter by 'Agency Name' vs 'Individual Agent'? 
+         // Let's stick to the requested dropdowns. 
+         // Actually, partner apps usually come from Agencies. 
+         // If the user wants "same options", we might just show them but they might be all "Agency Ref". 
+         // Better: Filter by Agency Name if user selects specific agencies? 
+         // Or just keep it simpler: If user selects 'Direct', show nothing? 
+         // Let's implement generic logic:
+         // If filter is 'Agencies', match all.
+         // If 'Direct', match none (since they are agents). 
+         // This is technically correct based on "same options".
+         if (agentBlacklistFilters.source !== 'All') {
+            if (agentBlacklistFilters.source === 'Direct Application') return false; // Agents are not direct
+            // If 'Agency Ref', all pass.
+         }
 
-      // Duration Filter (Assuming app has a date field, if not, we might need one. 
-      // Mock data `MOCK_NEW_PARTNER_APPS` doesn't explicitly show date in previous view. 
-      // I'll assume `submittedDate` or similar exists or fallback to passing all if missing for now/safety.)
-      if (agentBlacklistFilters.duration !== 'All' && agentBlacklistFilters.duration !== 'All Time') {
-         // Fallback date or real date
-         const date = app.submittedDate || app.date || new Date().toISOString();
-         const appliedTime = new Date(date).getTime();
-         const now = Date.now();
-         const diffHrs = (now - appliedTime) / (1000 * 60 * 60);
-         const diffDays = diffHrs / 24;
+         // Duration Filter (Assuming app has a date field, if not, we might need one. 
+         // Mock data `MOCK_NEW_PARTNER_APPS` doesn't explicitly show date in previous view. 
+         // I'll assume `submittedDate` or similar exists or fallback to passing all if missing for now/safety.)
+         if (agentBlacklistFilters.duration !== 'All' && agentBlacklistFilters.duration !== 'All Time') {
+            // Fallback date or real date
+            const date = app.submittedDate || app.date || new Date().toISOString();
+            const appliedTime = new Date(date).getTime();
+            const now = Date.now();
+            const diffHrs = (now - appliedTime) / (1000 * 60 * 60);
+            const diffDays = diffHrs / 24;
 
-         if (agentBlacklistFilters.duration === 'Last 24 Hours' && diffHrs > 24) return false;
-         if (agentBlacklistFilters.duration === 'Last 7 Days' && diffDays > 7) return false;
-         if (agentBlacklistFilters.duration === 'Last 30 Days' && diffDays > 30) return false;
-         if (agentBlacklistFilters.duration === 'Last 3 Months' && diffDays > 90) return false;
-      }
+            if (agentBlacklistFilters.duration === 'Last 24 Hours' && diffHrs > 24) return false;
+            if (agentBlacklistFilters.duration === 'Last 7 Days' && diffDays > 7) return false;
+            if (agentBlacklistFilters.duration === 'Last 30 Days' && diffDays > 30) return false;
+            if (agentBlacklistFilters.duration === 'Last 3 Months' && diffDays > 90) return false;
+         }
 
-      return true;
-   });
+         return true;
+      });
 
    const getPageTitle = () => {
       switch (activeTab) {
@@ -2089,6 +2075,11 @@ const AdminDashboard = () => {
                   setActiveTab={(tab) => { setActiveTab(tab); setSelectedCategory(null); }}
                   isOpen={isSidebarOpen}
                   onClose={() => setIsSidebarOpen(false)}
+                  notificationCounts={{
+                     audit: auditQueue.filter(i => i.status === 'PROCESSING' || i.status === 'Processing').length,
+                     vacancies: allApplications.filter(a => a.status === 'APPLIED' || a.status === 'Applied').length,
+                     agents: agentVacancies.length + agentResumes.length + pendingAgencies.length + partnerApplications.filter(a => a.status === 'YET TO BE CHECKED').length
+                  }}
                />
 
                {/* MAIN CONTENT */}
@@ -2376,13 +2367,8 @@ const AdminDashboard = () => {
                                                       <span className="text-sm font-medium text-slate-600">{request.source || 'Direct'}</span>
                                                    </td>
                                                    <td className="px-6 py-4">
-                                                      <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${(request.status === 'PROCESSING' || request.status === 'APPLIED' || request.status === 'Applied') ? 'bg-purple-50 text-purple-600 border-purple-100' :
-                                                         request.status === 'REJECTED' ? 'bg-red-50 text-red-600 border-red-100' :
-                                                            request.status === 'HOLD' || request.status === 'ON HOLD' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                                                               (request.status === 'APPROVED' || request.status === 'Selected' || request.status === 'SELECTED') ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                                                  'bg-slate-50 text-slate-600 border-slate-100'
-                                                         }`}>
-                                                         {(request.status === 'APPLIED' || request.status === 'Applied') ? 'PROCESSING' : request.status}
+                                                      <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${getStatusColor(request.status)}`}>
+                                                         {request.status}
                                                       </span>
                                                    </td>
                                                    <td className="px-6 py-4 text-right">
@@ -2868,6 +2854,11 @@ const AdminDashboard = () => {
                                           }`}
                                     >
                                        <Briefcase className="w-4 h-4" /> Agent Vacancies
+                                       {agentVacancies.length > 0 && (
+                                          <span className="ml-2 bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center shadow-sm">
+                                             {agentVacancies.length > 99 ? '99+' : agentVacancies.length}
+                                          </span>
+                                       )}
                                     </button>
                                     <button
                                        onClick={() => setAgentSubTab('resumes')}
@@ -2877,6 +2868,11 @@ const AdminDashboard = () => {
                                           }`}
                                     >
                                        <Users className="w-4 h-4" /> Agent Resumes
+                                       {agentResumes.length > 0 && (
+                                          <span className="ml-2 bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center shadow-sm">
+                                             {agentResumes.length > 99 ? '99+' : agentResumes.length}
+                                          </span>
+                                       )}
                                     </button>
                                     <button
                                        onClick={() => setAgentSubTab('new_apps')}
@@ -2886,6 +2882,11 @@ const AdminDashboard = () => {
                                           }`}
                                     >
                                        <UserPlus className="w-4 h-4" /> New Agents Applications
+                                       {(pendingAgencies.length + partnerApplications.filter(a => a.status === 'YET TO BE CHECKED').length) > 0 && (
+                                          <span className="ml-2 bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center shadow-sm">
+                                             {(pendingAgencies.length + partnerApplications.filter(a => a.status === 'YET TO BE CHECKED').length) > 99 ? '99+' : (pendingAgencies.length + partnerApplications.filter(a => a.status === 'YET TO BE CHECKED').length)}
+                                          </span>
+                                       )}
                                     </button>
                                  </div>
 

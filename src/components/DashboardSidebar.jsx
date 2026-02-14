@@ -2,7 +2,7 @@ import React from 'react';
 import { LayoutDashboard, Briefcase, UserCheck, Globe2, UserPlus, LogOut, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-export const DashboardSidebar = ({ activeTab, setActiveTab, isOpen = false, onClose }) => {
+export const DashboardSidebar = ({ activeTab, setActiveTab, isOpen = false, onClose, notificationCounts }) => {
     const { logout } = useAuth();
 
     // Auto-close on mobile when selecting an item
@@ -57,17 +57,24 @@ export const DashboardSidebar = ({ activeTab, setActiveTab, isOpen = false, onCl
                         { id: 'blacklisted', label: 'BLACKLISTED', icon: ShieldAlert },
                     ].map((item) => {
                         const isActive = activeTab === item.id;
+                        const count = notificationCounts ? notificationCounts[item.id] : 0;
+
                         return (
                             <button
                                 key={item.id}
                                 onClick={() => handleTabClick(item.id)}
-                                className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg text-[10px] font-black tracking-widest uppercase transition-all duration-200 ${isActive
+                                className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg text-[10px] font-black tracking-widest uppercase transition-all duration-200 relative ${isActive
                                     ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/20'
                                     : 'text-slate-400 hover:text-white hover:bg-white/5'
                                     }`}
                             >
                                 <item.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-500'}`} />
                                 <span className="text-left leading-tight">{item.label}</span>
+                                {count > 0 && (
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center shadow-sm">
+                                        {count > 99 ? '99+' : count}
+                                    </span>
+                                )}
                             </button>
                         );
                     })}
