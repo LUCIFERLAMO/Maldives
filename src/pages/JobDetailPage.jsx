@@ -221,17 +221,19 @@ const JobDetailPage = () => {
             </div>
 
             {/* 2. HERO HEADER (Editorial Style) */}
-            <div className="relative bg-white pt-12 pb-20 px-6 overflow-hidden">
-                <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-teal-50/50 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
+            <div className="relative bg-slate-50/50 pt-20 pb-24 px-6 overflow-hidden">
+                {/* Ambient Background */}
+                <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-teal-100/40 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3 pointer-events-none mix-blend-multiply"></div>
+                <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-100/40 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/4 pointer-events-none mix-blend-multiply"></div>
 
                 <div className="container mx-auto max-w-5xl relative z-10">
-                    <div className="flex flex-col md:flex-row items-start justify-between gap-8 md:gap-12">
+                    <div className="flex flex-col md:flex-row items-start justify-between gap-8 md:gap-12 text-center md:text-left">
                         <div className="flex-1">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-teal-50 border border-teal-100 text-teal-700 text-[10px] font-black uppercase tracking-widest mb-6">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-slate-200 shadow-sm text-teal-700 text-[10px] font-black uppercase tracking-widest mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                                 <Sparkles className="w-3 h-3" />
                                 {job.industry || job.category}
                             </div>
-                            <h1 className="text-4xl md:text-6xl font-black text-slate-900 mb-6 leading-[1.1] tracking-tight">
+                            <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-slate-900 mb-6 leading-[0.95] tracking-tighter animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
                                 {job.title}
                             </h1>
                             <div className="flex flex-wrap items-center gap-x-8 gap-y-4 text-slate-600 font-medium text-base">
@@ -251,8 +253,8 @@ const JobDetailPage = () => {
                         </div>
 
                         {/* Company Logo Badge */}
-                        <div className="hidden md:flex flex-col items-center gap-3 shrink-0">
-                            <div className="w-24 h-24 bg-white rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/50 flex items-center justify-center text-4xl font-black text-slate-800">
+                        <div className="hidden md:flex flex-col items-center gap-3 shrink-0 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
+                            <div className="w-24 h-24 bg-white rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/50 flex items-center justify-center text-4xl font-black text-slate-800 rotate-3 hover:rotate-0 transition-transform duration-500">
                                 {job.company.charAt(0)}
                             </div>
                             <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Hiring Company</span>
@@ -261,7 +263,7 @@ const JobDetailPage = () => {
                 </div>
             </div>
 
-            <main className="container mx-auto max-w-6xl px-4 -mt-10 relative z-20">
+            <main className="container mx-auto max-w-6xl px-4 -mt-12 relative z-20">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
 
                     {/* LEFT COLUMN: Content (8 cols) */}
