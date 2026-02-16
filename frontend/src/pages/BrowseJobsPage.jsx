@@ -18,15 +18,10 @@ import { Link, useSearchParams } from 'react-router-dom';
 import JobCard from '../components/JobCard';
 import { MOCK_JOBS, INDUSTRIES } from '../constants';
 import { JobStatus } from '../types';
-import { useAuth } from '../context/AuthContext';
-import { usePopup } from '../context/PopupContext';
 
 const BrowseJobsPage = () => {
-    const { user } = useAuth();
-    const popup = usePopup();
     const [searchParams, setSearchParams] = useSearchParams();
     const [searchTerm, setSearchTerm] = useState('');
-    const [appliedSearch, setAppliedSearch] = useState(''); // New state for API search
     const [viewType, setViewType] = useState('list');
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [sortBy, setSortBy] = useState('recent');
@@ -42,15 +37,23 @@ const BrowseJobsPage = () => {
 
     const clearCategory = () => {
         setSearchParams({});
-        setSearchTerm('');
-        setAppliedSearch('');
     };
 
-    // Note: We are now using SERVER-SIDE filtering. 
-    // The 'jobs' state already contains the filtered results from the API.
-    const filteredJobs = jobs;
+    const filteredJobs = useMemo(() => {
+        const sanitizedSearch = searchTerm.replace(/[<>]/g, '').toLowerCase();
 
-    // ... (formatPostedDate and scroll effect implementation remains same) ...
+        return jobs.filter(job => {
+            // Filter by Search Term
+            const matchesSearch = job.title.toLowerCase().includes(sanitizedSearch) ||
+                job.company.toLowerCase().includes(sanitizedSearch);
+
+            // Filter by Category check
+            const matchesCategory = selectedIndustry === 'All' || job.industry === selectedIndustry;
+
+            return matchesSearch && matchesCategory;
+        });
+    }, [searchTerm, jobs, selectedIndustry]);
+
     const formatPostedDate = (dateString) => {
         if (!dateString) return 'Recently';
         const date = new Date(dateString);
@@ -70,6 +73,13 @@ const BrowseJobsPage = () => {
     };
 
     const scrollContainerRef = useRef(null);
+    const resultsRef = useRef(null);
+
+    const handleSearchScroll = () => {
+        if (resultsRef.current) {
+            resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    };
 
     useEffect(() => {
         const container = scrollContainerRef.current;
@@ -111,25 +121,6 @@ const BrowseJobsPage = () => {
         fetchCategories();
     }, []);
 
-    const resultsRef = useRef(null);
-
-    const handleSearch = () => {
-        setAppliedSearch(searchTerm);
-        // UX Improvement: Clear category when searching to allow global search
-        setSearchParams({ category: 'All' });
-
-        // Scroll to results section
-        if (resultsRef.current) {
-            resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-    };
-
-    const handleKeyDown = (e) => {
-        if (e.key === 'Enter') {
-            handleSearch();
-        }
-    };
-
     // Fetch Jobs from MongoDB Backend
     useEffect(() => {
         async function fetchJobs() {
@@ -137,18 +128,8 @@ const BrowseJobsPage = () => {
             try {
                 const query = new URLSearchParams();
 
-                // Note: The correct approach for category + search is:
-                // If the user selects a category from sidebar, we filter by it.
-                // If user types in search, we filter by it.
-                // They can be combined.
-                if (selectedIndustry !== 'All') {
-                    query.append('category', selectedIndustry);
-                }
-
-                // Add Search Term
-                if (appliedSearch) {
-                    query.append('search', appliedSearch);
-                }
+                // Note: We fetch ALL categories now to ensure sidebar counts are correct.
+                // We only filter by Category on the client-side (filteredJobs).
 
                 // Map sortBy to status
                 const status = sortBy === 'closed' ? 'CLOSED' : 'OPEN';
@@ -157,22 +138,6 @@ const BrowseJobsPage = () => {
                 const response = await fetch(`http://localhost:5000/api/jobs?${query.toString()}`);
                 const data = await response.json();
 
-                // Fetch User Applications if logged in
-                let myAppIds = [];
-                if (user && user.email) {
-                    try {
-                        const appRes = await fetch(`http://localhost:5000/api/applications/candidate/${user.email}`);
-                        if (appRes.ok) {
-                            const apps = await appRes.json();
-                            myAppIds = apps
-                                .filter(app => app.status !== 'REJECTED')
-                                .map(app => String(app.job_id));
-                        }
-                    } catch (e) {
-                        console.error("Failed to fetch my apps", e);
-                    }
-                }
-
                 // Map database fields to frontend structure
                 const mappedJobs = (data || []).map(job => ({
                     ...job,
@@ -180,8 +145,6 @@ const BrowseJobsPage = () => {
                     salaryRange: job.salary_range,
                     // Backend returns 'OPEN' or 'CLOSED', map to JobStatus enum
                     status: job.status === 'OPEN' ? JobStatus.OPEN : JobStatus.CLOSED,
-                    // Check if applied
-                    isApplied: myAppIds.includes(String(job.id)),
                     industry: job.category // Map backend 'category' to frontend 'industry'
                 }));
 
@@ -192,25 +155,9 @@ const BrowseJobsPage = () => {
                 // Fallback to MOCK_JOBS
                 let fallbackJobs = MOCK_JOBS;
 
-                // 1. Filter by Status
+                // 1. Filter by Status ONLY (Category is handled in useMemo now)
                 const targetStatus = sortBy === 'closed' ? JobStatus.CLOSED : JobStatus.OPEN;
                 fallbackJobs = fallbackJobs.filter(job => job.status === targetStatus);
-
-                // 2. Filter by Category
-                if (selectedIndustry !== 'All') {
-                    fallbackJobs = fallbackJobs.filter(job => job.industry === selectedIndustry);
-                }
-
-                // 3. Filter by Search Term (Regex)
-                if (appliedSearch) {
-                    const searchLower = appliedSearch.toLowerCase();
-                    fallbackJobs = fallbackJobs.filter(job =>
-                        job.title.toLowerCase().includes(searchLower) ||
-                        job.company.toLowerCase().includes(searchLower) ||
-                        job.location.toLowerCase().includes(searchLower) ||
-                        (job.description && job.description.toLowerCase().includes(searchLower))
-                    );
-                }
 
                 setJobs(fallbackJobs);
             } finally {
@@ -219,9 +166,9 @@ const BrowseJobsPage = () => {
         }
 
         fetchJobs();
-    }, [sortBy, user, selectedIndustry, appliedSearch]); // dependencies include appliedSearch
+    }, [sortBy]);
 
-    // ... handleShare ...
+
     const handleShare = async (e, job) => {
         e.preventDefault();
         e.stopPropagation();
@@ -264,17 +211,17 @@ const BrowseJobsPage = () => {
                 document.body.removeChild(textArea);
                 if (!successful) throw new Error('execCommand copy failed');
             }
-            popup.success('Job link copied to clipboard!');
+            alert('Job link copied to clipboard!');
         } catch (err) {
             console.error('Copy failed:', err);
         }
     };
 
     return (
-        <div className="min-h-screen bg-slate-100 md:bg-gradient-to-br md:from-slate-100 md:via-slate-50 md:to-slate-200 font-sans text-slate-900 pb-32">
+        <div className="min-h-screen bg-slate-100 md:bg-gradient-to-br md:from-slate-100 md:via-slate-50 md:to-slate-200 font-sans text-slate-900 pb-10">
 
             {/* 1. EDITORIAL HERO */}
-            <div className="relative bg-white pt-28 pb-20 lg:pt-36 lg:pb-28 px-6 rounded-b-[3rem] lg:rounded-b-[4rem] shadow-sm z-20 overflow-hidden">
+            <div className="relative bg-white pt-24 pb-10 lg:pt-28 lg:pb-16 px-6 rounded-b-[3rem] lg:rounded-b-[4rem] shadow-sm z-20 overflow-hidden">
                 {/* Background Image with Smooth Gradient Mask */}
                 <div className="absolute inset-0 z-0 select-none">
                     <img
@@ -301,7 +248,7 @@ const BrowseJobsPage = () => {
                 <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-blue-200/40 rounded-full blur-[120px] translate-y-1/3 -translate-x-1/4 pointer-events-none z-0"></div>
 
                 <div className="container mx-auto max-w-5xl relative z-10">
-                    <div className="text-center max-w-3xl mx-auto mb-12 lg:mb-16">
+                    <div className="text-center max-w-3xl mx-auto mb-6 lg:mb-8">
                         <div className="inline-flex items-center gap-2 bg-white/70 backdrop-blur-md border border-slate-200/60 px-4 py-1.5 rounded-full mb-6 shadow-sm ring-1 ring-white/50">
                             <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600">Curated Vacancies</span>
                         </div>
@@ -326,7 +273,7 @@ const BrowseJobsPage = () => {
                                     className="w-full bg-transparent border-none focus:ring-0 text-sm md:text-base font-medium text-slate-700 placeholder-slate-400 outline-none h-full truncate"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    onKeyDown={handleKeyDown}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSearchScroll()}
                                 />
                                 <div className="hidden md:block absolute right-0 top-1/2 -translate-y-1/2 w-px h-8 bg-slate-200"></div>
                             </div>
@@ -334,14 +281,14 @@ const BrowseJobsPage = () => {
                             <div className="w-full md:w-[35%] flex items-center px-4 md:px-6 h-12 md:h-14 relative cursor-pointer hover:bg-slate-50 transition-colors">
                                 <MapPin className="w-4 h-4 md:w-5 md:h-5 text-slate-400 mr-3 md:mr-4" />
                                 <div className="flex-1 min-w-0">
-                                    <span className="block text-sm font-medium text-slate-700 truncate">Global, All Locations</span>
+                                    <span className="block text-sm font-medium text-slate-700 truncate">Maldives, All Islands</span>
                                 </div>
                                 <ChevronDown className="w-4 h-4 text-slate-300 ml-2" />
                             </div>
 
                             <div className="w-full md:w-auto md:pl-2">
                                 <button
-                                    onClick={handleSearch}
+                                    onClick={handleSearchScroll}
                                     className="w-full md:w-auto h-12 md:h-12 bg-[#0B1A33] hover:bg-[#162a4d] text-white px-8 md:rounded-full font-medium text-sm transition-all shadow-none md:shadow-md flex items-center justify-center rounded-none md:rounded-full"
                                 >
                                     Search
@@ -440,7 +387,7 @@ const BrowseJobsPage = () => {
                 </div>
 
                 {/* 4. MAIN JOB LIST */}
-                <div className="flex flex-col lg:flex-row gap-12">
+                <div ref={resultsRef} className="flex flex-col lg:flex-row gap-12 scroll-mt-24">
 
                     {/* Sidebar (Desktop Only) */}
                     <div className="hidden lg:block w-64 flex-shrink-0 space-y-10">
@@ -466,8 +413,8 @@ const BrowseJobsPage = () => {
                     </div>
 
                     {/* Job Feed */}
-                    <div ref={resultsRef} className="flex-1 scroll-mt-24">
-                        <div className="sticky top-[80px] z-20 bg-slate-100 md:bg-transparent pb-4 pt-2">
+                    <div className="flex-1">
+                        <div className="bg-slate-100 md:bg-transparent pb-4 pt-2">
                             <div className="flex items-center justify-between">
                                 <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">
                                     {sortBy === 'closed' ? 'Closed Roles' : 'Recent Openings'}
@@ -513,13 +460,14 @@ const BrowseJobsPage = () => {
                 md:grid-cols-1 md:gap-6
                 ${viewType === 'grid' ? 'md:grid-cols-2' : ''}
               `}>
-                                {filteredJobs.length > 0 ? filteredJobs.map(job => (
+                                {filteredJobs.length > 0 ? filteredJobs.map((job, idx) => (
                                     viewType === 'list' ? (
                                         job.status === JobStatus.CLOSED ? (
                                             <div
                                                 key={job.id}
+                                                style={{ animationDelay: `${idx * 100}ms` }}
                                                 onClick={() => setExpandedJobId(expandedJobId === job.id ? null : job.id)}
-                                                className={`w-full group bg-white md:bg-white/80 md:backdrop-blur-sm rounded-3xl p-4 md:p-6 border-2 border-red-200 shadow-sm hover:shadow-md hover:border-red-300 transition-all duration-300 flex flex-col relative cursor-pointer ${expandedJobId === job.id ? 'bg-red-50/30' : 'bg-red-50/10'}`}
+                                                className={`w-full group bg-white md:bg-white/80 md:backdrop-blur-sm rounded-[2.5rem] p-4 md:p-6 border-2 border-red-200 shadow-sm hover:shadow-md hover:border-red-300 transition-all duration-300 flex flex-col relative cursor-pointer animate-in fade-in slide-in-from-bottom-8 fill-mode-backwards ${expandedJobId === job.id ? 'bg-red-50/30' : 'bg-red-50/10'}`}
                                             >
                                                 <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
                                                     {/* Share Button (Mobile Absolute, Desktop Inline) */}
@@ -531,7 +479,7 @@ const BrowseJobsPage = () => {
                                                         <Share2 className="w-5 h-5" />
                                                     </button>
 
-                                                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-black border border-slate-100 transition-colors bg-teal-600 text-white md:bg-white md:text-slate-900 md:shadow-md md:group-hover:scale-110 md:group-hover:rotate-3 duration-300">
+                                                    <div className="w-16 h-16 rounded-[1.2rem] flex items-center justify-center text-xl font-black border border-slate-100 transition-colors bg-teal-600 text-white md:bg-white md:text-slate-900 md:shadow-md md:group-hover:scale-110 md:group-hover:rotate-3 duration-300">
                                                         {job.company.charAt(0)}
                                                     </div>
                                                     <div className="flex-1 min-w-0">
@@ -579,7 +527,12 @@ const BrowseJobsPage = () => {
                                                 </div>
                                             </div>
                                         ) : (
-                                            <Link key={job.id} to={`/job/${job.id}`} className="w-full group bg-white md:bg-white/80 md:backdrop-blur-sm rounded-3xl p-4 md:p-6 border border-slate-200 shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-teal-500/30 hover:-translate-y-1 transition-all duration-300 flex flex-col md:flex-row items-start md:items-center gap-6 relative">
+                                            <Link
+                                                key={job.id}
+                                                to={`/job/${job.id}`}
+                                                style={{ animationDelay: `${idx * 100}ms` }}
+                                                className="w-full group bg-white md:bg-white/80 md:backdrop-blur-sm rounded-[2.5rem] p-4 md:p-6 border border-slate-200 shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-teal-500/30 hover:-translate-y-1 transition-all duration-500 flex flex-col md:flex-row items-start md:items-center gap-6 relative animate-in fade-in slide-in-from-bottom-8 fill-mode-backwards"
+                                            >
                                                 {/* Share Button (Mobile Absolute, Desktop Inline) */}
                                                 <button
                                                     onClick={(e) => handleShare(e, job)}
@@ -589,7 +542,7 @@ const BrowseJobsPage = () => {
                                                     <Share2 className="w-5 h-5" />
                                                 </button>
 
-                                                <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-black border border-slate-100 transition-colors bg-teal-600 text-white md:bg-white md:text-slate-900 md:shadow-md md:group-hover:scale-110 md:group-hover:rotate-3 duration-300">
+                                                <div className="w-16 h-16 rounded-[1.2rem] flex items-center justify-center text-xl font-black border border-slate-100 transition-colors bg-teal-600 text-white md:bg-white md:text-slate-900 md:shadow-md md:group-hover:scale-110 md:group-hover:rotate-3 duration-300">
                                                     {job.company.charAt(0)}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
@@ -622,11 +575,16 @@ const BrowseJobsPage = () => {
                                             </Link>
                                         )
                                     ) : (
-                                        <Link key={job.id} to={job.status === JobStatus.CLOSED ? '#' : `/job/${job.id}`} className={`w-full group bg-white md:bg-white/80 md:backdrop-blur-sm rounded-[2.5rem] p-4 md:p-8 border shadow-sm hover:shadow-[0_20px_40px_-5px_rgba(0,0,0,0.06)] hover:-translate-y-2 transition-all duration-300 flex flex-col relative overflow-hidden ${job.status === JobStatus.CLOSED ? 'border-red-200 bg-red-50/10 hover:border-red-300' : 'border-slate-200 hover:border-teal-500/30'}`}>
+                                        <Link
+                                            key={job.id}
+                                            to={job.status === JobStatus.CLOSED ? '#' : `/job/${job.id}`}
+                                            style={{ animationDelay: `${idx * 100}ms` }}
+                                            className={`w-full group bg-white md:bg-white/80 md:backdrop-blur-sm rounded-[2.5rem] p-4 md:p-8 border shadow-sm hover:shadow-[0_20px_40px_-5px_rgba(0,0,0,0.06)] hover:-translate-y-2 transition-all duration-500 flex flex-col relative overflow-hidden animate-in fade-in slide-in-from-bottom-8 fill-mode-backwards ${job.status === JobStatus.CLOSED ? 'border-red-200 bg-red-50/10 hover:border-red-300' : 'border-slate-200 hover:border-teal-500/30'}`}
+                                        >
                                             <div className="absolute -right-20 -top-20 w-40 h-40 bg-teal-500/5 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
 
                                             <div className="flex items-start justify-between mb-6 relative z-10">
-                                                <div className="w-14 h-14 rounded-2xl flex items-center justify-center font-black transition-all bg-teal-600 text-white md:bg-white md:text-slate-900 md:shadow-md md:group-hover:scale-110 md:group-hover:-rotate-3 duration-300 border border-slate-50">
+                                                <div className="w-14 h-14 rounded-[1.2rem] flex items-center justify-center font-black transition-all bg-teal-600 text-white md:bg-white md:text-slate-900 md:shadow-md md:group-hover:scale-110 md:group-hover:-rotate-3 duration-300 border border-slate-50">
                                                     {job.company.charAt(0)}
                                                 </div>
                                                 <div className="flex items-center gap-2">

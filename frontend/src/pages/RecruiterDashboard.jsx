@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { ApplicationStatus, JobStatus } from '../types';
 import { MOCK_APPLICATIONS, MOCK_JOBS } from '../constants';
@@ -7,240 +6,20 @@ import {
     X, Shield, LogOut, Briefcase as BriefcaseIcon,
     Ban, PlusCircle, CheckCircle,
     AlertTriangle, Globe, ArrowRight, UserPlus,
-    MapPin, Award, User, Building2, DollarSign,
+    MapPin, Award, User,
     AlignLeft, ChevronDown, ShieldCheck,
-    FilePlus, Clock, Settings, Key, Eye, EyeOff, RefreshCw, Download, FileText, Loader2
+    FilePlus, Clock, Settings, Key, Eye, EyeOff
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import FileUpload from '../components/FileUpload';
-import { usePopup } from '../context/PopupContext';
-
-// =============================================
-// DOCUMENT VIEWER MODAL COMPONENT
-// =============================================
-const DocumentViewerModal = ({ app, docViewerData, docViewerLoading, setDocViewerData, setDocViewerLoading, onClose }) => {
-    const [activeDoc, setActiveDoc] = useState(null); // Currently viewed document
-    const [error, setError] = useState(null);
-
-    // Fetch documents when modal opens
-    useEffect(() => {
-        if (app && !docViewerData) {
-            fetchDocuments();
-        }
-    }, [app]);
-
-    const fetchDocuments = async () => {
-        setDocViewerLoading(true);
-        setError(null);
-        try {
-            const appId = app.id || app._id;
-            const response = await fetch(`http://localhost:5000/api/applications/${appId}/documents`);
-            if (!response.ok) {
-                throw new Error('Failed to fetch documents');
-            }
-            const data = await response.json();
-            setDocViewerData(data);
-        } catch (err) {
-            console.error('Error fetching documents:', err);
-            setError(err.message);
-        } finally {
-            setDocViewerLoading(false);
-        }
-    };
-
-    // Download handler - creates a download link from data URL
-    const handleDownload = (doc) => {
-        const link = document.createElement('a');
-        link.href = doc.dataUrl;
-        link.download = doc.name;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
-
-    // Check if content type is an image
-    const isImage = (contentType) => contentType?.startsWith('image/');
-
-    // Check if content type is PDF
-    const isPdf = (contentType) => contentType === 'application/pdf';
-
-    return (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl border border-slate-200 overflow-hidden transform transition-all scale-100 max-h-[90vh] flex flex-col">
-                {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white shrink-0">
-                    <div>
-                        <h3 className="text-lg font-bold text-slate-900">📄 Submitted Documents</h3>
-                        <p className="text-sm text-slate-500">
-                            Read-only view for <span className="font-semibold text-teal-600">{app.candidate_name}</span>
-                        </p>
-                    </div>
-                    <button
-                        onClick={onClose}
-                        className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
-                </div>
-
-                {/* Body */}
-                <div className="flex-1 flex overflow-hidden">
-                    {/* Left Panel - Document List */}
-                    <div className="w-80 border-r border-slate-200 bg-slate-50/50 p-4 overflow-y-auto shrink-0">
-                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Documents</h4>
-
-                        {docViewerLoading ? (
-                            <div className="flex flex-col items-center justify-center py-12 text-slate-400">
-                                <Loader2 className="w-8 h-8 animate-spin mb-3" />
-                                <p className="text-sm font-medium">Loading documents...</p>
-                            </div>
-                        ) : error ? (
-                            <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-center">
-                                <p className="text-sm text-red-600 font-medium">{error}</p>
-                                <button
-                                    onClick={fetchDocuments}
-                                    className="mt-2 text-xs text-red-700 underline"
-                                >
-                                    Retry
-                                </button>
-                            </div>
-                        ) : docViewerData?.documents?.length > 0 ? (
-                            <div className="space-y-3">
-                                {docViewerData.documents.map((doc, index) => (
-                                    <div
-                                        key={index}
-                                        className={`p-4 rounded-xl border cursor-pointer transition-all ${activeDoc?.type === doc.type
-                                            ? 'border-teal-500 bg-teal-50 shadow-sm ring-2 ring-teal-500/20'
-                                            : 'border-slate-200 bg-white hover:border-teal-200 hover:shadow-sm'
-                                            }`}
-                                        onClick={() => setActiveDoc(doc)}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${doc.type === 'resume' ? 'bg-indigo-100 text-indigo-600' :
-                                                doc.type === 'identity' ? 'bg-amber-100 text-amber-600' :
-                                                    doc.type === 'certificates' ? 'bg-teal-100 text-teal-600' :
-                                                        doc.type === 'pcc' ? 'bg-purple-100 text-purple-600' :
-                                                            'bg-blue-100 text-blue-600'
-                                                }`}>
-                                                <FileText className="w-5 h-5" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="font-bold text-slate-900 text-sm truncate">
-                                                    {doc.type === 'resume' ? 'Resume / CV' :
-                                                        doc.type === 'identity' ? 'Identity Document' :
-                                                            doc.type === 'certificates' ? 'Certificates' :
-                                                                doc.type === 'pcc' ? 'Police Clearance' :
-                                                                    doc.type === 'goodStanding' ? 'Good Standing' : 'Document'}
-                                                </p>
-                                                <p className="text-xs text-slate-500 truncate">{doc.name}</p>
-                                            </div>
-                                        </div>
-                                        <div className="mt-3 flex gap-2">
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); setActiveDoc(doc); }}
-                                                className="flex-1 px-3 py-1.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-lg hover:bg-slate-200 transition-colors flex items-center justify-center gap-1"
-                                            >
-                                                <Eye className="w-3 h-3" />
-                                                Preview
-                                            </button>
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); handleDownload(doc); }}
-                                                className="flex-1 px-3 py-1.5 bg-teal-600 text-white text-xs font-bold rounded-lg hover:bg-teal-700 transition-colors flex items-center justify-center gap-1"
-                                            >
-                                                <Download className="w-3 h-3" />
-                                                Download
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="p-8 text-center text-slate-400">
-                                <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                                <p className="text-sm font-medium">No documents found</p>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Right Panel - Document Preview */}
-                    <div className="flex-1 p-6 bg-slate-100 overflow-y-auto flex items-center justify-center">
-                        {activeDoc ? (
-                            <div className="w-full h-full flex flex-col">
-                                <div className="flex items-center justify-between mb-4">
-                                    <h4 className="text-sm font-bold text-slate-700">
-                                        {activeDoc.type === 'resume' ? 'Resume Preview' : 'Certificate Preview'}
-                                    </h4>
-                                    <button
-                                        onClick={() => handleDownload(activeDoc)}
-                                        className="px-4 py-2 bg-teal-600 text-white text-xs font-bold rounded-lg hover:bg-teal-700 transition-colors flex items-center gap-2 shadow-sm"
-                                    >
-                                        <Download className="w-4 h-4" />
-                                        Download File
-                                    </button>
-                                </div>
-                                <div className="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex items-center justify-center">
-                                    {isImage(activeDoc.contentType) ? (
-                                        <img
-                                            src={activeDoc.dataUrl}
-                                            alt={activeDoc.name}
-                                            className="max-w-full max-h-[60vh] object-contain"
-                                        />
-                                    ) : isPdf(activeDoc.contentType) ? (
-                                        <iframe
-                                            src={activeDoc.dataUrl}
-                                            title={activeDoc.name}
-                                            className="w-full h-[60vh] border-0"
-                                        />
-                                    ) : (
-                                        <div className="p-12 text-center">
-                                            <FileText className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-                                            <p className="text-slate-600 font-medium mb-2">{activeDoc.name}</p>
-                                            <p className="text-sm text-slate-400 mb-4">
-                                                Preview not available for this file type.
-                                            </p>
-                                            <button
-                                                onClick={() => handleDownload(activeDoc)}
-                                                className="px-6 py-2.5 bg-teal-600 text-white font-bold rounded-lg hover:bg-teal-700 transition-colors inline-flex items-center gap-2"
-                                            >
-                                                <Download className="w-4 h-4" />
-                                                Download to View
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="text-center text-slate-400">
-                                <Eye className="w-16 h-16 mx-auto mb-4 opacity-30" />
-                                <p className="text-sm font-medium">Select a document to preview</p>
-                                <p className="text-xs mt-1">Click on a document from the left panel</p>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Footer */}
-                <div className="bg-slate-50 px-6 py-3 text-center border-t border-slate-100 shrink-0">
-                    <p className="text-xs text-slate-400 font-medium flex items-center justify-center gap-2">
-                        <Shield className="w-3 h-3" />
-                        This view is read-only. You cannot edit submitted documents.
-                    </p>
-                </div>
-            </div>
-        </div>
-    );
-};
 
 const RecruiterDashboard = () => {
     const navigate = useNavigate();
-    const { user, login } = useAuth();
-    const { logout } = useAuth();
-    const popup = usePopup();
+    const { user, login, logout } = useAuth();
+
     const [activeTab, setActiveTab] = useState('overview');
-
-
-    const [applications, setApplications] = useState(MOCK_APPLICATIONS);
+    const [applications, setApplications] = useState(MOCK_APPLICATIONS || []);
 
     // FIXED: Form State for Candidate Submission
     const [submissionData, setSubmissionData] = useState({
@@ -252,54 +31,53 @@ const RecruiterDashboard = () => {
 
     // --- REAL DATA FETCHER ---
     const [pipelineData, setPipelineData] = useState([]);
-    const [isRefreshingPipeline, setIsRefreshingPipeline] = useState(false);
-
     // This gets the list of candidates from the database
-    const fetchPipeline = async () => {
-        if (!user?.id) return;
-        setIsRefreshingPipeline(true);
-        try {
-            const response = await fetch(`http://localhost:5000/api/applications/agent/${user.id}/all`);
-            const data = await response.json();
-            if (data) {
-                setPipelineData(data);
-            }
-        } catch (error) {
-            console.error("Error fetching pipeline:", error);
-        } finally {
-            setIsRefreshingPipeline(false);
-        }
-    };
-
     useEffect(() => {
+        if (!user?.id) return;
+
+        const fetchPipeline = async () => {
+            try {
+                const response = await fetch(`http://localhost:5000/api/applications?agent_id=${user.id}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                if (data) {
+                    setPipelineData(Array.isArray(data) ? data : []);
+                }
+            } catch (error) {
+                console.error("Error fetching pipeline:", error);
+                setPipelineData([]);
+            }
+        };
         fetchPipeline();
     }, [user?.id]);
     // -------------------------
     const [jobs, setJobs] = useState([]);
-    const [isRefreshingGlobal, setIsRefreshingGlobal] = useState(false);
 
     // FETCH REAL JOBS
-    const fetchJobs = async () => {
-        try {
-            const response = await fetch('http://localhost:5000/api/jobs');
-            const data = await response.json();
-
-            // Filter for open jobs
-            const openJobs = (data || []).filter(j => j.status === 'OPEN');
-            setJobs(openJobs);
-            if (openJobs.length === 0) console.warn("Fetch successful but 0 jobs found with status 'OPEN'");
-        } catch (error) {
-            console.error("Error fetching jobs:", error);
-        }
-    };
     useEffect(() => {
+        const fetchJobs = async () => {
+            try {
+                const response = await fetch('http://localhost:5000/api/jobs');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+
+                // Filter for current openings
+                const openJobs = (Array.isArray(data) ? data : []).filter(j => j?.status === 'Current Opening');
+                setJobs(openJobs);
+                if (openJobs.length === 0) console.warn("Fetch successful but 0 jobs found with status 'Current Opening'");
+            } catch (error) {
+                console.error("Error fetching jobs:", error);
+                setJobs([]);
+            }
+        };
         fetchJobs();
     }, []);
 
     const [selectedJobForSubmission, setSelectedJobForSubmission] = useState(null);
-    const [selectedAppForDocs, setSelectedAppForDocs] = useState(null); // State for document viewer modal
-    const [docViewerData, setDocViewerData] = useState(null); // Fetched documents data
-    const [docViewerLoading, setDocViewerLoading] = useState(false); // Loading state for documents
     const [submissionFiles, setSubmissionFiles] = useState({
         resume: null,
         identity: null,
@@ -310,17 +88,6 @@ const RecruiterDashboard = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [pipelineSearchTerm, setPipelineSearchTerm] = useState('');
 
-    // Vacancy Navigation State (Categories → Jobs → Job Detail)
-    const [vacancyView, setVacancyView] = useState('categories'); // 'categories' | 'jobs' | 'jobDetail'
-    const [selectedCategory, setSelectedCategory] = useState(null);
-    const [selectedVacancyJob, setSelectedVacancyJob] = useState(null);
-    const [agentJobApplications, setAgentJobApplications] = useState([]);
-    const [isLoadingAgentApps, setIsLoadingAgentApps] = useState(false);
-
-    // Job Categories List
-    const JOB_CATEGORIES = ['Hospitality', 'Construction', 'Healthcare', 'IT', 'Education', 'Retail', 'Manufacturing', 'Tourism', 'Fishing', 'Agriculture', 'Other'];
-
-
     const [jobRequests, setJobRequests] = useState([]);
 
     // FETCH REAL JOB REQUESTS
@@ -328,34 +95,24 @@ const RecruiterDashboard = () => {
         if (!user?.id) return;
         const fetchRequests = async () => {
             try {
+                // CHANGED: Use the path parameter endpoint as requested
                 const response = await fetch(`http://localhost:5000/api/job-requests/agent/${user.id}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const data = await response.json();
-                if (data) setJobRequests(data);
+                if (data) setJobRequests(Array.isArray(data) ? data : []);
             } catch (error) {
                 console.error("Error fetching job requests:", error);
+                setJobRequests([]);
             }
         };
         fetchRequests();
     }, [user?.id]);
+    
     const [showJobRequestForm, setShowJobRequestForm] = useState(false);
     const [jobRequestSearchTerm, setJobRequestSearchTerm] = useState('');
     const [expandedJobRequestId, setExpandedJobRequestId] = useState(null);
-    const [isRefreshingJobRequests, setIsRefreshingJobRequests] = useState(false);
-
-    // Function to refresh job requests
-    const refreshJobRequests = async () => {
-        if (!user?.id) return;
-        setIsRefreshingJobRequests(true);
-        try {
-            const response = await fetch(`http://localhost:5000/api/job-requests/agent/${user.id}`);
-            const data = await response.json();
-            if (data) setJobRequests(data);
-        } catch (error) {
-            console.error("Error refreshing job requests:", error);
-        } finally {
-            setIsRefreshingJobRequests(false);
-        }
-    };
 
     // Password Reset State
     const [passwordData, setPasswordData] = useState({
@@ -398,7 +155,7 @@ const RecruiterDashboard = () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    email: user?.email,
+                    email: user?.email || '',
                     oldPassword: passwordData.oldPassword,
                     newPassword: passwordData.newPassword
                 })
@@ -413,66 +170,19 @@ const RecruiterDashboard = () => {
             setPasswordSuccess('Password updated successfully!');
             setPasswordData({ oldPassword: '', newPassword: '', confirmPassword: '' });
         } catch (err) {
-            setPasswordError(err.message);
+            setPasswordError(err.message || 'An error occurred');
         } finally {
             setIsResettingPassword(false);
         }
     };
 
     const filteredJobs = useMemo(() => {
-        return jobs.filter(j =>
-        (j.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            j.company.toLowerCase().includes(searchTerm.toLowerCase()))
+        return (Array.isArray(jobs) ? jobs : []).filter(j =>
+            j &&
+            (j.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                j.company?.toLowerCase().includes(searchTerm.toLowerCase()))
         );
     }, [jobs, searchTerm]);
-
-    // Filter jobs by selected category
-    const filteredJobsByCategory = useMemo(() => {
-        if (!selectedCategory) return [];
-        return jobs.filter(j => j.category === selectedCategory);
-    }, [jobs, selectedCategory]);
-
-    // Fetch agent's applications for a specific job
-    const fetchAgentJobApplications = async (jobId) => {
-        if (!user?.id || !jobId) return;
-        setIsLoadingAgentApps(true);
-        try {
-            const response = await fetch(`http://localhost:5000/api/applications/agent/${user.id}/job/${jobId}`);
-            const data = await response.json();
-            setAgentJobApplications(data || []);
-        } catch (error) {
-            console.error('Error fetching agent applications:', error);
-            setAgentJobApplications([]);
-        } finally {
-            setIsLoadingAgentApps(false);
-        }
-    };
-
-    // Handle category selection
-    const handleSelectCategory = (category) => {
-        setSelectedCategory(category);
-        setVacancyView('jobs');
-    };
-
-    // Handle job selection from category view
-    const handleSelectVacancyJob = async (job) => {
-        setSelectedVacancyJob(job);
-        setVacancyView('jobDetail');
-        await fetchAgentJobApplications(job.id || job._id);
-    };
-
-    // Handle back navigation in vacancy view
-    const handleVacancyBack = () => {
-        if (vacancyView === 'jobDetail') {
-            setSelectedVacancyJob(null);
-            setAgentJobApplications([]);
-            setVacancyView('jobs');
-        } else if (vacancyView === 'jobs') {
-            setSelectedCategory(null);
-            setVacancyView('categories');
-        }
-    };
-
 
     const handleOpenSubmission = (job) => {
         setSelectedJobForSubmission(job);
@@ -488,12 +198,23 @@ const RecruiterDashboard = () => {
     };
 
     const handleConfirmSubmission = async () => {
-        if (!submissionFiles.resume || !submissionFiles.identity || !submissionFiles.certs) {
-            popup.alert("Please upload all mandatory documents (Resume, ID/Passport, Certificates).");
+        if (!selectedJobForSubmission) {
+            alert("No job selected for submission.");
             return;
         }
+
+        if (!submissionFiles.resume || !submissionFiles.identity || !submissionFiles.certs) {
+            alert("Please upload all mandatory documents (Resume, ID/Passport, Certificates).");
+            return;
+        }
+        
         if (!submissionData.name || !submissionData.email || !submissionData.whatsapp || !submissionData.nationality) {
-            popup.alert("Please fill in all identity details (Name, Email, Phone, Nationality).");
+            alert("Please fill in all identity details (Name, Email, Phone, Nationality).");
+            return;
+        }
+
+        if (!user?.id) {
+            alert("User not authenticated. Please log in again.");
             return;
         }
 
@@ -501,100 +222,78 @@ const RecruiterDashboard = () => {
             // Create FormData for file upload
             const formDataPayload = new FormData();
             formDataPayload.append('agent_id', user.id);
-            formDataPayload.append('job_id', selectedJobForSubmission.id || selectedJobForSubmission._id);
+            formDataPayload.append('job_id', selectedJobForSubmission.id || selectedJobForSubmission._id || '');
             formDataPayload.append('name', submissionData.name);
             formDataPayload.append('email', submissionData.email);
             formDataPayload.append('contact', submissionData.whatsapp);
             formDataPayload.append('nationality', submissionData.nationality);
-
-            // Append all 5 document files
             formDataPayload.append('resume', submissionFiles.resume);
-            if (submissionFiles.identity) formDataPayload.append('identity', submissionFiles.identity);
-            if (submissionFiles.certs) formDataPayload.append('certs', submissionFiles.certs);
-            if (submissionFiles.pcc) formDataPayload.append('pcc', submissionFiles.pcc);
-            if (submissionFiles.goodStanding) formDataPayload.append('goodStanding', submissionFiles.goodStanding);
 
             const response = await fetch('http://localhost:5000/api/applications', {
                 method: 'POST',
-                body: formDataPayload
+                body: formDataPayload,
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
+                const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.message || 'Submission failed');
             }
 
-            popup.success("Success! Candidate Submitted to Database.");
-
-            // If we're on job detail view, refresh the agent's applications for this job
-
-            // If we're on job detail view, refresh the agent's applications for this job
-            if (vacancyView === 'jobDetail' && selectedVacancyJob) {
-                await fetchAgentJobApplications(selectedVacancyJob.id || selectedVacancyJob._id);
-            }
-
+            alert("Success! Candidate Submitted to Database.");
             setSelectedJobForSubmission(null);
 
-            // Refresh Pipeline Data (fetch all applications for this agent)
-            try {
-                const pipelineResponse = await fetch(`http://localhost:5000/api/applications/agent/${user.id}/all`);
-                if (pipelineResponse.ok) {
-                    const pipelineNewData = await pipelineResponse.json();
-                    if (pipelineNewData) setPipelineData(pipelineNewData);
-                }
-            } catch (pipelineErr) {
-                console.log("Pipeline refresh skipped - endpoint may not exist");
-            }
+            // Refresh Pipeline
+            const pipelineResponse = await fetch(`http://localhost:5000/api/applications?agent_id=${user.id}`);
+            const pipelineData = await pipelineResponse.json();
+            if (pipelineData) setPipelineData(Array.isArray(pipelineData) ? pipelineData : []);
 
         } catch (err) {
             console.error("Submission Error:", err);
-            popup.error("Error: " + err.message);
+            alert("Error: " + (err.message || 'An error occurred during submission'));
         }
     };
-
-
 
     // --- AGENT PROFILE FETCHER ---
     const [agentProfile, setAgentProfile] = useState(null);
-
-    const fetchAgentProfile = async () => {
-        if (!user?.id) return;
-        try {
-            const response = await fetch(`http://localhost:5000/api/agents/${user.id}`);
-            if (response.ok) {
-                const data = await response.json();
-                setAgentProfile(data);
-            }
-        } catch (error) {
-            console.error("Error fetching agent profile:", error);
-        }
-    };
-
     useEffect(() => {
+        if (!user?.id) return;
+
+        const fetchAgentProfile = async () => {
+            try {
+                const response = await fetch(`http://localhost:5000/api/agents/${user.id}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setAgentProfile(data);
+                }
+            } catch (error) {
+                console.error("Error fetching agent profile:", error);
+            }
+        };
         fetchAgentProfile();
     }, [user?.id]);
 
-
-    // --- GLOBAL REFRESH HANDLER ---
-    const handleGlobalRefresh = async () => {
-        if (isRefreshingGlobal) return;
-        setIsRefreshingGlobal(true);
-        try {
-            // Refresh all data
-            await Promise.all([
-                fetchJobs(),
-                fetchPipeline(),
-                refreshJobRequests(),
-                fetchAgentProfile()
-            ]);
-            // Small delay for visual feedback
-            await new Promise(resolve => setTimeout(resolve, 500));
-        } catch (error) {
-            console.error("Global refresh failed:", error);
-        } finally {
-            setIsRefreshingGlobal(false);
-        }
-    };
+    // FIXED: Added null checks for user object
+    if (!user) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-6">
+                <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-12 max-w-lg text-center">
+                    <div className="w-20 h-20 rounded-full bg-red-50 text-red-500 flex items-center justify-center mx-auto mb-6">
+                        <AlertTriangle className="w-10 h-10" />
+                    </div>
+                    <h1 className="text-2xl font-black text-slate-900 mb-3">Authentication Error</h1>
+                    <p className="text-slate-500 font-medium leading-relaxed mb-8">
+                        You are not logged in. Please sign in to access the dashboard.
+                    </p>
+                    <button
+                        onClick={() => navigate('/login')}
+                        className="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-slate-800 transition-colors"
+                    >
+                        Go to Login
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     // If agent status is PENDING, show waiting screen
     if (user?.status === 'PENDING') {
@@ -636,10 +335,10 @@ const RecruiterDashboard = () => {
                         </div>
                         <div className="min-w-0">
                             <span className="font-bold text-white text-sm tracking-tight block leading-none truncate w-48">
-                                Global AKJobs
+                                {agentProfile?.company_name || user?.agency_name || "GlobalTalent"}
                             </span>
                             <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider mt-1 block truncate w-48">
-                                {user?.name || agentProfile?.full_name || "Partner Portal"}
+                                {agentProfile?.full_name || user?.name || "Partner Portal"}
                             </span>
                         </div>
                     </div>
@@ -665,8 +364,8 @@ const RecruiterDashboard = () => {
                         <Briefcase className="w-5 h-5" /> Active Vacancies
                     </button>
                     <button
-                        onClick={() => setActiveTab('pipeline')}
-                        className={`w-full flex items-center gap-4 px-4 py-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${activeTab === 'pipeline'
+                        onClick={() => setActiveTab('blocked')}
+                        className={`w-full flex items-center gap-4 px-4 py-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${activeTab === 'blocked'
                             ? 'bg-teal-600 text-white shadow-lg shadow-teal-900/20'
                             : 'hover:bg-slate-800 hover:text-slate-200'
                             }`}
@@ -701,35 +400,133 @@ const RecruiterDashboard = () => {
             </aside>
 
             {/* MAIN CONTENT AREA */}
-            <main className="flex-1 flex flex-col h-screen overflow-hidden bg-slate-50">
-
-                {/* GLOBAL TOP HEADER */}
-                <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-end px-8 shrink-0 z-30 shadow-sm">
-                    <div className="flex items-center gap-4">
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider hidden md:block">
-                            {isRefreshingGlobal ? 'Syncing Data...' : 'System Status: Online'}
-                        </span>
-                        <div className="h-4 w-px bg-slate-200 hidden md:block"></div>
-                        <button
-                            onClick={handleGlobalRefresh}
-                            disabled={isRefreshingGlobal}
-                            className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-200 text-slate-600 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-white hover:text-teal-600 hover:border-teal-200 hover:shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group"
-                        >
-                            <RefreshCw className={`w-4 h-4 text-slate-400 group-hover:text-teal-500 transition-colors ${isRefreshingGlobal ? 'animate-spin text-teal-600' : ''}`} />
-                            <span>Refresh Data</span>
-                        </button>
-                    </div>
-                </header>
-
+            <main className="flex-1 flex flex-col h-screen overflow-hidden">
                 {/* DASHBOARD CONTENT SCROLL AREA */}
-                <div className="flex-1 overflow-y-auto p-6 md:p-12 scroll-smooth">
+                <div className="flex-1 overflow-y-auto p-12 bg-[#f8fafc]">
                     <div className="max-w-[1400px] mx-auto space-y-12">
-
                         {/* TAB CONTENT: AGENT HIRING */}
                         {activeTab === 'jobRequests' ? (
                             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                {showJobRequestForm ? (
+                                    <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                        <div className="mb-8 flex items-center gap-4">
+                                            <button
+                                                onClick={() => setShowJobRequestForm(false)}
+                                                className="w-10 h-10 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-500 hover:text-teal-600 hover:border-teal-200 transition-all shadow-sm"
+                                            >
+                                                <ArrowRight className="w-5 h-5 rotate-180" />
+                                            </button>
+                                            <div>
+                                                <h2 className="text-2xl font-bold text-slate-900 tracking-tight">New Job Request</h2>
+                                                <p className="text-slate-500 font-medium text-sm">Details will be sent for Admin approval</p>
+                                            </div>
+                                        </div>
 
-                                {!showJobRequestForm ? (
+                                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
+                                            <form className="space-y-8" onSubmit={async (e) => {
+                                                e.preventDefault();
+                                                if (!user?.id) {
+                                                    alert("Session expired. Please log in again.");
+                                                    return;
+                                                }
+                                                try {
+                                                    const formData = new FormData(e.target);
+                                                    const payload = {
+                                                        agent_id: user.id,
+                                                        agent_name: user.full_name || user.name || '', // Required by model
+                                                        agent_email: user.email || '', // Required by model
+                                                        agency_name: user.agency_name || '',
+                                                        title: formData.get('title') || '',
+                                                        company: formData.get('company') || '',
+                                                        location: formData.get('location') || '',
+                                                        category: formData.get('category') || '',
+                                                        salary_range: formData.get('salary_range') || '',
+                                                        description: formData.get('description') || '',
+                                                        requirements: (formData.get('requirements') || '').split('\n').filter(r => r.trim()),
+                                                        vacancies: Number(formData.get('vacancies')) || 1
+                                                    };
+
+                                                    const response = await fetch('http://localhost:5000/api/job-requests', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify(payload)
+                                                    });
+
+                                                    const resData = await response.json();
+
+                                                    if (!response.ok) throw new Error(resData.message || 'Failed to submit request');
+
+                                                    alert("Job Request Submitted to Admin! Status: Waiting approval.");
+                                                    setShowJobRequestForm(false);
+
+                                                    // Refresh list
+                                                    const refreshResponse = await fetch(`http://localhost:5000/api/job-requests/agent/${user.id}`);
+                                                    const data = await refreshResponse.json();
+                                                    if (data) setJobRequests(Array.isArray(data) ? data : []);
+
+                                                } catch (err) {
+                                                    console.error("Submission Error:", err);
+                                                    alert("Error submitting request: " + (err.message || 'An error occurred'));
+                                                }
+                                            }}>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Job Title <span className="text-red-500">*</span></label>
+                                                        <input name="title" required type="text" placeholder="e.g. Senior Sous Chef" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Company Name <span className="text-red-500">*</span></label>
+                                                        <input name="company" required type="text" placeholder="e.g. Maldives Resorts Ltd" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Category <span className="text-red-500">*</span></label>
+                                                        <div className="relative">
+                                                            <select name="category" required className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all appearance-none">
+                                                                {['Hospitality', 'Construction', 'Healthcare', 'IT', 'Education', 'Retail', 'Manufacturing', 'Tourism', 'Fishing', 'Agriculture', 'Other'].map(cat => (
+                                                                    <option key={cat} value={cat}>{cat}</option>
+                                                                ))}
+                                                            </select>
+                                                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Location <span className="text-red-500">*</span></label>
+                                                        <input name="location" required type="text" placeholder="e.g. Male, Maldives" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Salary Range</label>
+                                                        <input name="salary_range" type="text" placeholder="e.g. $2000 - $3000/month" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Vacancies (Default: 1)</label>
+                                                        <input name="vacancies" type="number" min="1" defaultValue="1" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Job Description <span className="text-red-500">*</span></label>
+                                                    <textarea name="description" required rows={4} className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all resize-none" placeholder="Describe the role responsibilities..."></textarea>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Requirements</label>
+                                                    <textarea name="requirements" rows={3} className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all resize-none" placeholder="List key requirements (one per line)..."></textarea>
+                                                </div>
+
+                                                <div className="pt-4 border-t border-slate-100 flex gap-4">
+                                                    <button type="button" onClick={() => setShowJobRequestForm(false)} className="px-6 py-3 bg-white border border-slate-200 text-slate-500 rounded-xl font-bold uppercase text-xs tracking-wider hover:bg-slate-50 transition-all">Cancel</button>
+                                                    <button type="submit" className="flex-1 py-3 bg-teal-600 text-white rounded-xl font-bold uppercase text-xs tracking-wider shadow-lg shadow-teal-600/20 hover:bg-teal-700 transition-all">Submit Request</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                ) : (
                                     <>
                                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-200 mb-6">
                                             <div>
@@ -747,7 +544,6 @@ const RecruiterDashboard = () => {
                                                         onChange={(e) => setJobRequestSearchTerm(e.target.value)}
                                                     />
                                                 </div>
-
                                                 <button
                                                     onClick={() => setShowJobRequestForm(true)}
                                                     className="bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-semibold hover:bg-teal-700 transition-colors flex items-center gap-2 shadow-sm"
@@ -758,7 +554,7 @@ const RecruiterDashboard = () => {
                                         </div>
 
                                         <div className="grid grid-cols-1 gap-4">
-                                            {jobRequests.filter(req => req.title.toLowerCase().includes(jobRequestSearchTerm.toLowerCase())).length === 0 ? (
+                                            {jobRequests.length === 0 ? (
                                                 <div className="bg-white rounded-xl border border-dashed border-slate-300 p-12 flex flex-col items-center justify-center text-center">
                                                     <div className="w-16 h-16 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mb-4">
                                                         <FilePlus className="w-8 h-8" />
@@ -768,82 +564,38 @@ const RecruiterDashboard = () => {
                                                 </div>
                                             ) : (
                                                 jobRequests
-                                                    .filter(req => req.title.toLowerCase().includes(jobRequestSearchTerm.toLowerCase()))
+                                                    .filter(req => req?.title?.toLowerCase().includes(jobRequestSearchTerm.toLowerCase()))
                                                     .map((req) => (
                                                         <div
-                                                            key={req.id}
+                                                            key={req.id || req._id}
                                                             onClick={() => setExpandedJobRequestId(expandedJobRequestId === req.id ? null : req.id)}
                                                             className={`bg-white rounded-xl border transition-all cursor-pointer group overflow-hidden ${expandedJobRequestId === req.id
                                                                 ? 'border-teal-200 shadow-md ring-1 ring-teal-500/10'
                                                                 : 'border-slate-200 shadow-sm hover:shadow-md hover:border-teal-100'
                                                                 }`}
                                                         >
-                                                            <div className="p-6">
-                                                                {/* Top Row: Job Title + Status + Expand */}
-                                                                <div className="flex items-start justify-between gap-4 mb-4">
-                                                                    <div className="flex-1">
-                                                                        <h3 className="text-xl font-bold text-slate-900 group-hover:text-teal-700 transition-colors">
-                                                                            {req.title}
-                                                                        </h3>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-3">
-                                                                        <span className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider border ${req.status === 'APPROVED' ? 'bg-teal-50 text-teal-700 border-teal-200' :
-                                                                            req.status === 'REJECTED' ? 'bg-red-50 text-red-700 border-red-200' :
-                                                                                req.status === 'PENDING' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                                                                                    'bg-slate-50 text-slate-700 border-slate-200'
+                                                            <div className="p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                                                                <div className="flex-1">
+                                                                    <div className="flex items-center gap-3 mb-2">
+                                                                        <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider">{req.category || 'Uncategorized'}</span>
+                                                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${req.status === 'APPROVED' ? 'bg-teal-50 text-teal-700 border-teal-100' :
+                                                                            req.status === 'REJECTED' ? 'bg-red-50 text-red-700 border-red-100' :
+                                                                                'bg-amber-50 text-amber-700 border-amber-100'
                                                                             }`}>
-                                                                            {req.status || 'PENDING'}
+                                                                            {req.status === 'PENDING' ? 'WAITING APPROVAL' : req.status || 'UNKNOWN'}
                                                                         </span>
-                                                                        <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform duration-300 ${expandedJobRequestId === req.id ? 'rotate-180 text-teal-600' : ''}`} />
+                                                                    </div>
+                                                                    <h3 className="text-lg font-bold text-slate-900 mb-1 group-hover:text-teal-700 transition-colors">{req.title || 'Untitled Request'}</h3>
+                                                                    <div className="flex items-center gap-4 text-xs font-medium text-slate-500">
+                                                                        <span>{req.company || 'No company specified'}</span>
+                                                                        <span>•</span>
+                                                                        <span>{req.vacancies || 0} Vacancies</span>
+                                                                        <span>•</span>
+                                                                        <span>{req.salary_range || 'Not specified'}</span>
                                                                     </div>
                                                                 </div>
-
-                                                                {/* Info Grid - Structured Layout */}
-                                                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                                                                    {/* Category */}
-                                                                    <div className="space-y-1">
-                                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Category</p>
-                                                                        <div className="flex items-center gap-2">
-                                                                            <Briefcase className="w-4 h-4 text-teal-500" />
-                                                                            <p className="text-sm font-semibold text-slate-800">{req.category || 'Other'}</p>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    {/* Company */}
-                                                                    <div className="space-y-1">
-                                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Company</p>
-                                                                        <div className="flex items-center gap-2">
-                                                                            <Building2 className="w-4 h-4 text-indigo-500" />
-                                                                            <p className="text-sm font-semibold text-slate-800 truncate">{req.company || 'TBD'}</p>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    {/* Location */}
-                                                                    <div className="space-y-1">
-                                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Location</p>
-                                                                        <div className="flex items-center gap-2">
-                                                                            <MapPin className="w-4 h-4 text-rose-500" />
-                                                                            <p className="text-sm font-semibold text-slate-800 truncate">{req.location || 'TBD'}</p>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    {/* Openings */}
-                                                                    <div className="space-y-1">
-                                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Openings</p>
-                                                                        <div className="flex items-center gap-2">
-                                                                            <Users className="w-4 h-4 text-blue-500" />
-                                                                            <p className="text-sm font-semibold text-slate-800">{req.vacancies || 1} Position{(req.vacancies || 1) > 1 ? 's' : ''}</p>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    {/* Salary */}
-                                                                    <div className="space-y-1">
-                                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Salary Range</p>
-                                                                        <div className="flex items-center gap-2">
-                                                                            <DollarSign className="w-4 h-4 text-emerald-500" />
-                                                                            <p className="text-sm font-semibold text-slate-800">{req.salary_range || 'TBD'}</p>
-                                                                        </div>
-                                                                    </div>
+                                                                <div className="flex items-center gap-3">
+                                                                    <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform duration-300 ${expandedJobRequestId === req.id ? 'rotate-180 text-teal-600' : ''}`} />
                                                                 </div>
                                                             </div>
 
@@ -864,32 +616,15 @@ const RecruiterDashboard = () => {
                                                                                 <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2 flex items-center gap-2">
                                                                                     <CheckCircle className="w-3 h-3 text-slate-400" /> Requirements
                                                                                 </h4>
-                                                                                {Array.isArray(req.requirements) && req.requirements.length > 0 ? (
-                                                                                    <ul className="text-sm text-slate-600 leading-relaxed font-medium space-y-1">
-                                                                                        {req.requirements.map((r, i) => (
-                                                                                            <li key={i} className="flex items-start gap-2">
-                                                                                                <span className="text-teal-500 mt-1">•</span>
-                                                                                                <span>{r}</span>
-                                                                                            </li>
-                                                                                        ))}
-                                                                                    </ul>
-                                                                                ) : (
-                                                                                    <p className="text-sm text-slate-400 italic">No specific requirements listed.</p>
-                                                                                )}
+                                                                                <ul className="text-sm text-slate-600 leading-relaxed font-medium list-disc pl-4 space-y-1">
+                                                                                    {req.requirements && Array.isArray(req.requirements) && req.requirements.length > 0 ? (
+                                                                                        req.requirements.map((r, i) => <li key={i}>{r}</li>)
+                                                                                    ) : (
+                                                                                        <li>No specific requirements listed.</li>
+                                                                                    )}
+                                                                                </ul>
                                                                             </div>
                                                                         </div>
-
-                                                                        {/* Rejection Reason - Only shown for rejected requests */}
-                                                                        {req.status === 'REJECTED' && req.review_notes && (
-                                                                            <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl">
-                                                                                <h4 className="text-xs font-bold text-red-700 uppercase tracking-wider mb-2 flex items-center gap-2">
-                                                                                    <AlertTriangle className="w-3 h-3" /> Rejection Reason
-                                                                                </h4>
-                                                                                <p className="text-sm text-red-600 font-medium leading-relaxed">
-                                                                                    {req.review_notes}
-                                                                                </p>
-                                                                            </div>
-                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -899,520 +634,81 @@ const RecruiterDashboard = () => {
                                             )}
                                         </div>
                                     </>
-                                ) : (
-                                    <div className="max-w-3xl mx-auto">
-                                        <div className="mb-8 flex items-center gap-4">
-                                            <button
-                                                onClick={() => setShowJobRequestForm(false)}
-                                                className="w-10 h-10 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-500 hover:text-teal-600 hover:border-teal-200 transition-all shadow-sm"
-                                            >
-                                                <ArrowRight className="w-5 h-5 rotate-180" />
-                                            </button>
-                                            <div>
-                                                <h2 className="text-2xl font-bold text-slate-900 tracking-tight">New Job Request</h2>
-                                                <p className="text-slate-500 font-medium text-sm">Details will be sent for Admin approval</p>
-                                            </div>
-                                        </div>
-
-                                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
-                                            <form className="space-y-8" onSubmit={async (e) => {
-                                                e.preventDefault();
-                                                if (!user?.id) {
-                                                    popup.alert("Session expired. Please log in again.");
-                                                    return;
-                                                }
-
-                                                // ========== SECURITY: Input Sanitization Function ==========
-                                                const sanitizeInput = (str) => {
-                                                    if (!str) return '';
-                                                    return str
-                                                        .replace(/<[^>]*>/g, '') // Remove HTML tags
-                                                        .replace(/javascript:/gi, '') // Remove javascript: protocol
-                                                        .replace(/on\w+=/gi, '') // Remove event handlers (onclick=, onerror=, etc.)
-                                                        .replace(/[<>]/g, '') // Remove < and > characters
-                                                        .trim();
-                                                };
-
-                                                // ========== SECURITY: Validate Salary Format ==========
-                                                const validateSalaryFormat = (salary) => {
-                                                    if (!salary) return true; // Optional field
-                                                    // Only allow: numbers, $, €, £, /, -, spaces, commas, periods, and common words
-                                                    const salaryPattern = /^[\d\s$€£,.\-\/a-zA-Z]+$/;
-                                                    // Must contain at least one number if not empty
-                                                    const hasNumber = /\d/.test(salary);
-                                                    // Check for suspicious patterns
-                                                    const hasSuspiciousContent = /<|>|script|javascript|onclick|onerror/i.test(salary);
-                                                    return salaryPattern.test(salary) && hasNumber && !hasSuspiciousContent;
-                                                };
-
-                                                // ========== SECURITY: Validate Text Fields ==========
-                                                const validateTextField = (text, fieldName, minLen = 2, maxLen = 200) => {
-                                                    if (!text || text.length < minLen) {
-                                                        return `${fieldName} must be at least ${minLen} characters`;
-                                                    }
-                                                    if (text.length > maxLen) {
-                                                        return `${fieldName} must be less than ${maxLen} characters`;
-                                                    }
-                                                    // Check for script injection attempts
-                                                    if (/<script|javascript:|onclick|onerror|onload/i.test(text)) {
-                                                        return `${fieldName} contains invalid characters`;
-                                                    }
-                                                    return null;
-                                                };
-
-                                                try {
-                                                    // Get and sanitize all form values
-                                                    const title = sanitizeInput(e.target.title.value);
-                                                    const company = sanitizeInput(e.target.company.value);
-                                                    const location = sanitizeInput(e.target.location.value);
-                                                    const category = e.target.category.value;
-                                                    const salary_range = sanitizeInput(e.target.salary_range.value);
-                                                    const description = sanitizeInput(e.target.description.value);
-                                                    const vacancies = parseInt(e.target.vacancies.value) || 1;
-
-                                                    // Parse and sanitize requirements
-                                                    const requirementsArray = e.target.requirements.value
-                                                        .split('\n')
-                                                        .map(r => sanitizeInput(r))
-                                                        .filter(r => r.length > 0 && r.length <= 200);
-
-                                                    // ========== VALIDATION CHECKS ==========
-                                                    const errors = [];
-
-                                                    // Validate Job Title (2-100 chars, letters/numbers/spaces only)
-                                                    const titleError = validateTextField(title, 'Job Title', 2, 100);
-                                                    if (titleError) errors.push(titleError);
-
-                                                    // Validate Company Name (2-100 chars)
-                                                    const companyError = validateTextField(company, 'Company Name', 2, 100);
-                                                    if (companyError) errors.push(companyError);
-
-                                                    // Validate Location (2-100 chars)
-                                                    const locationError = validateTextField(location, 'Location', 2, 100);
-                                                    if (locationError) errors.push(locationError);
-
-                                                    // Validate Category (must be from allowed list)
-                                                    const allowedCategories = ['Hospitality', 'Construction', 'Healthcare', 'IT', 'Education', 'Retail', 'Manufacturing', 'Tourism', 'Fishing', 'Agriculture', 'Other'];
-                                                    if (!allowedCategories.includes(category)) {
-                                                        errors.push('Please select a valid category');
-                                                    }
-
-                                                    // Validate Salary Range format
-                                                    if (salary_range && !validateSalaryFormat(salary_range)) {
-                                                        errors.push('Salary Range must contain numbers and valid currency symbols (e.g., $2000 - $3000/month)');
-                                                    }
-                                                    if (salary_range && salary_range.length > 50) {
-                                                        errors.push('Salary Range must be less than 50 characters');
-                                                    }
-
-                                                    // Validate Description (10-2000 chars)
-                                                    const descError = validateTextField(description, 'Job Description', 10, 2000);
-                                                    if (descError) errors.push(descError);
-
-                                                    // Validate Vacancies (1-1000)
-                                                    if (vacancies < 1 || vacancies > 1000) {
-                                                        errors.push('Number of vacancies must be between 1 and 1000');
-                                                    }
-
-                                                    // If there are validation errors, show them and stop
-                                                    if (errors.length > 0) {
-                                                        popup.warning('Please fix the following errors:\n\n• ' + errors.join('\n• '));
-                                                        return;
-                                                    }
-
-                                                    // ========== SUBMIT THE REQUEST ==========
-                                                    const response = await fetch('http://localhost:5000/api/job-requests', {
-                                                        method: 'POST',
-                                                        headers: { 'Content-Type': 'application/json' },
-                                                        body: JSON.stringify({
-                                                            agent_id: user.id,
-                                                            agent_name: sanitizeInput(user.name || user.full_name || ''),
-                                                            agent_email: user.email || '',
-                                                            agency_name: sanitizeInput(user.agency_name || ''),
-                                                            title,
-                                                            company,
-                                                            location,
-                                                            category,
-                                                            salary_range,
-                                                            description,
-                                                            requirements: requirementsArray,
-                                                            vacancies
-                                                        })
-                                                    });
-
-                                                    if (!response.ok) {
-                                                        const errorData = await response.json();
-                                                        throw new Error(errorData.message || 'Failed to submit request');
-                                                    }
-
-                                                    popup.success("Job Request Submitted Successfully! Awaiting admin approval.");
-                                                    setShowJobRequestForm(false);
-
-                                                    // Refresh list
-                                                    const refreshResponse = await fetch(`http://localhost:5000/api/job-requests/agent/${user.id}`);
-                                                    const data = await refreshResponse.json();
-                                                    if (data) setJobRequests(data);
-
-                                                } catch (err) {
-                                                    console.error("Submission Error:", err);
-                                                    popup.error("Error submitting request: " + err.message);
-                                                }
-                                            }}>
-                                                {/* Row 1: Job Title & Company */}
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <div className="space-y-2">
-                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Job Title * <span className="text-slate-400 font-normal">(2-100 chars)</span></label>
-                                                        <input
-                                                            name="title"
-                                                            required
-                                                            type="text"
-                                                            placeholder="e.g. Senior Sous Chef"
-                                                            minLength={2}
-                                                            maxLength={100}
-                                                            pattern="^[a-zA-Z0-9\s\-\.,&'()]+$"
-                                                            title="Only letters, numbers, spaces, and basic punctuation allowed"
-                                                            className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all"
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Company Name * <span className="text-slate-400 font-normal">(2-100 chars)</span></label>
-                                                        <input
-                                                            name="company"
-                                                            required
-                                                            type="text"
-                                                            placeholder="e.g. Grand Resort Maldives"
-                                                            minLength={2}
-                                                            maxLength={100}
-                                                            pattern="^[a-zA-Z0-9\s\-\.,&'()]+$"
-                                                            title="Only letters, numbers, spaces, and basic punctuation allowed"
-                                                            className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all"
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                {/* Row 2: Location & Category */}
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <div className="space-y-2">
-                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Location * <span className="text-slate-400 font-normal">(2-100 chars)</span></label>
-                                                        <input
-                                                            name="location"
-                                                            required
-                                                            type="text"
-                                                            placeholder="e.g. Male, Maldives"
-                                                            minLength={2}
-                                                            maxLength={100}
-                                                            pattern="^[a-zA-Z0-9\s\-\.,&'()]+$"
-                                                            title="Only letters, numbers, spaces, and basic punctuation allowed"
-                                                            className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all"
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Category *</label>
-                                                        <select name="category" required className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all appearance-none">
-                                                            <option value="">Select Category</option>
-                                                            <option value="Hospitality">Hospitality</option>
-                                                            <option value="Construction">Construction</option>
-                                                            <option value="Healthcare">Healthcare</option>
-                                                            <option value="IT">IT</option>
-                                                            <option value="Education">Education</option>
-                                                            <option value="Retail">Retail</option>
-                                                            <option value="Manufacturing">Manufacturing</option>
-                                                            <option value="Tourism">Tourism</option>
-                                                            <option value="Fishing">Fishing</option>
-                                                            <option value="Agriculture">Agriculture</option>
-                                                            <option value="Other">Other</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-
-                                                {/* Row 3: Salary Range & Vacancies */}
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <div className="space-y-2">
-                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Salary Range <span className="text-slate-400 font-normal">(e.g. $2000-$3000)</span></label>
-                                                        <input
-                                                            name="salary_range"
-                                                            type="text"
-                                                            placeholder="e.g. $2000 - $3000/month"
-                                                            maxLength={50}
-                                                            pattern="^[\d\s$€£,.\-\/a-zA-Z]*$"
-                                                            title="Only numbers, currency symbols ($€£), and basic text allowed"
-                                                            className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all"
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Number of Vacancies * <span className="text-slate-400 font-normal">(1-1000)</span></label>
-                                                        <input
-                                                            name="vacancies"
-                                                            required
-                                                            type="number"
-                                                            min="1"
-                                                            max="1000"
-                                                            defaultValue="1"
-                                                            placeholder="e.g. 5"
-                                                            className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all"
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                {/* Description */}
-                                                <div className="space-y-2">
-                                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Job Description * <span className="text-slate-400 font-normal">(10-2000 chars)</span></label>
-                                                    <textarea
-                                                        name="description"
-                                                        required
-                                                        rows={4}
-                                                        minLength={10}
-                                                        maxLength={2000}
-                                                        className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all resize-none"
-                                                        placeholder="Describe the role responsibilities, duties, and expectations..."
-                                                    ></textarea>
-                                                </div>
-
-                                                {/* Requirements */}
-                                                <div className="space-y-2">
-                                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Requirements (one per line) <span className="text-slate-400 font-normal">(max 200 chars each)</span></label>
-                                                    <textarea
-                                                        name="requirements"
-                                                        rows={3}
-                                                        maxLength={1000}
-                                                        className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all resize-none"
-                                                        placeholder="e.g.&#10;3+ years experience&#10;Valid food safety certificate&#10;Fluent in English"
-                                                    ></textarea>
-                                                </div>
-
-                                                {/* Submit Buttons */}
-                                                <div className="pt-4 border-t border-slate-100 flex gap-4">
-                                                    <button type="button" onClick={() => setShowJobRequestForm(false)} className="px-6 py-3 bg-white border border-slate-200 text-slate-500 rounded-xl font-bold uppercase text-xs tracking-wider hover:bg-slate-50 transition-all">Cancel</button>
-                                                    <button type="submit" className="flex-1 py-3 bg-teal-600 text-white rounded-xl font-bold uppercase text-xs tracking-wider shadow-lg shadow-teal-600/20 hover:bg-teal-700 transition-all">Submit Request</button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
                                 )}
                             </div>
                         ) : activeTab === 'vacancies' ? (
-                            /* TAB CONTENT: ACTIVE VACANCIES - HIERARCHICAL NAVIGATION */
+                            /* TAB CONTENT: ACTIVE VACANCIES (EXISTING) */
                             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                    <div>
+                                        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Open Vacancies</h2>
+                                        <p className="text-slate-500 font-medium text-sm mt-1">Accepting submissions from verified partners</p>
+                                    </div>
 
-                                {/* LEVEL 1: CATEGORIES VIEW */}
-                                {vacancyView === 'categories' && (
-                                    <>
-                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                                            <div>
-                                                <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Browse by Category</h2>
-                                                <p className="text-slate-500 font-medium text-sm mt-1">Select a category to view available vacancies</p>
-                                            </div>
-                                        </div>
+                                    <div className="relative group">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-teal-600 transition-colors" />
+                                        <input
+                                            type="text"
+                                            placeholder="Filter by role or company..."
+                                            className="bg-white border border-slate-200 rounded-lg py-2.5 pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all w-full md:w-[320px] font-medium shadow-sm"
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
 
-                                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                            {JOB_CATEGORIES.map((category) => {
-                                                const jobCount = jobs.filter(j => j.category === category).length;
-                                                return (
-                                                    <button
-                                                        key={category}
-                                                        onClick={() => handleSelectCategory(category)}
-                                                        className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 hover:shadow-md hover:border-teal-300 transition-all group text-left"
-                                                    >
-                                                        <div className="w-12 h-12 bg-teal-50 rounded-xl flex items-center justify-center mb-4 group-hover:bg-teal-100 transition-colors">
-                                                            <Briefcase className="w-6 h-6 text-teal-600" />
-                                                        </div>
-                                                        <h3 className="font-bold text-slate-900 text-base group-hover:text-teal-700 transition-colors">{category}</h3>
-                                                        <p className="text-xs font-medium text-slate-500 mt-1">{jobCount} {jobCount === 1 ? 'vacancy' : 'vacancies'}</p>
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </>
-                                )}
-
-                                {/* LEVEL 2: JOBS BY CATEGORY VIEW */}
-                                {vacancyView === 'jobs' && (
-                                    <>
-                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                                            <div className="flex items-center gap-4">
-                                                <button
-                                                    onClick={handleVacancyBack}
-                                                    className="w-10 h-10 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-500 hover:text-teal-600 hover:border-teal-200 transition-all shadow-sm"
-                                                >
-                                                    <ArrowRight className="w-5 h-5 rotate-180" />
-                                                </button>
-                                                <div>
-                                                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{selectedCategory} Jobs</h2>
-                                                    <p className="text-slate-500 font-medium text-sm mt-1">{filteredJobsByCategory.length} vacancies available</p>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {filteredJobsByCategory.length === 0 ? (
-                                            <div className="flex flex-col items-center justify-center py-16 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-                                                <Briefcase className="w-12 h-12 text-slate-300 mb-4" />
-                                                <h3 className="text-slate-900 font-bold text-lg">No Jobs in {selectedCategory}</h3>
-                                                <p className="text-slate-500 text-sm mt-1">Check back later for new opportunities.</p>
-                                            </div>
-                                        ) : (
-                                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                                                {filteredJobsByCategory.map((job) => (
-                                                    <div
-                                                        key={job._id || job.id}
-                                                        onClick={() => handleSelectVacancyJob(job)}
-                                                        className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 hover:shadow-md hover:border-teal-200 transition-all group flex flex-col relative overflow-hidden cursor-pointer"
-                                                    >
-                                                        <div className="absolute top-0 left-0 w-1 h-full bg-teal-500"></div>
-                                                        <div className="flex justify-between items-start mb-4 pl-2">
-                                                            <div>
-                                                                <h3 className="font-bold text-slate-900 text-lg leading-tight group-hover:text-teal-700 transition-colors">{job.title}</h3>
-                                                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-1">{job.company}</p>
-                                                            </div>
-                                                            <div className="bg-slate-50 p-2 rounded-lg border border-slate-100 group-hover:bg-teal-50 group-hover:border-teal-100 transition-colors">
-                                                                <BriefcaseIcon className="w-5 h-5 text-slate-400 group-hover:text-teal-600" />
-                                                            </div>
-                                                        </div>
-                                                        <div className="grid grid-cols-2 gap-y-3 gap-x-4 mb-4 pl-2">
-                                                            <div className="flex items-center gap-2">
-                                                                <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                                                                <span className="text-xs font-medium text-slate-600">{job.location}</span>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <Award className="w-3.5 h-3.5 text-slate-400" />
-                                                                <span className="text-xs font-medium text-slate-600">{job.salary_range || 'Competitive'}</span>
-                                                            </div>
-                                                        </div>
-                                                        <div className="mt-auto pl-2">
-                                                            <span className="text-xs font-bold text-teal-600 uppercase tracking-wider">View Details →</span>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </>
-                                )}
-
-                                {/* LEVEL 3: JOB DETAIL VIEW */}
-                                {vacancyView === 'jobDetail' && selectedVacancyJob && (
-                                    <>
-                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                                            <div className="flex items-center gap-4">
-                                                <button
-                                                    onClick={handleVacancyBack}
-                                                    className="w-10 h-10 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-500 hover:text-teal-600 hover:border-teal-200 transition-all shadow-sm"
-                                                >
-                                                    <ArrowRight className="w-5 h-5 rotate-180" />
-                                                </button>
-                                                <div>
-                                                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{selectedVacancyJob.title}</h2>
-                                                    <p className="text-slate-500 font-medium text-sm mt-1">{selectedVacancyJob.company} • {selectedVacancyJob.location}</p>
-                                                </div>
-                                            </div>
-                                            <button
-                                                onClick={() => handleOpenSubmission(selectedVacancyJob)}
-                                                className="px-6 py-3 bg-teal-600 text-white rounded-xl font-bold uppercase text-xs tracking-wider shadow-lg hover:bg-teal-700 transition-all flex items-center gap-2"
+                                {filteredJobs.length === 0 ? (
+                                    <div className="col-span-full flex flex-col items-center justify-center py-16 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                                        <Briefcase className="w-12 h-12 text-slate-300 mb-4" />
+                                        <h3 className="text-slate-900 font-bold text-lg">No Active Vacancies</h3>
+                                        <p className="text-slate-500 text-sm mt-1">Check back later for new opportunities.</p>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                                        {filteredJobs.map((job) => (
+                                            <div
+                                                key={job.id || job._id}
+                                                className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 hover:shadow-md hover:border-teal-200 transition-all group flex flex-col relative overflow-hidden"
                                             >
-                                                <UserPlus className="w-4 h-4" />
-                                                Submit Candidate
-                                            </button>
-                                        </div>
+                                                {/* Status Stripe */}
+                                                <div className="absolute top-0 left-0 w-1 h-full bg-teal-500"></div>
 
-                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                            {/* Job Info Card */}
-                                            <div className="lg:col-span-1 bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-                                                <h3 className="font-bold text-slate-900 text-sm uppercase tracking-wider mb-4">Job Details</h3>
-                                                <div className="space-y-4">
+                                                <div className="flex justify-between items-start mb-4 pl-2">
                                                     <div>
-                                                        <p className="text-xs font-bold text-slate-400 uppercase">Category</p>
-                                                        <p className="text-sm font-semibold text-slate-900">{selectedVacancyJob.category}</p>
+                                                        <h3 className="font-bold text-slate-900 text-lg leading-tight group-hover:text-teal-700 transition-colors">{job.title || 'Untitled Position'}</h3>
+                                                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-1">{job.company || 'Unknown Company'}</p>
                                                     </div>
-                                                    <div>
-                                                        <p className="text-xs font-bold text-slate-400 uppercase">Salary Range</p>
-                                                        <p className="text-sm font-semibold text-teal-600">{selectedVacancyJob.salary_range || 'Competitive'}</p>
+                                                    <div className="bg-slate-50 p-2 rounded-lg border border-slate-100 group-hover:bg-teal-50 group-hover:border-teal-100 transition-colors">
+                                                        <BriefcaseIcon className="w-5 h-5 text-slate-400 group-hover:text-teal-600" />
                                                     </div>
-                                                    <div>
-                                                        <p className="text-xs font-bold text-slate-400 uppercase">Description</p>
-                                                        <p className="text-sm text-slate-600 leading-relaxed mt-1">{selectedVacancyJob.description || 'No description available.'}</p>
-                                                    </div>
-                                                    {selectedVacancyJob.requirements && selectedVacancyJob.requirements.length > 0 && (
-                                                        <div>
-                                                            <p className="text-xs font-bold text-slate-400 uppercase mb-2">Requirements</p>
-                                                            <ul className="text-sm text-slate-600 space-y-1">
-                                                                {selectedVacancyJob.requirements.map((req, i) => (
-                                                                    <li key={i} className="flex items-start gap-2">
-                                                                        <span className="text-teal-500 mt-1">•</span>
-                                                                        <span>{req}</span>
-                                                                    </li>
-                                                                ))}
-                                                            </ul>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            {/* My Submitted Candidates Card */}
-                                            <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                                                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-                                                    <h3 className="font-bold text-slate-900 text-sm uppercase tracking-wider flex items-center gap-2">
-                                                        <Users className="w-4 h-4 text-teal-600" />
-                                                        My Submitted Candidates ({agentJobApplications.length})
-                                                    </h3>
                                                 </div>
 
-                                                {isLoadingAgentApps ? (
-                                                    <div className="p-12 flex items-center justify-center">
-                                                        <div className="w-8 h-8 border-2 border-teal-200 border-t-teal-600 rounded-full animate-spin"></div>
+                                                <div className="grid grid-cols-2 gap-y-3 gap-x-4 mb-6 pl-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                                                        <span className="text-xs font-medium text-slate-600">{job.location || 'Location not specified'}</span>
                                                     </div>
-                                                ) : agentJobApplications.length === 0 ? (
-                                                    <div className="p-12 text-center">
-                                                        <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                                                            <Users className="w-8 h-8 text-slate-300" />
-                                                        </div>
-                                                        <h4 className="text-slate-900 font-bold text-sm mb-1">No Candidates Submitted Yet</h4>
-                                                        <p className="text-slate-500 text-xs">Click "Submit Candidate" to add your first candidate for this job.</p>
+                                                    <div className="flex items-center gap-2">
+                                                        <Award className="w-3.5 h-3.5 text-slate-400" />
+                                                        <span className="text-xs font-medium text-slate-600">{job.experience || 'N/A'} Exp</span>
                                                     </div>
-                                                ) : (
-                                                    <div className="overflow-x-auto">
-                                                        <table className="w-full text-left">
-                                                            <thead className="bg-slate-50">
-                                                                <tr>
-                                                                    <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Candidate</th>
-                                                                    <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Contact</th>
-                                                                    <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Date</th>
-                                                                    <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Status</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody className="divide-y divide-slate-100">
-                                                                {agentJobApplications.map((app) => (
-                                                                    <tr key={app._id || app.id} className="hover:bg-slate-50/50 transition-colors">
-                                                                        <td className="px-6 py-4">
-                                                                            <div className="flex items-center gap-3">
-                                                                                <div className="w-8 h-8 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center text-xs font-bold border border-teal-100 uppercase">
-                                                                                    {(app.candidate_name || '?').charAt(0)}
-                                                                                </div>
-                                                                                <span className="font-semibold text-slate-900 text-sm">{app.candidate_name}</span>
-                                                                            </div>
-                                                                        </td>
-                                                                        <td className="px-6 py-4">
-                                                                            <div className="text-sm text-slate-600">{app.email}</div>
-                                                                            <div className="text-xs text-slate-400">{app.contact_number}</div>
-                                                                        </td>
-                                                                        <td className="px-6 py-4">
-                                                                            <span className="text-sm text-slate-600">{new Date(app.applied_at).toLocaleDateString()}</span>
-                                                                        </td>
-                                                                        <td className="px-6 py-4 text-center">
-                                                                            <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wide
-                                                                                ${app.status === 'PENDING' ? 'bg-amber-50 text-amber-700 border border-amber-100' : ''}
-                                                                                ${app.status === 'APPROVED' || app.status === 'SELECTED' ? 'bg-teal-50 text-teal-700 border border-teal-100' : ''}
-                                                                                ${app.status === 'REJECTED' ? 'bg-red-50 text-red-700 border border-red-100' : ''}
-                                                                            `}>
-                                                                                {app.status}
-                                                                            </span>
-                                                                        </td>
-                                                                    </tr>
-                                                                ))}
-                                                            </tbody>
-                                                        </table>
+                                                    <div className="flex items-center gap-2 col-span-2">
+                                                        <Users className="w-3.5 h-3.5 text-slate-400" />
+                                                        <span className="text-xs font-medium text-slate-600">Immediate Requirement</span>
                                                     </div>
-                                                )}
+                                                </div>
+
+                                                <div className="mt-auto pl-2">
+                                                    <button
+                                                        onClick={() => handleOpenSubmission(job)}
+                                                        className="w-full bg-slate-900 text-white py-3 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-teal-700 hover:shadow-lg hover:shadow-teal-900/10 transition-all"
+                                                    >
+                                                        <UserPlus className="w-4 h-4" /> Submit Candidate
+                                                    </button>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </>
+                                        ))}
+                                    </div>
                                 )}
                             </div>
 
@@ -1507,7 +803,7 @@ const RecruiterDashboard = () => {
                                             </div>
                                             <div className="space-y-1">
                                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Phone Number</label>
-                                                <p className="text-base font-semibold text-slate-900">{agentProfile?.contact_number || user?.contact_number || 'Not Set'}</p>
+                                                <p className="text-base font-semibold text-slate-900">{user?.contact_number || 'Not Set'}</p>
                                             </div>
                                             <div className="space-y-1">
                                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Agency Name</label>
@@ -1532,27 +828,25 @@ const RecruiterDashboard = () => {
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
-                                                {pipelineData.slice(0, 5).map((app) => {
+                                                {pipelineData.slice(0, 5).map((app, index) => {
                                                     return (
-                                                        <tr key={app.id} className="hover:bg-slate-50 transition-colors">
-                                                            <td className="px-8 py-5 font-medium text-slate-900">{app.candidate_name || app.candidateName}</td>
+                                                        <tr key={app.id || index} className="hover:bg-slate-50 transition-colors">
+                                                            <td className="px-8 py-5 font-medium text-slate-900">{app.candidate_name || app.candidateName || 'Unknown'}</td>
                                                             <td className="px-8 py-5 text-slate-600">{app.jobs?.title || 'Unknown Role'}</td>
                                                             <td className="px-8 py-5 text-right">
                                                                 <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide
-                                                   ${['APPROVED', 'SELECTED', 'Selected', 'ACCEPTED'].includes(app.status) ? 'bg-teal-50 text-teal-700 border border-teal-100' :
-                                                                        ['REJECTED', 'Rejected'].includes(app.status) ? 'bg-red-50 text-red-700 border border-red-100' :
-                                                                            ['BLACKLISTED', 'Blacklisted'].includes(app.status) ? 'bg-slate-100 text-slate-500 border border-slate-200' :
-                                                                                ['PENDING', 'APPLIED', 'Applied', 'PROCESSING', 'Processing'].includes(app.status) ? 'bg-amber-50 text-amber-700 border border-amber-100' :
-                                                                                    ['REVIEWING', 'INTERVIEW', 'Interview', 'In Review'].includes(app.status) ? 'bg-blue-50 text-blue-700 border border-blue-100' :
-                                                                                        'bg-slate-50 text-slate-700 border border-slate-100'
+                                                   ${app.status === ApplicationStatus.SELECTED ? 'bg-teal-50 text-teal-700 border border-teal-100' :
+                                                                        app.status === ApplicationStatus.REJECTED ? 'bg-red-50 text-red-700 border border-red-100' :
+                                                                            app.status === ApplicationStatus.BLACKLISTED ? 'bg-slate-100 text-slate-500 border border-slate-200' :
+                                                                                'bg-amber-50 text-amber-700 border border-amber-100'
                                                                     }`}>
-                                                                    {app.status}
+                                                                    {app.status || 'UNKNOWN'}
                                                                 </span>
                                                             </td>
                                                         </tr>
                                                     );
                                                 })}
-                                                {applications.length === 0 && (
+                                                {pipelineData.length === 0 && (
                                                     <tr>
                                                         <td colSpan={3} className="px-8 py-12 text-center text-slate-400">No recent activity</td>
                                                     </tr>
@@ -1561,8 +855,6 @@ const RecruiterDashboard = () => {
                                         </table>
                                     </div>
                                 </div>
-
-                                {/* Recent Activity Feed */}
                             </div>
                         ) : activeTab === 'settings' ? (
                             /* SETTINGS TAB - PASSWORD RESET */
@@ -1680,8 +972,8 @@ const RecruiterDashboard = () => {
                                     </div>
                                 </div>
                             </div>
-                        ) : activeTab === 'pipeline' ? (
-                            /* PIPELINE TRACKING */
+                        ) : activeTab === 'blocked' ? (
+                            /* PIPELINE TRACKING (REFINED) */
                             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                                     <div>
@@ -1689,7 +981,6 @@ const RecruiterDashboard = () => {
                                         <p className="text-slate-500 font-medium text-sm mt-1">Real-time updates on your submitted candidates</p>
                                     </div>
                                     <div className="flex items-center gap-4">
-
                                         <div className="relative group">
                                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-teal-600 transition-colors" />
                                             <input
@@ -1718,11 +1009,9 @@ const RecruiterDashboard = () => {
                                             <thead>
                                                 <tr className="bg-slate-50 border-b border-slate-200">
                                                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Candidate</th>
-                                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Job Category</th>
-                                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Job Role</th>
+                                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Role & Company</th>
                                                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Submission Date</th>
                                                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Status</th>
-                                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">View</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
@@ -1731,51 +1020,38 @@ const RecruiterDashboard = () => {
                                                         (app.candidate_name || app.candidateName || '').toLowerCase().includes(pipelineSearchTerm.toLowerCase()) ||
                                                         (app.email || '').toLowerCase().includes(pipelineSearchTerm.toLowerCase())
                                                     )
-                                                    .map((app) => {
+                                                    .map((app, index) => {
                                                         return (
-                                                            <tr key={app.id || app._id} className="hover:bg-slate-50/80 transition-colors group">
+                                                            <tr key={app.id || index} className="hover:bg-slate-50/80 transition-colors group">
                                                                 <td className="px-6 py-4">
                                                                     <div className="flex items-center gap-3">
                                                                         <div className="w-8 h-8 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center text-xs font-bold border border-teal-100 uppercase">
                                                                             {(app.candidate_name || app.candidateName || '?').charAt(0)}
                                                                         </div>
                                                                         <div>
-                                                                            <div className="font-bold text-slate-900 text-sm">{app.candidate_name || app.candidateName}</div>
-                                                                            <div className="text-xs text-slate-500">{app.email}</div>
+                                                                            <div className="font-bold text-slate-900 text-sm">{app.candidate_name || app.candidateName || 'Unknown'}</div>
+                                                                            <div className="text-xs text-slate-500">{app.email || 'No email'}</div>
                                                                         </div>
                                                                     </div>
-                                                                </td>
-                                                                <td className="px-6 py-4">
-                                                                    <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-1 rounded-md">
-                                                                        {app.jobs?.category || 'General'}
-                                                                    </span>
                                                                 </td>
                                                                 <td className="px-6 py-4">
                                                                     <div className="font-medium text-slate-900 text-sm">{app.jobs?.title || 'Unknown Role'}</div>
                                                                     <div className="text-xs text-slate-500">{app.jobs?.company || 'Unknown Company'}</div>
                                                                 </td>
                                                                 <td className="px-6 py-4">
-                                                                    <div className="text-sm text-slate-600 font-medium">{new Date(app.applied_at || Date.now()).toLocaleDateString()}</div>
+                                                                    <div className="text-sm text-slate-600 font-medium">{new Date().toLocaleDateString()}</div>
                                                                 </td>
                                                                 <td className="px-6 py-4 text-center">
                                                                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide
-                                                      ${['APPROVED', 'SELECTED', 'Selected', 'ACCEPTED'].includes(app.status) ? 'bg-teal-50 text-teal-700 border border-teal-100' : ''}
-                                                      ${['PENDING', 'APPLIED', 'Applied', 'PROCESSING'].includes(app.status) ? 'bg-amber-50 text-amber-700 border border-amber-100' : ''}
-                                                      ${['REVIEWING', 'INTERVIEW', 'Interview', 'In Review'].includes(app.status) ? 'bg-blue-50 text-blue-700 border border-blue-100' : ''}
-                                                      ${['REJECTED', 'Rejected'].includes(app.status) ? 'bg-red-50 text-red-700 border border-red-100' : ''}
-                                                      ${['BLACKLISTED', 'Blacklisted'].includes(app.status) ? 'bg-slate-100 text-slate-500 border border-slate-200' : ''}
+                                                      ${app.status === ApplicationStatus.APPLIED ? 'bg-blue-50 text-blue-700 border border-blue-100' : ''}
+                                                      ${app.status === ApplicationStatus.PROCESSING ? 'bg-amber-50 text-amber-700 border border-amber-100' : ''}
+                                                      ${app.status === ApplicationStatus.INTERVIEW ? 'bg-purple-50 text-purple-700 border border-purple-100' : ''}
+                                                      ${app.status === ApplicationStatus.SELECTED ? 'bg-teal-50 text-teal-700 border border-teal-100' : ''}
+                                                      ${app.status === ApplicationStatus.REJECTED ? 'bg-red-50 text-red-700 border border-red-100' : ''}
+                                                      ${app.status === ApplicationStatus.BLACKLISTED ? 'bg-slate-100 text-slate-500 border border-slate-200' : ''}
                                                    `}>
-                                                                        {app.status}
+                                                                        {app.status || 'UNKNOWN'}
                                                                     </span>
-                                                                </td>
-                                                                <td className="px-6 py-4 text-center">
-                                                                    <button
-                                                                        onClick={() => setSelectedAppForDocs(app)}
-                                                                        className="p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-all"
-                                                                        title="View Documents"
-                                                                    >
-                                                                        <Eye className="w-5 h-5" />
-                                                                    </button>
                                                                 </td>
                                                             </tr>
                                                         );
@@ -1787,7 +1063,7 @@ const RecruiterDashboard = () => {
                                                 ).length === 0 && (
                                                         <tr>
                                                             <td colSpan={5} className="px-6 py-12 text-center text-slate-500 text-sm">
-                                                                No candidates found matching "{pipelineSearchTerm}"
+                                                                {pipelineSearchTerm ? `No candidates found matching "${pipelineSearchTerm}"` : 'No candidates found'}
                                                             </td>
                                                         </tr>
                                                     )}
@@ -1862,7 +1138,7 @@ const RecruiterDashboard = () => {
                                             <label className="text-xs font-semibold text-slate-700">WhatsApp Number *</label>
                                             <input
                                                 type="tel"
-                                                placeholder="+CountrCode Number"
+                                                placeholder="+CountryCode Number"
                                                 value={submissionData.whatsapp}
                                                 onChange={e => setSubmissionData({ ...submissionData, whatsapp: e.target.value })}
                                                 className="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-4 text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
@@ -1939,7 +1215,7 @@ const RecruiterDashboard = () => {
                                 <div className="bg-amber-50 rounded-lg p-4 border border-amber-200 flex items-start gap-4">
                                     <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
                                     <p className="text-xs font-medium text-amber-800 leading-relaxed">
-                                        <strong>Agency Compliance Declaration:</strong> By submitting this candidate, you certify that all uploaded documents have been verified against original copies and the candidate has been briefed on the international employment terms.
+                                        <strong>Agency Compliance Declaration:</strong> By submitting this candidate, you certify that all uploaded documents have been verified against original copies and the candidate has been briefed on the Maldives employment terms.
                                     </p>
                                 </div>
                             </div>
@@ -1954,25 +1230,11 @@ const RecruiterDashboard = () => {
                 )
             }
 
-            {/* DOCUMENT VIEWER MODAL (Read-Only with Inline Preview & Download) */}
-            {selectedAppForDocs && (
-                <DocumentViewerModal
-                    app={selectedAppForDocs}
-                    docViewerData={docViewerData}
-                    docViewerLoading={docViewerLoading}
-                    setDocViewerData={setDocViewerData}
-                    setDocViewerLoading={setDocViewerLoading}
-                    onClose={() => {
-                        setSelectedAppForDocs(null);
-                        setDocViewerData(null);
-                    }}
-                />
-            )}
-
             {/* Internal Custom Scrollbar Style */}
             <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 0px;
+        }
       `}</style>
         </div >
     );
