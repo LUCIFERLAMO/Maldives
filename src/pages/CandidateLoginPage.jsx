@@ -111,49 +111,67 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
 
     return (
         <div className="min-h-[calc(100vh-64px)] bg-[#fdfbf7] flex items-center justify-center p-4">
-            <div className="w-full max-w-5xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[600px] border border-slate-100">
+            <div className="w-full max-w-5xl bg-white rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col md:flex-row min-h-[600px] border border-slate-100">
 
                 {/* LEFT PANEL - BRANDING */}
-                <div className="w-full md:w-5/12 bg-teal-800 text-white p-12 flex flex-col justify-between relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-full bg-white opacity-5 transform skew-x-12 translate-x-20"></div>
+                <div className="w-full md:w-5/12 bg-gradient-to-br from-slate-900 via-teal-900 to-slate-900 text-white p-12 flex flex-col justify-between relative overflow-hidden">
+
+                    {/* Background Texture/Image */}
+                    <div className="absolute inset-0 z-0 opacity-20 mix-blend-overlay">
+                        <img
+                            src="https://images.unsplash.com/photo-1540206395-688085723adb?q=80&w=2576&auto=format&fit=crop"
+                            alt=""
+                            className="w-full h-full object-cover"
+                        />
+                    </div>
+
+                    {/* Abstract Shapes */}
+                    <div className="absolute top-0 right-0 w-64 h-full bg-white/5 opacity-10 transform skew-x-12 translate-x-20 blur-3xl"></div>
+                    <div className="absolute bottom-[-100px] left-[-100px] w-80 h-80 bg-teal-500/20 rounded-full blur-[80px]"></div>
 
                     <div className="relative z-10">
-                        <Link to="/" className="inline-flex items-center text-teal-200 hover:text-white mb-6 text-xs font-bold uppercase tracking-widest transition-colors group">
+                        <Link to="/" className="inline-flex items-center text-teal-200 hover:text-white mb-8 text-[10px] font-black uppercase tracking-widest transition-colors group">
                             <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> Back to Home
                         </Link>
 
-                        <div className="w-12 h-12 border border-white/30 rounded-xl flex items-center justify-center mb-8 backdrop-blur-sm">
+                        <div className="w-14 h-14 border border-white/20 bg-white/10 rounded-2xl flex items-center justify-center mb-8 backdrop-blur-md shadow-2xl">
                             <User className="w-6 h-6 text-white" />
                         </div>
 
                         {isLogin ? (
                             <>
-                                <h1 className="text-4xl md:text-5xl font-black leading-tight mb-4 tracking-tighter">Island Jobs <br /><span className="text-maldives-300">Simplified.</span></h1>
-                                <p className="text-teal-100 font-medium text-lg opacity-90">Access all verified Maldivian vacancies.</p>
+                                <h1 className="text-4xl md:text-5xl font-black leading-[0.95] mb-6 tracking-tighter">
+                                    Island Jobs <br />
+                                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-200 to-teal-400">Simplified.</span>
+                                </h1>
+                                <p className="text-teal-100/80 font-medium text-lg leading-relaxed">Access the most exclusive opportunities across the Maldives archipelago.</p>
                             </>
                         ) : (
                             <>
-                                <h1 className="text-4xl md:text-5xl font-black leading-tight mb-4 tracking-tighter">Start Your <br /><span className="text-maldives-300">Journey.</span></h1>
-                                <p className="text-teal-100 font-medium text-lg opacity-90">Join thousands of professionals finding their dream careers in the Maldives.</p>
+                                <h1 className="text-4xl md:text-5xl font-black leading-[0.95] mb-6 tracking-tighter">
+                                    Start Your <br />
+                                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-200 to-teal-400">Journey.</span>
+                                </h1>
+                                <p className="text-teal-100/80 font-medium text-lg leading-relaxed">Join a elite community of professionals finding their dream careers in paradise.</p>
                             </>
                         )}
                     </div>
 
-                    <div className="relative z-10">
+                    <div className="relative z-10 mt-12">
                         {isLogin ? (
-                            <>
-                                <p className="text-xs font-black uppercase tracking-widest opacity-60 mb-3">New Arrival?</p>
-                                <button onClick={() => { setMode('register'); setNotification(null); }} className="flex items-center gap-2 font-black transition-all text-white group uppercase text-[10px] tracking-widest hover:text-maldives-300">
+                            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-teal-200 mb-2">New Arrival?</p>
+                                <button onClick={() => { setMode('register'); setNotification(null); }} className="flex items-center gap-2 text-white font-bold group hover:text-teal-300 transition-colors">
                                     Create Profile <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                                 </button>
-                            </>
+                            </div>
                         ) : (
-                            <>
-                                <p className="text-xs font-black uppercase tracking-widest opacity-60 mb-3">Already a Member?</p>
-                                <button onClick={() => { setMode('login'); setNotification(null); }} className="flex items-center gap-2 font-black transition-all text-white group uppercase text-[10px] tracking-widest hover:text-maldives-300">
+                            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-teal-200 mb-2">Already a Member?</p>
+                                <button onClick={() => { setMode('login'); setNotification(null); }} className="flex items-center gap-2 text-white font-bold group hover:text-teal-300 transition-colors">
                                     Log In Now <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                                 </button>
-                            </>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -161,14 +179,17 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
                 {/* RIGHT PANEL - FORMS */}
                 <div className="w-full md:w-7/12 p-8 md:p-20 flex flex-col justify-center bg-white relative">
 
+                    {/* Background Decorative Blob */}
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-teal-50 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2 opacity-60 pointer-events-none"></div>
+
                     {/* LOGIN FORM */}
                     {isLogin && (
-                        <div className="max-w-sm mx-auto w-full animate-in fade-in slide-in-from-right-4 duration-500">
-                            <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Login</h2>
-                            <p className="text-slate-500 mb-6 font-medium">Please enter your details to continue.</p>
+                        <div className="max-w-sm mx-auto w-full animate-in fade-in slide-in-from-right-8 duration-700 relative z-10">
+                            <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Welcome Back</h2>
+                            <p className="text-slate-500 mb-8 font-medium">Please enter your details to continue.</p>
 
                             {notification && (
-                                <div className={`p-4 mb-6 rounded-xl text-sm font-bold flex items-center gap-2 animate-in slide-in-from-top-2 ${notification.type === 'success'
+                                <div className={`p-4 mb-6 rounded-2xl text-sm font-bold flex items-center gap-3 animate-in slide-in-from-top-2 ${notification.type === 'success'
                                     ? 'bg-teal-50 text-teal-700 border border-teal-100'
                                     : 'bg-red-50 text-red-600 border border-red-100'
                                     }`}>
@@ -179,14 +200,14 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
 
                             <form onSubmit={handleLoginSubmit} className="space-y-5">
                                 <div className="relative group">
-                                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
-                                    <input type="email" required placeholder="Email Address" className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-500 outline-none transition-all font-bold text-slate-700" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                                    <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
+                                    <input type="email" required placeholder="Email Address" className="w-full pl-14 pr-6 py-5 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-slate-700 placeholder:text-slate-400" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
                                 </div>
                                 <div className="relative group">
-                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
-                                    <input type="password" required placeholder="Password" className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-500 outline-none transition-all font-bold text-slate-700" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
+                                    <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
+                                    <input type="password" required placeholder="Password" className="w-full pl-14 pr-6 py-5 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-slate-700 placeholder:text-slate-400" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
                                 </div>
-                                <button type="submit" disabled={isLoading} className="w-full bg-slate-900 text-white py-5 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 flex items-center justify-center gap-2 mt-4 disabled:opacity-50">
+                                <button type="submit" disabled={isLoading} className="w-full bg-[#0B1A33] text-white py-5 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 hover:shadow-2xl hover:shadow-slate-900/20 hover:-translate-y-0.5 flex items-center justify-center gap-2 mt-4 disabled:opacity-50 disabled:cursor-not-allowed">
                                     {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Logging in...</> : <>Log In <ArrowRight className="w-5 h-5" /></>}
                                 </button>
                             </form>
@@ -195,7 +216,7 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
 
                     {/* SIGNUP FORM */}
                     {!isLogin && (
-                        <div className="max-w-[400px] mx-auto w-full animate-in fade-in slide-in-from-right-4 duration-500">
+                        <div className="max-w-[400px] mx-auto w-full animate-in fade-in slide-in-from-right-8 duration-700 relative z-10">
 
                             <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Create Account</h2>
                             <p className="text-slate-500 mb-8 font-medium">Join the professional Maldivian workforce.</p>
@@ -204,11 +225,11 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
                                 <div>
                                     <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-2 block">Full Name</label>
                                     <div className="relative group">
-                                        <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
+                                        <User className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
                                         <input
                                             type="text"
                                             required
-                                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all"
+                                            className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-500/10 outline-none font-bold text-slate-700 transition-all placeholder:text-slate-400"
                                             value={formData.name}
                                             onChange={e => setFormData({ ...formData, name: e.target.value })}
                                         />
@@ -218,11 +239,11 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
                                 <div>
                                     <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-2 block">Email Address</label>
                                     <div className="relative group">
-                                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
+                                        <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
                                         <input
                                             type="email"
                                             required
-                                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all"
+                                            className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-500/10 outline-none font-bold text-slate-700 transition-all placeholder:text-slate-400"
                                             value={formData.email}
                                             onChange={e => setFormData({ ...formData, email: e.target.value })}
                                         />
@@ -232,11 +253,11 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
                                 <div>
                                     <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-2 block">Mobile Number</label>
                                     <div className="relative group">
-                                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
+                                        <Phone className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
                                         <input
                                             type="tel"
                                             required
-                                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all"
+                                            className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-500/10 outline-none font-bold text-slate-700 transition-all placeholder:text-slate-400"
                                             placeholder="7779999"
                                             value={formData.phone}
                                             onChange={e => setFormData({ ...formData, phone: e.target.value })}
@@ -247,11 +268,11 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
                                 <div>
                                     <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-2 block">Password</label>
                                     <div className="relative group">
-                                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
+                                        <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
                                         <input
                                             type="password"
                                             required
-                                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all"
+                                            className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-500/10 outline-none font-bold text-slate-700 transition-all placeholder:text-slate-400"
                                             placeholder="Min 6 characters"
                                             value={formData.password}
                                             onChange={e => setFormData({ ...formData, password: e.target.value })}
@@ -259,7 +280,7 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
                                     </div>
                                 </div>
 
-                                <button type="submit" disabled={isLoading} className="w-full bg-teal-600 text-white py-5 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-teal-700 transition-all shadow-xl shadow-teal-600/20 mt-6 flex items-center justify-center gap-3 disabled:opacity-50">
+                                <button type="submit" disabled={isLoading} className="w-full bg-teal-600 text-white py-5 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-teal-700 transition-all shadow-xl shadow-teal-600/20 hover:shadow-2xl hover:shadow-teal-600/30 hover:-translate-y-0.5 mt-6 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed">
                                     {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating Account...</> : <>Create Account <ArrowRight className="w-4 h-4" /></>}
                                 </button>
                             </form>
