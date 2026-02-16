@@ -73,6 +73,13 @@ const BrowseJobsPage = () => {
     };
 
     const scrollContainerRef = useRef(null);
+    const resultsRef = useRef(null);
+
+    const handleSearchScroll = () => {
+        if (resultsRef.current) {
+            resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    };
 
     useEffect(() => {
         const container = scrollContainerRef.current;
@@ -211,10 +218,10 @@ const BrowseJobsPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-100 md:bg-gradient-to-br md:from-slate-100 md:via-slate-50 md:to-slate-200 font-sans text-slate-900 pb-32">
+        <div className="min-h-screen bg-slate-100 md:bg-gradient-to-br md:from-slate-100 md:via-slate-50 md:to-slate-200 font-sans text-slate-900 pb-10">
 
             {/* 1. EDITORIAL HERO */}
-            <div className="relative bg-white pt-28 pb-20 lg:pt-36 lg:pb-28 px-6 rounded-b-[3rem] lg:rounded-b-[4rem] shadow-sm z-20 overflow-hidden">
+            <div className="relative bg-white pt-24 pb-10 lg:pt-28 lg:pb-16 px-6 rounded-b-[3rem] lg:rounded-b-[4rem] shadow-sm z-20 overflow-hidden">
                 {/* Background Image with Smooth Gradient Mask */}
                 <div className="absolute inset-0 z-0 select-none">
                     <img
@@ -241,7 +248,7 @@ const BrowseJobsPage = () => {
                 <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-blue-200/40 rounded-full blur-[120px] translate-y-1/3 -translate-x-1/4 pointer-events-none z-0"></div>
 
                 <div className="container mx-auto max-w-5xl relative z-10">
-                    <div className="text-center max-w-3xl mx-auto mb-12 lg:mb-16">
+                    <div className="text-center max-w-3xl mx-auto mb-6 lg:mb-8">
                         <div className="inline-flex items-center gap-2 bg-white/70 backdrop-blur-md border border-slate-200/60 px-4 py-1.5 rounded-full mb-6 shadow-sm ring-1 ring-white/50">
                             <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600">Curated Vacancies</span>
                         </div>
@@ -266,6 +273,7 @@ const BrowseJobsPage = () => {
                                     className="w-full bg-transparent border-none focus:ring-0 text-sm md:text-base font-medium text-slate-700 placeholder-slate-400 outline-none h-full truncate"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSearchScroll()}
                                 />
                                 <div className="hidden md:block absolute right-0 top-1/2 -translate-y-1/2 w-px h-8 bg-slate-200"></div>
                             </div>
@@ -279,7 +287,10 @@ const BrowseJobsPage = () => {
                             </div>
 
                             <div className="w-full md:w-auto md:pl-2">
-                                <button className="w-full md:w-auto h-12 md:h-12 bg-[#0B1A33] hover:bg-[#162a4d] text-white px-8 md:rounded-full font-medium text-sm transition-all shadow-none md:shadow-md flex items-center justify-center rounded-none md:rounded-full">
+                                <button
+                                    onClick={handleSearchScroll}
+                                    className="w-full md:w-auto h-12 md:h-12 bg-[#0B1A33] hover:bg-[#162a4d] text-white px-8 md:rounded-full font-medium text-sm transition-all shadow-none md:shadow-md flex items-center justify-center rounded-none md:rounded-full"
+                                >
                                     Search
                                 </button>
                             </div>
@@ -376,7 +387,7 @@ const BrowseJobsPage = () => {
                 </div>
 
                 {/* 4. MAIN JOB LIST */}
-                <div className="flex flex-col lg:flex-row gap-12">
+                <div ref={resultsRef} className="flex flex-col lg:flex-row gap-12 scroll-mt-24">
 
                     {/* Sidebar (Desktop Only) */}
                     <div className="hidden lg:block w-64 flex-shrink-0 space-y-10">
@@ -403,7 +414,7 @@ const BrowseJobsPage = () => {
 
                     {/* Job Feed */}
                     <div className="flex-1">
-                        <div className="sticky top-[80px] z-20 bg-slate-100 md:bg-transparent pb-4 pt-2">
+                        <div className="bg-slate-100 md:bg-transparent pb-4 pt-2">
                             <div className="flex items-center justify-between">
                                 <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">
                                     {sortBy === 'closed' ? 'Closed Roles' : 'Recent Openings'}
@@ -449,13 +460,14 @@ const BrowseJobsPage = () => {
                 md:grid-cols-1 md:gap-6
                 ${viewType === 'grid' ? 'md:grid-cols-2' : ''}
               `}>
-                                {filteredJobs.length > 0 ? filteredJobs.map(job => (
+                                {filteredJobs.length > 0 ? filteredJobs.map((job, idx) => (
                                     viewType === 'list' ? (
                                         job.status === JobStatus.CLOSED ? (
                                             <div
                                                 key={job.id}
+                                                style={{ animationDelay: `${idx * 100}ms` }}
                                                 onClick={() => setExpandedJobId(expandedJobId === job.id ? null : job.id)}
-                                                className={`w-full group bg-white md:bg-white/80 md:backdrop-blur-sm rounded-3xl p-4 md:p-6 border-2 border-red-200 shadow-sm hover:shadow-md hover:border-red-300 transition-all duration-300 flex flex-col relative cursor-pointer ${expandedJobId === job.id ? 'bg-red-50/30' : 'bg-red-50/10'}`}
+                                                className={`w-full group bg-white md:bg-white/80 md:backdrop-blur-sm rounded-[2.5rem] p-4 md:p-6 border-2 border-red-200 shadow-sm hover:shadow-md hover:border-red-300 transition-all duration-300 flex flex-col relative cursor-pointer animate-in fade-in slide-in-from-bottom-8 fill-mode-backwards ${expandedJobId === job.id ? 'bg-red-50/30' : 'bg-red-50/10'}`}
                                             >
                                                 <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
                                                     {/* Share Button (Mobile Absolute, Desktop Inline) */}
@@ -467,7 +479,7 @@ const BrowseJobsPage = () => {
                                                         <Share2 className="w-5 h-5" />
                                                     </button>
 
-                                                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-black border border-slate-100 transition-colors bg-teal-600 text-white md:bg-white md:text-slate-900 md:shadow-md md:group-hover:scale-110 md:group-hover:rotate-3 duration-300">
+                                                    <div className="w-16 h-16 rounded-[1.2rem] flex items-center justify-center text-xl font-black border border-slate-100 transition-colors bg-teal-600 text-white md:bg-white md:text-slate-900 md:shadow-md md:group-hover:scale-110 md:group-hover:rotate-3 duration-300">
                                                         {job.company.charAt(0)}
                                                     </div>
                                                     <div className="flex-1 min-w-0">
@@ -515,7 +527,12 @@ const BrowseJobsPage = () => {
                                                 </div>
                                             </div>
                                         ) : (
-                                            <Link key={job.id} to={`/job/${job.id}`} className="w-full group bg-white md:bg-white/80 md:backdrop-blur-sm rounded-3xl p-4 md:p-6 border border-slate-200 shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-teal-500/30 hover:-translate-y-1 transition-all duration-300 flex flex-col md:flex-row items-start md:items-center gap-6 relative">
+                                            <Link
+                                                key={job.id}
+                                                to={`/job/${job.id}`}
+                                                style={{ animationDelay: `${idx * 100}ms` }}
+                                                className="w-full group bg-white md:bg-white/80 md:backdrop-blur-sm rounded-[2.5rem] p-4 md:p-6 border border-slate-200 shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-teal-500/30 hover:-translate-y-1 transition-all duration-500 flex flex-col md:flex-row items-start md:items-center gap-6 relative animate-in fade-in slide-in-from-bottom-8 fill-mode-backwards"
+                                            >
                                                 {/* Share Button (Mobile Absolute, Desktop Inline) */}
                                                 <button
                                                     onClick={(e) => handleShare(e, job)}
@@ -525,7 +542,7 @@ const BrowseJobsPage = () => {
                                                     <Share2 className="w-5 h-5" />
                                                 </button>
 
-                                                <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-black border border-slate-100 transition-colors bg-teal-600 text-white md:bg-white md:text-slate-900 md:shadow-md md:group-hover:scale-110 md:group-hover:rotate-3 duration-300">
+                                                <div className="w-16 h-16 rounded-[1.2rem] flex items-center justify-center text-xl font-black border border-slate-100 transition-colors bg-teal-600 text-white md:bg-white md:text-slate-900 md:shadow-md md:group-hover:scale-110 md:group-hover:rotate-3 duration-300">
                                                     {job.company.charAt(0)}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
@@ -558,11 +575,16 @@ const BrowseJobsPage = () => {
                                             </Link>
                                         )
                                     ) : (
-                                        <Link key={job.id} to={job.status === JobStatus.CLOSED ? '#' : `/job/${job.id}`} className={`w-full group bg-white md:bg-white/80 md:backdrop-blur-sm rounded-[2.5rem] p-4 md:p-8 border shadow-sm hover:shadow-[0_20px_40px_-5px_rgba(0,0,0,0.06)] hover:-translate-y-2 transition-all duration-300 flex flex-col relative overflow-hidden ${job.status === JobStatus.CLOSED ? 'border-red-200 bg-red-50/10 hover:border-red-300' : 'border-slate-200 hover:border-teal-500/30'}`}>
+                                        <Link
+                                            key={job.id}
+                                            to={job.status === JobStatus.CLOSED ? '#' : `/job/${job.id}`}
+                                            style={{ animationDelay: `${idx * 100}ms` }}
+                                            className={`w-full group bg-white md:bg-white/80 md:backdrop-blur-sm rounded-[2.5rem] p-4 md:p-8 border shadow-sm hover:shadow-[0_20px_40px_-5px_rgba(0,0,0,0.06)] hover:-translate-y-2 transition-all duration-500 flex flex-col relative overflow-hidden animate-in fade-in slide-in-from-bottom-8 fill-mode-backwards ${job.status === JobStatus.CLOSED ? 'border-red-200 bg-red-50/10 hover:border-red-300' : 'border-slate-200 hover:border-teal-500/30'}`}
+                                        >
                                             <div className="absolute -right-20 -top-20 w-40 h-40 bg-teal-500/5 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
 
                                             <div className="flex items-start justify-between mb-6 relative z-10">
-                                                <div className="w-14 h-14 rounded-2xl flex items-center justify-center font-black transition-all bg-teal-600 text-white md:bg-white md:text-slate-900 md:shadow-md md:group-hover:scale-110 md:group-hover:-rotate-3 duration-300 border border-slate-50">
+                                                <div className="w-14 h-14 rounded-[1.2rem] flex items-center justify-center font-black transition-all bg-teal-600 text-white md:bg-white md:text-slate-900 md:shadow-md md:group-hover:scale-110 md:group-hover:-rotate-3 duration-300 border border-slate-50">
                                                     {job.company.charAt(0)}
                                                 </div>
                                                 <div className="flex items-center gap-2">

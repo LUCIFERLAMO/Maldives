@@ -1,4 +1,10 @@
 import express from 'express';
+process.on('uncaughtException', (err) => {
+    console.error('UNCAUGHT EXCEPTION:', err);
+});
+process.on('unhandledRejection', (reason, p) => {
+    console.error('UNHANDLED REJECTION:', reason);
+});
 import mongoose from 'mongoose';
 import cors from 'cors';
 import path from 'path';
@@ -28,6 +34,10 @@ console.log('Attempting to connect to MongoDB...');
 mongoose.connect(MONGODB_URI)
     .then(() => console.log('Connected to MongoDB Cloud (Atlas)'))
     .catch(err => console.log('MongoDB connection error:', err));
+
+mongoose.connection.on('error', err => {
+    console.log('MongoDB runtime error:', err);
+});
 
 // Use memory storage for file uploads (files stored in memory temporarily, then saved to MongoDB as Base64)
 const storage = multer.memoryStorage();

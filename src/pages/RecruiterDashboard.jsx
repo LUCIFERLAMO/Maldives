@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { ApplicationStatus, JobStatus } from '../types';
 import { MOCK_APPLICATIONS, MOCK_JOBS } from '../constants';
@@ -17,12 +16,10 @@ import FileUpload from '../components/FileUpload';
 
 const RecruiterDashboard = () => {
     const navigate = useNavigate();
-    const { user, login } = useAuth();
-    const { logout } = useAuth();
+    const { user, login, logout } = useAuth();
+
     const [activeTab, setActiveTab] = useState('overview');
-
-
-    const [applications, setApplications] = useState(MOCK_APPLICATIONS);
+    const [applications, setApplications] = useState(MOCK_APPLICATIONS || []);
 
     // FIXED: Form State for Candidate Submission
     const [submissionData, setSubmissionData] = useState({
@@ -41,12 +38,16 @@ const RecruiterDashboard = () => {
         const fetchPipeline = async () => {
             try {
                 const response = await fetch(`http://localhost:5000/api/applications?agent_id=${user.id}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const data = await response.json();
                 if (data) {
-                    setPipelineData(data);
+                    setPipelineData(Array.isArray(data) ? data : []);
                 }
             } catch (error) {
                 console.error("Error fetching pipeline:", error);
+                setPipelineData([]);
             }
         };
         fetchPipeline();
@@ -59,14 +60,18 @@ const RecruiterDashboard = () => {
         const fetchJobs = async () => {
             try {
                 const response = await fetch('http://localhost:5000/api/jobs');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const data = await response.json();
 
                 // Filter for current openings
-                const openJobs = (data || []).filter(j => j.status === 'Current Opening');
+                const openJobs = (Array.isArray(data) ? data : []).filter(j => j?.status === 'Current Opening');
                 setJobs(openJobs);
                 if (openJobs.length === 0) console.warn("Fetch successful but 0 jobs found with status 'Current Opening'");
             } catch (error) {
                 console.error("Error fetching jobs:", error);
+                setJobs([]);
             }
         };
         fetchJobs();
@@ -90,15 +95,21 @@ const RecruiterDashboard = () => {
         if (!user?.id) return;
         const fetchRequests = async () => {
             try {
-                const response = await fetch(`http://localhost:5000/api/job-requests?agent_id=${user.id}`);
+                // CHANGED: Use the path parameter endpoint as requested
+                const response = await fetch(`http://localhost:5000/api/job-requests/agent/${user.id}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const data = await response.json();
-                if (data) setJobRequests(data);
+                if (data) setJobRequests(Array.isArray(data) ? data : []);
             } catch (error) {
                 console.error("Error fetching job requests:", error);
+                setJobRequests([]);
             }
         };
         fetchRequests();
     }, [user?.id]);
+    
     const [showJobRequestForm, setShowJobRequestForm] = useState(false);
     const [jobRequestSearchTerm, setJobRequestSearchTerm] = useState('');
     const [expandedJobRequestId, setExpandedJobRequestId] = useState(null);
@@ -144,7 +155,7 @@ const RecruiterDashboard = () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    email: user?.email,
+                    email: user?.email || '',
                     oldPassword: passwordData.oldPassword,
                     newPassword: passwordData.newPassword
                 })
@@ -159,20 +170,19 @@ const RecruiterDashboard = () => {
             setPasswordSuccess('Password updated successfully!');
             setPasswordData({ oldPassword: '', newPassword: '', confirmPassword: '' });
         } catch (err) {
-            setPasswordError(err.message);
+            setPasswordError(err.message || 'An error occurred');
         } finally {
             setIsResettingPassword(false);
         }
     };
 
     const filteredJobs = useMemo(() => {
-        return jobs.filter(j =>
-        (j.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            j.company.toLowerCase().includes(searchTerm.toLowerCase()))
+        return (Array.isArray(jobs) ? jobs : []).filter(j =>
+            j &&
+            (j.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                j.company?.toLowerCase().includes(searchTerm.toLowerCase()))
         );
     }, [jobs, searchTerm]);
-
-
 
     const handleOpenSubmission = (job) => {
         setSelectedJobForSubmission(job);
@@ -188,12 +198,23 @@ const RecruiterDashboard = () => {
     };
 
     const handleConfirmSubmission = async () => {
+        if (!selectedJobForSubmission) {
+            alert("No job selected for submission.");
+            return;
+        }
+
         if (!submissionFiles.resume || !submissionFiles.identity || !submissionFiles.certs) {
             alert("Please upload all mandatory documents (Resume, ID/Passport, Certificates).");
             return;
         }
+        
         if (!submissionData.name || !submissionData.email || !submissionData.whatsapp || !submissionData.nationality) {
             alert("Please fill in all identity details (Name, Email, Phone, Nationality).");
+            return;
+        }
+
+        if (!user?.id) {
+            alert("User not authenticated. Please log in again.");
             return;
         }
 
@@ -201,7 +222,7 @@ const RecruiterDashboard = () => {
             // Create FormData for file upload
             const formDataPayload = new FormData();
             formDataPayload.append('agent_id', user.id);
-            formDataPayload.append('job_id', selectedJobForSubmission.id || selectedJobForSubmission._id);
+            formDataPayload.append('job_id', selectedJobForSubmission.id || selectedJobForSubmission._id || '');
             formDataPayload.append('name', submissionData.name);
             formDataPayload.append('email', submissionData.email);
             formDataPayload.append('contact', submissionData.whatsapp);
@@ -214,7 +235,7 @@ const RecruiterDashboard = () => {
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
+                const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.message || 'Submission failed');
             }
 
@@ -224,15 +245,13 @@ const RecruiterDashboard = () => {
             // Refresh Pipeline
             const pipelineResponse = await fetch(`http://localhost:5000/api/applications?agent_id=${user.id}`);
             const pipelineData = await pipelineResponse.json();
-            if (pipelineData) setPipelineData(pipelineData);
+            if (pipelineData) setPipelineData(Array.isArray(pipelineData) ? pipelineData : []);
 
         } catch (err) {
             console.error("Submission Error:", err);
-            alert("Error: " + err.message);
+            alert("Error: " + (err.message || 'An error occurred during submission'));
         }
     };
-
-
 
     // --- AGENT PROFILE FETCHER ---
     const [agentProfile, setAgentProfile] = useState(null);
@@ -252,6 +271,29 @@ const RecruiterDashboard = () => {
         };
         fetchAgentProfile();
     }, [user?.id]);
+
+    // FIXED: Added null checks for user object
+    if (!user) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-6">
+                <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-12 max-w-lg text-center">
+                    <div className="w-20 h-20 rounded-full bg-red-50 text-red-500 flex items-center justify-center mx-auto mb-6">
+                        <AlertTriangle className="w-10 h-10" />
+                    </div>
+                    <h1 className="text-2xl font-black text-slate-900 mb-3">Authentication Error</h1>
+                    <p className="text-slate-500 font-medium leading-relaxed mb-8">
+                        You are not logged in. Please sign in to access the dashboard.
+                    </p>
+                    <button
+                        onClick={() => navigate('/login')}
+                        className="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-slate-800 transition-colors"
+                    >
+                        Go to Login
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     // If agent status is PENDING, show waiting screen
     if (user?.status === 'PENDING') {
@@ -293,7 +335,7 @@ const RecruiterDashboard = () => {
                         </div>
                         <div className="min-w-0">
                             <span className="font-bold text-white text-sm tracking-tight block leading-none truncate w-48">
-                                {agentProfile?.company_name || "GlobalTalent"}
+                                {agentProfile?.company_name || user?.agency_name || "GlobalTalent"}
                             </span>
                             <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider mt-1 block truncate w-48">
                                 {agentProfile?.full_name || user?.name || "Partner Portal"}
@@ -359,18 +401,132 @@ const RecruiterDashboard = () => {
 
             {/* MAIN CONTENT AREA */}
             <main className="flex-1 flex flex-col h-screen overflow-hidden">
-
-
-
                 {/* DASHBOARD CONTENT SCROLL AREA */}
                 <div className="flex-1 overflow-y-auto p-12 bg-[#f8fafc]">
                     <div className="max-w-[1400px] mx-auto space-y-12">
-
                         {/* TAB CONTENT: AGENT HIRING */}
                         {activeTab === 'jobRequests' ? (
                             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                {showJobRequestForm ? (
+                                    <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                        <div className="mb-8 flex items-center gap-4">
+                                            <button
+                                                onClick={() => setShowJobRequestForm(false)}
+                                                className="w-10 h-10 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-500 hover:text-teal-600 hover:border-teal-200 transition-all shadow-sm"
+                                            >
+                                                <ArrowRight className="w-5 h-5 rotate-180" />
+                                            </button>
+                                            <div>
+                                                <h2 className="text-2xl font-bold text-slate-900 tracking-tight">New Job Request</h2>
+                                                <p className="text-slate-500 font-medium text-sm">Details will be sent for Admin approval</p>
+                                            </div>
+                                        </div>
 
-                                {!showJobRequestForm ? (
+                                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
+                                            <form className="space-y-8" onSubmit={async (e) => {
+                                                e.preventDefault();
+                                                if (!user?.id) {
+                                                    alert("Session expired. Please log in again.");
+                                                    return;
+                                                }
+                                                try {
+                                                    const formData = new FormData(e.target);
+                                                    const payload = {
+                                                        agent_id: user.id,
+                                                        agent_name: user.full_name || user.name || '', // Required by model
+                                                        agent_email: user.email || '', // Required by model
+                                                        agency_name: user.agency_name || '',
+                                                        title: formData.get('title') || '',
+                                                        company: formData.get('company') || '',
+                                                        location: formData.get('location') || '',
+                                                        category: formData.get('category') || '',
+                                                        salary_range: formData.get('salary_range') || '',
+                                                        description: formData.get('description') || '',
+                                                        requirements: (formData.get('requirements') || '').split('\n').filter(r => r.trim()),
+                                                        vacancies: Number(formData.get('vacancies')) || 1
+                                                    };
+
+                                                    const response = await fetch('http://localhost:5000/api/job-requests', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify(payload)
+                                                    });
+
+                                                    const resData = await response.json();
+
+                                                    if (!response.ok) throw new Error(resData.message || 'Failed to submit request');
+
+                                                    alert("Job Request Submitted to Admin! Status: Waiting approval.");
+                                                    setShowJobRequestForm(false);
+
+                                                    // Refresh list
+                                                    const refreshResponse = await fetch(`http://localhost:5000/api/job-requests/agent/${user.id}`);
+                                                    const data = await refreshResponse.json();
+                                                    if (data) setJobRequests(Array.isArray(data) ? data : []);
+
+                                                } catch (err) {
+                                                    console.error("Submission Error:", err);
+                                                    alert("Error submitting request: " + (err.message || 'An error occurred'));
+                                                }
+                                            }}>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Job Title <span className="text-red-500">*</span></label>
+                                                        <input name="title" required type="text" placeholder="e.g. Senior Sous Chef" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Company Name <span className="text-red-500">*</span></label>
+                                                        <input name="company" required type="text" placeholder="e.g. Maldives Resorts Ltd" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Category <span className="text-red-500">*</span></label>
+                                                        <div className="relative">
+                                                            <select name="category" required className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all appearance-none">
+                                                                {['Hospitality', 'Construction', 'Healthcare', 'IT', 'Education', 'Retail', 'Manufacturing', 'Tourism', 'Fishing', 'Agriculture', 'Other'].map(cat => (
+                                                                    <option key={cat} value={cat}>{cat}</option>
+                                                                ))}
+                                                            </select>
+                                                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Location <span className="text-red-500">*</span></label>
+                                                        <input name="location" required type="text" placeholder="e.g. Male, Maldives" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Salary Range</label>
+                                                        <input name="salary_range" type="text" placeholder="e.g. $2000 - $3000/month" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Vacancies (Default: 1)</label>
+                                                        <input name="vacancies" type="number" min="1" defaultValue="1" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Job Description <span className="text-red-500">*</span></label>
+                                                    <textarea name="description" required rows={4} className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all resize-none" placeholder="Describe the role responsibilities..."></textarea>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Requirements</label>
+                                                    <textarea name="requirements" rows={3} className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all resize-none" placeholder="List key requirements (one per line)..."></textarea>
+                                                </div>
+
+                                                <div className="pt-4 border-t border-slate-100 flex gap-4">
+                                                    <button type="button" onClick={() => setShowJobRequestForm(false)} className="px-6 py-3 bg-white border border-slate-200 text-slate-500 rounded-xl font-bold uppercase text-xs tracking-wider hover:bg-slate-50 transition-all">Cancel</button>
+                                                    <button type="submit" className="flex-1 py-3 bg-teal-600 text-white rounded-xl font-bold uppercase text-xs tracking-wider shadow-lg shadow-teal-600/20 hover:bg-teal-700 transition-all">Submit Request</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                ) : (
                                     <>
                                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-200 mb-6">
                                             <div>
@@ -398,7 +554,7 @@ const RecruiterDashboard = () => {
                                         </div>
 
                                         <div className="grid grid-cols-1 gap-4">
-                                            {jobRequests.filter(req => req.title.toLowerCase().includes(jobRequestSearchTerm.toLowerCase())).length === 0 ? (
+                                            {jobRequests.length === 0 ? (
                                                 <div className="bg-white rounded-xl border border-dashed border-slate-300 p-12 flex flex-col items-center justify-center text-center">
                                                     <div className="w-16 h-16 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mb-4">
                                                         <FilePlus className="w-8 h-8" />
@@ -408,10 +564,10 @@ const RecruiterDashboard = () => {
                                                 </div>
                                             ) : (
                                                 jobRequests
-                                                    .filter(req => req.title.toLowerCase().includes(jobRequestSearchTerm.toLowerCase()))
+                                                    .filter(req => req?.title?.toLowerCase().includes(jobRequestSearchTerm.toLowerCase()))
                                                     .map((req) => (
                                                         <div
-                                                            key={req.id}
+                                                            key={req.id || req._id}
                                                             onClick={() => setExpandedJobRequestId(expandedJobRequestId === req.id ? null : req.id)}
                                                             className={`bg-white rounded-xl border transition-all cursor-pointer group overflow-hidden ${expandedJobRequestId === req.id
                                                                 ? 'border-teal-200 shadow-md ring-1 ring-teal-500/10'
@@ -421,21 +577,21 @@ const RecruiterDashboard = () => {
                                                             <div className="p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                                                                 <div className="flex-1">
                                                                     <div className="flex items-center gap-3 mb-2">
-                                                                        <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider">{req.field}</span>
+                                                                        <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider">{req.category || 'Uncategorized'}</span>
                                                                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${req.status === 'APPROVED' ? 'bg-teal-50 text-teal-700 border-teal-100' :
                                                                             req.status === 'REJECTED' ? 'bg-red-50 text-red-700 border-red-100' :
-                                                                                req.status === 'REJECTED' ? 'bg-red-50 text-red-700 border-red-100' :
-                                                                                    req.status === 'PENDING' ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                                                                                        'bg-slate-50 text-slate-700 border-slate-100'
+                                                                                'bg-amber-50 text-amber-700 border-amber-100'
                                                                             }`}>
-                                                                            {req.status === 'PENDING' ? 'WAITING' : req.status}
+                                                                            {req.status === 'PENDING' ? 'WAITING APPROVAL' : req.status || 'UNKNOWN'}
                                                                         </span>
                                                                     </div>
-                                                                    <h3 className="text-lg font-bold text-slate-900 mb-1 group-hover:text-teal-700 transition-colors">{req.title}</h3>
+                                                                    <h3 className="text-lg font-bold text-slate-900 mb-1 group-hover:text-teal-700 transition-colors">{req.title || 'Untitled Request'}</h3>
                                                                     <div className="flex items-center gap-4 text-xs font-medium text-slate-500">
-                                                                        <span>{req.headcount} Openings</span>
+                                                                        <span>{req.company || 'No company specified'}</span>
                                                                         <span>•</span>
-                                                                        <span>{req.salary}</span>
+                                                                        <span>{req.vacancies || 0} Vacancies</span>
+                                                                        <span>•</span>
+                                                                        <span>{req.salary_range || 'Not specified'}</span>
                                                                     </div>
                                                                 </div>
                                                                 <div className="flex items-center gap-3">
@@ -460,9 +616,13 @@ const RecruiterDashboard = () => {
                                                                                 <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2 flex items-center gap-2">
                                                                                     <CheckCircle className="w-3 h-3 text-slate-400" /> Requirements
                                                                                 </h4>
-                                                                                <p className="text-sm text-slate-600 leading-relaxed font-medium whitespace-pre-line">
-                                                                                    {req.requirements || 'No specific requirements listed.'}
-                                                                                </p>
+                                                                                <ul className="text-sm text-slate-600 leading-relaxed font-medium list-disc pl-4 space-y-1">
+                                                                                    {req.requirements && Array.isArray(req.requirements) && req.requirements.length > 0 ? (
+                                                                                        req.requirements.map((r, i) => <li key={i}>{r}</li>)
+                                                                                    ) : (
+                                                                                        <li>No specific requirements listed.</li>
+                                                                                    )}
+                                                                                </ul>
                                                                             </div>
                                                                         </div>
                                                                     </div>
@@ -474,103 +634,6 @@ const RecruiterDashboard = () => {
                                             )}
                                         </div>
                                     </>
-                                ) : (
-                                    <div className="max-w-3xl mx-auto">
-                                        <div className="mb-8 flex items-center gap-4">
-                                            <button
-                                                onClick={() => setShowJobRequestForm(false)}
-                                                className="w-10 h-10 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-500 hover:text-teal-600 hover:border-teal-200 transition-all shadow-sm"
-                                            >
-                                                <ArrowRight className="w-5 h-5 rotate-180" />
-                                            </button>
-                                            <div>
-                                                <h2 className="text-2xl font-bold text-slate-900 tracking-tight">New Job Request</h2>
-                                                <p className="text-slate-500 font-medium text-sm">Details will be sent for Admin approval</p>
-                                            </div>
-                                        </div>
-
-                                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
-                                            <form className="space-y-8" onSubmit={async (e) => {
-                                                e.preventDefault();
-                                                if (!user?.id) {
-                                                    alert("Session expired. Please log in again.");
-                                                    return;
-                                                }
-                                                try {
-                                                    const response = await fetch('http://localhost:5000/api/job-requests', {
-                                                        method: 'POST',
-                                                        headers: { 'Content-Type': 'application/json' },
-                                                        body: JSON.stringify({
-                                                            agent_id: user.id,
-                                                            title: e.target.title.value,
-                                                            field: e.target.field.value,
-                                                            salary: e.target.salary.value,
-                                                            headcount: e.target.headcount.value,
-                                                            description: e.target.description.value,
-                                                            requirements: e.target.requirements.value,
-                                                            status: 'PENDING'
-                                                        })
-                                                    });
-
-                                                    if (!response.ok) throw new Error('Failed to submit request');
-
-                                                    alert("Job Request Submitted to Admin! Status: Waiting approval.");
-                                                    setShowJobRequestForm(false);
-
-                                                    // Refresh list
-                                                    const refreshResponse = await fetch(`http://localhost:5000/api/job-requests?agent_id=${user.id}`);
-                                                    const data = await refreshResponse.json();
-                                                    if (data) setJobRequests(data);
-
-                                                } catch (err) {
-                                                    console.error("Submission Error:", err);
-                                                    alert("Error submitting request: " + err.message);
-                                                }
-                                            }}>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <div className="space-y-2">
-                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Job Title</label>
-                                                        <input name="title" required type="text" placeholder="e.g. Senior Sous Chef" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Field / Industry</label>
-                                                        <select name="field" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all appearance-none">
-                                                            <option>Hospitality</option>
-                                                            <option>Healthcare</option>
-                                                            <option>Construction</option>
-                                                            <option>Corporate</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <div className="space-y-2">
-                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Salary Range</label>
-                                                        <input name="salary" required type="text" placeholder="e.g. $1200 - $1500 USD" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Headcount Required</label>
-                                                        <input name="headcount" required type="number" min="1" placeholder="e.g. 5" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
-                                                    </div>
-                                                </div>
-
-                                                <div className="space-y-2">
-                                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Job Description</label>
-                                                    <textarea name="description" required rows={4} className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all resize-none" placeholder="Describe the role responsibilities..."></textarea>
-                                                </div>
-
-                                                <div className="space-y-2">
-                                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Requirements</label>
-                                                    <textarea name="requirements" required rows={3} className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all resize-none" placeholder="List key requirements (one per line)..."></textarea>
-                                                </div>
-
-                                                <div className="pt-4 border-t border-slate-100 flex gap-4">
-                                                    <button type="button" onClick={() => setShowJobRequestForm(false)} className="px-6 py-3 bg-white border border-slate-200 text-slate-500 rounded-xl font-bold uppercase text-xs tracking-wider hover:bg-slate-50 transition-all">Cancel</button>
-                                                    <button type="submit" className="flex-1 py-3 bg-teal-600 text-white rounded-xl font-bold uppercase text-xs tracking-wider shadow-lg shadow-teal-600/20 hover:bg-teal-700 transition-all">Submit Request</button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
                                 )}
                             </div>
                         ) : activeTab === 'vacancies' ? (
@@ -604,7 +667,7 @@ const RecruiterDashboard = () => {
                                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                                         {filteredJobs.map((job) => (
                                             <div
-                                                key={job.id}
+                                                key={job.id || job._id}
                                                 className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 hover:shadow-md hover:border-teal-200 transition-all group flex flex-col relative overflow-hidden"
                                             >
                                                 {/* Status Stripe */}
@@ -612,8 +675,8 @@ const RecruiterDashboard = () => {
 
                                                 <div className="flex justify-between items-start mb-4 pl-2">
                                                     <div>
-                                                        <h3 className="font-bold text-slate-900 text-lg leading-tight group-hover:text-teal-700 transition-colors">{job.title}</h3>
-                                                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-1">{job.company}</p>
+                                                        <h3 className="font-bold text-slate-900 text-lg leading-tight group-hover:text-teal-700 transition-colors">{job.title || 'Untitled Position'}</h3>
+                                                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-1">{job.company || 'Unknown Company'}</p>
                                                     </div>
                                                     <div className="bg-slate-50 p-2 rounded-lg border border-slate-100 group-hover:bg-teal-50 group-hover:border-teal-100 transition-colors">
                                                         <BriefcaseIcon className="w-5 h-5 text-slate-400 group-hover:text-teal-600" />
@@ -623,11 +686,11 @@ const RecruiterDashboard = () => {
                                                 <div className="grid grid-cols-2 gap-y-3 gap-x-4 mb-6 pl-2">
                                                     <div className="flex items-center gap-2">
                                                         <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                                                        <span className="text-xs font-medium text-slate-600">{job.location}</span>
+                                                        <span className="text-xs font-medium text-slate-600">{job.location || 'Location not specified'}</span>
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         <Award className="w-3.5 h-3.5 text-slate-400" />
-                                                        <span className="text-xs font-medium text-slate-600">{job.experience} Exp</span>
+                                                        <span className="text-xs font-medium text-slate-600">{job.experience || 'N/A'} Exp</span>
                                                     </div>
                                                     <div className="flex items-center gap-2 col-span-2">
                                                         <Users className="w-3.5 h-3.5 text-slate-400" />
@@ -765,10 +828,10 @@ const RecruiterDashboard = () => {
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
-                                                {pipelineData.slice(0, 5).map((app) => {
+                                                {pipelineData.slice(0, 5).map((app, index) => {
                                                     return (
-                                                        <tr key={app.id} className="hover:bg-slate-50 transition-colors">
-                                                            <td className="px-8 py-5 font-medium text-slate-900">{app.candidate_name || app.candidateName}</td>
+                                                        <tr key={app.id || index} className="hover:bg-slate-50 transition-colors">
+                                                            <td className="px-8 py-5 font-medium text-slate-900">{app.candidate_name || app.candidateName || 'Unknown'}</td>
                                                             <td className="px-8 py-5 text-slate-600">{app.jobs?.title || 'Unknown Role'}</td>
                                                             <td className="px-8 py-5 text-right">
                                                                 <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide
@@ -777,13 +840,13 @@ const RecruiterDashboard = () => {
                                                                             app.status === ApplicationStatus.BLACKLISTED ? 'bg-slate-100 text-slate-500 border border-slate-200' :
                                                                                 'bg-amber-50 text-amber-700 border border-amber-100'
                                                                     }`}>
-                                                                    {app.status}
+                                                                    {app.status || 'UNKNOWN'}
                                                                 </span>
                                                             </td>
                                                         </tr>
                                                     );
                                                 })}
-                                                {applications.length === 0 && (
+                                                {pipelineData.length === 0 && (
                                                     <tr>
                                                         <td colSpan={3} className="px-8 py-12 text-center text-slate-400">No recent activity</td>
                                                     </tr>
@@ -792,8 +855,6 @@ const RecruiterDashboard = () => {
                                         </table>
                                     </div>
                                 </div>
-
-                                {/* Recent Activity Feed */}
                             </div>
                         ) : activeTab === 'settings' ? (
                             /* SETTINGS TAB - PASSWORD RESET */
@@ -912,7 +973,6 @@ const RecruiterDashboard = () => {
                                 </div>
                             </div>
                         ) : activeTab === 'blocked' ? (
-                            /* PIPELINE TRACKING (EXISTING) */
                             /* PIPELINE TRACKING (REFINED) */
                             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -960,17 +1020,17 @@ const RecruiterDashboard = () => {
                                                         (app.candidate_name || app.candidateName || '').toLowerCase().includes(pipelineSearchTerm.toLowerCase()) ||
                                                         (app.email || '').toLowerCase().includes(pipelineSearchTerm.toLowerCase())
                                                     )
-                                                    .map((app) => {
+                                                    .map((app, index) => {
                                                         return (
-                                                            <tr key={app.id} className="hover:bg-slate-50/80 transition-colors group">
+                                                            <tr key={app.id || index} className="hover:bg-slate-50/80 transition-colors group">
                                                                 <td className="px-6 py-4">
                                                                     <div className="flex items-center gap-3">
                                                                         <div className="w-8 h-8 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center text-xs font-bold border border-teal-100 uppercase">
                                                                             {(app.candidate_name || app.candidateName || '?').charAt(0)}
                                                                         </div>
                                                                         <div>
-                                                                            <div className="font-bold text-slate-900 text-sm">{app.candidate_name || app.candidateName}</div>
-                                                                            <div className="text-xs text-slate-500">{app.email}</div>
+                                                                            <div className="font-bold text-slate-900 text-sm">{app.candidate_name || app.candidateName || 'Unknown'}</div>
+                                                                            <div className="text-xs text-slate-500">{app.email || 'No email'}</div>
                                                                         </div>
                                                                     </div>
                                                                 </td>
@@ -990,7 +1050,7 @@ const RecruiterDashboard = () => {
                                                       ${app.status === ApplicationStatus.REJECTED ? 'bg-red-50 text-red-700 border border-red-100' : ''}
                                                       ${app.status === ApplicationStatus.BLACKLISTED ? 'bg-slate-100 text-slate-500 border border-slate-200' : ''}
                                                    `}>
-                                                                        {app.status}
+                                                                        {app.status || 'UNKNOWN'}
                                                                     </span>
                                                                 </td>
                                                             </tr>
@@ -1003,7 +1063,7 @@ const RecruiterDashboard = () => {
                                                 ).length === 0 && (
                                                         <tr>
                                                             <td colSpan={5} className="px-6 py-12 text-center text-slate-500 text-sm">
-                                                                No candidates found matching "{pipelineSearchTerm}"
+                                                                {pipelineSearchTerm ? `No candidates found matching "${pipelineSearchTerm}"` : 'No candidates found'}
                                                             </td>
                                                         </tr>
                                                     )}
@@ -1078,7 +1138,7 @@ const RecruiterDashboard = () => {
                                             <label className="text-xs font-semibold text-slate-700">WhatsApp Number *</label>
                                             <input
                                                 type="tel"
-                                                placeholder="+CountrCode Number"
+                                                placeholder="+CountryCode Number"
                                                 value={submissionData.whatsapp}
                                                 onChange={e => setSubmissionData({ ...submissionData, whatsapp: e.target.value })}
                                                 className="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-4 text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
@@ -1174,6 +1234,7 @@ const RecruiterDashboard = () => {
             <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 0px;
+        }
       `}</style>
         </div >
     );

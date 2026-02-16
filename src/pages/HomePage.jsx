@@ -44,14 +44,14 @@ const HomePage = () => {
       <div className="min-h-screen bg-white font-sans text-slate-900 overflow-x-hidden">
 
          {/* 1. HERO SECTION */}
-         <section className="relative bg-white min-h-[600px] lg:min-h-[700px] flex items-center pt-10 pb-16 lg:pt-16 lg:pb-16 overflow-hidden">
+         <section className="relative bg-white pt-5 pb-10 lg:pt-10 lg:pb-10 overflow-hidden">
             {/* Background Decoration */}
             <div className="absolute top-0 right-0 w-[50%] h-full bg-slate-50/50 -z-10 rounded-bl-[100px] hidden lg:block"></div>
             {/* Mobile Background Decoration */}
             <div className="absolute top-0 right-0 w-full h-[60%] bg-slate-50/30 -z-10 rounded-bl-[50px] lg:hidden"></div>
 
-            <div className="container mx-auto px-5 md:px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center relative z-10">
-               <div className="max-w-xl mx-auto lg:mx-0 text-center lg:text-left">
+            <div className="container mx-auto px-5 md:px-6 grid grid-cols-1 lg:grid-cols-2 gap-0 items-center relative z-10">
+               <div className="w-full text-center lg:text-left">
                   {/* Badge */}
                   <div className="inline-flex items-center gap-2 bg-white px-4 py-2 lg:px-5 lg:py-2.5 rounded-full border border-teal-100 mb-8 lg:mb-10 shadow-[0_2px_20px_-5px_rgba(20,184,166,0.15)] mx-auto lg:mx-0">
                      <Sparkles className="w-3 h-3 lg:w-4 lg:h-4 text-teal-500 fill-teal-500" />
@@ -100,17 +100,17 @@ const HomePage = () => {
 
                {/* Hero Image Group */}
                <div className="relative hidden lg:block">
-                  <div className="relative z-10 w-full max-w-[480px] ml-auto">
+                  <div className="relative z-10 w-full ml-0">
                      <div className="relative rounded-[3rem] overflow-visible">
                         {/* Main Image */}
                         <img
-                           src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=1576&auto=format&fit=crop"
+                           src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=1576&auto=format"
                            alt="Professional"
-                           className="rounded-[3rem] shadow-2xl w-full h-[550px] object-cover object-center"
+                           className="rounded-[3rem] shadow-2xl w-full h-[550px] object-cover object-[center_25%]"
                         />
 
                         {/* Floating Badge 1 */}
-                        <div className="absolute top-24 -left-16 bg-white p-5 pr-10 rounded-[2rem] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] border border-slate-50 flex items-center gap-5 animate-bounce-slow">
+                        <div className="absolute top-24 left-6 bg-white p-5 pr-10 rounded-[2rem] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] border border-slate-50 flex items-center gap-5 animate-bounce-slow">
                            <div className="w-14 h-14 bg-teal-50 text-teal-600 rounded-2xl flex items-center justify-center">
                               <Briefcase className="w-7 h-7" />
                            </div>
@@ -139,7 +139,7 @@ const HomePage = () => {
          </section>
 
          {/* 2. SERVICES SECTION */}
-         <section className="py-20 lg:py-32 bg-white">
+         <section className="pt-20 pb-10 lg:pt-32 lg:pb-10 bg-white">
             <div className="container mx-auto px-5 lg:px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center">
 
                {/* Image Side */}
@@ -198,8 +198,7 @@ const HomePage = () => {
 
 
 
-         {/* Spacer for footer */}
-         <div className="h-32 lg:h-40 bg-slate-50"></div>
+
 
       </div>
    );
