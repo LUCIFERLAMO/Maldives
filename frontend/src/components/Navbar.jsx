@@ -39,19 +39,19 @@ const Navbar = () => {
                             </button>
 
                             <div className="absolute top-full left-0 pt-2 hidden group-hover:block animate-in fade-in slide-in-from-top-2 duration-200 z-[110]">
-                                <div className="bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-slate-100 py-3 w-64 overflow-hidden ring-1 ring-slate-900/5">
+                                <div className="bg-slate-900 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-slate-800 py-3 w-64 overflow-hidden ring-1 ring-white/10">
                                     <button
                                         onClick={() => handleCategoryClick('All')}
-                                        className="w-full text-left px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 hover:text-teal-600 transition-colors"
+                                        className="w-full text-left px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white hover:bg-slate-800 hover:text-teal-400 transition-colors"
                                     >
                                         All Vacancies
                                     </button>
-                                    <div className="h-px bg-slate-50 my-2 mx-4"></div>
+                                    <div className="h-px bg-slate-800 my-2 mx-4"></div>
                                     {INDUSTRIES.map((industry) => (
                                         <button
                                             key={industry}
                                             onClick={() => handleCategoryClick(industry)}
-                                            className="w-full text-left px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-slate-50 hover:text-teal-600 transition-colors"
+                                            className="w-full text-left px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
                                         >
                                             {industry}
                                         </button>
@@ -67,17 +67,17 @@ const Navbar = () => {
                             </button>
 
                             <div className="absolute top-full right-0 pt-2 hidden group-hover:block animate-in fade-in slide-in-from-top-2 duration-200 z-[110]">
-                                <div className="bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-slate-100 py-3 w-64 overflow-hidden ring-1 ring-slate-900/5">
+                                <div className="bg-slate-900 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-slate-800 py-3 w-64 overflow-hidden ring-1 ring-white/10">
                                     <div className="px-6 py-3">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Email Us</p>
-                                        <a href="mailto:support@globalakjobs.com" className="text-sm font-bold text-slate-700 hover:text-teal-600 transition-colors block">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Email Us</p>
+                                        <a href="mailto:support@globalakjobs.com" className="text-sm font-bold text-slate-300 hover:text-teal-400 transition-colors block">
                                             support@globalakjobs.com
                                         </a>
                                     </div>
-                                    <div className="h-px bg-slate-50 my-1 mx-4"></div>
+                                    <div className="h-px bg-slate-800 my-1 mx-4"></div>
                                     <div className="px-6 py-3">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">WhatsApp</p>
-                                        <a href="https://wa.me/9609991234" target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-slate-700 hover:text-teal-600 transition-colors block">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">WhatsApp</p>
+                                        <a href="https://wa.me/9609991234" target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-slate-300 hover:text-teal-400 transition-colors block">
                                             +960 999-1234
                                         </a>
                                     </div>

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { MOCK_JOBS } from '../constants';
 import { JobStatus } from '../types';
 import FileUpload from '../components/FileUpload';
-import { ArrowLeft, AlertCircle, ShieldCheck, User, Mail, Phone, Lock, MapPin, Clock, Briefcase, DollarSign, List, CheckCircle, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, AlertCircle, ShieldCheck, User, Mail, Phone, Lock, MapPin, Clock, Briefcase, DollarSign, List, CheckCircle, X, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const JobDetailPage = () => {
