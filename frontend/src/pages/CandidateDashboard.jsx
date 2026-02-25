@@ -256,6 +256,16 @@ const CandidateDashboard = () => {
                                     )}
                                     <div className="space-y-3 min-w-[280px]">
                                         <Link
+                                            to="/saved-jobs"
+                                            className="flex items-center justify-between p-4 bg-white rounded-xl hover:bg-teal-50 transition-all group shadow-md"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <Heart className="w-5 h-5 text-teal-700" />
+                                                <span className="font-bold text-slate-800">Saved Jobs</span>
+                                            </div>
+                                            <ArrowRight className="w-4 h-4 text-teal-600 group-hover:translate-x-1 transition-transform" />
+                                        </Link>
+                                        <Link
                                             to="/jobs"
                                             className="flex items-center justify-between p-4 bg-white rounded-xl hover:bg-teal-50 transition-all group shadow-md"
                                         >

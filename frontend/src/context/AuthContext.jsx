@@ -6,40 +6,84 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(false); // No initial loading needed as we don't check session
 
+    // Helper: save user to localStorage WITHOUT the avatar (base64 avatars are too large and blow the quota)
+    const saveToStorage = (userData) => {
+        try {
+            const { avatar, ...storableData } = userData;
+            localStorage.setItem('user', JSON.stringify(storableData));
+        } catch (e) {
+            console.error('localStorage save failed:', e);
+        }
+    };
+
     useEffect(() => {
         // Check for persisted user in localStorage
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
-            setUser(JSON.parse(storedUser));
+            const parsed = JSON.parse(storedUser);
+            // Immediately set user without avatar so the app loads fast
+            setUser(parsed);
+            // Then fetch the avatar (and other fresh data) from DB in the background
+            if (parsed.id) {
+                fetch(`http://localhost:5000/api/profile/${parsed.id}`)
+                    .then(r => r.ok ? r.json() : null)
+                    .then(profile => {
+                        if (profile) {
+                            setUser(prev => prev ? {
+                                ...prev,
+                                avatar: profile.avatar || null,
+                                contact_number: profile.contact_number || prev.contact_number || '',
+                                phone: profile.contact_number || prev.phone || '',
+                                location: profile.location || prev.location || '',
+                                skills: profile.skills || prev.skills || [],
+                                experience_years: profile.experience_years ?? prev.experience_years ?? 0,
+                            } : prev);
+                        }
+                    })
+                    .catch(e => console.warn('Background profile refresh failed:', e));
+            }
         }
         setLoading(false);
     }, []);
 
     const login = async (email, password) => {
         try {
-            // Call our new backend API instead of Supabase
             const response = await fetch('http://localhost:5000/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password, role: 'CANDIDATE' }) // Defaulting role, logic handles errors
+                body: JSON.stringify({ email, password, role: 'CANDIDATE' })
             });
 
             const data = await response.json();
 
             if (response.ok) {
+                // Fetch fresh full profile from DB to get latest avatar, location, phone etc.
+                let fullProfile = null;
+                try {
+                    const profileRes = await fetch(`http://localhost:5000/api/profile/${data.user.id}`);
+                    if (profileRes.ok) fullProfile = await profileRes.json();
+                } catch (e) {
+                    console.warn('Could not fetch full profile after login:', e);
+                }
+
                 const userData = {
                     id: data.user.id,
-                    name: data.user.full_name,
+                    _id: data.user._id,
+                    name: fullProfile?.full_name || data.user.full_name,
+                    full_name: fullProfile?.full_name || data.user.full_name,
                     email: data.user.email,
-                    role: data.user.role.toLowerCase(), // Ensure lowercase for consistent checks
-                    avatar: '',
-                    // Agent-specific fields
-                    agency_name: data.user.agency_name || null,
-                    contact_number: data.user.contact_number || null,
-                    status: data.user.status || 'ACTIVE'
+                    role: data.user.role.toLowerCase(),
+                    avatar: fullProfile?.avatar || data.user.avatar || null,
+                    phone: fullProfile?.contact_number || data.user.contact_number || '',
+                    contact_number: fullProfile?.contact_number || data.user.contact_number || '',
+                    location: fullProfile?.location || data.user.location || '',
+                    skills: fullProfile?.skills || data.user.skills || [],
+                    experience_years: fullProfile?.experience_years ?? data.user.experience_years ?? 0,
+                    agency_name: fullProfile?.agency_name || data.user.agency_name || null,
+                    status: fullProfile?.status || data.user.status || 'ACTIVE'
                 };
                 setUser(userData);
-                localStorage.setItem('user', JSON.stringify(userData));
+                saveToStorage(userData); // Avatar excluded from storage
                 return { error: null };
             } else {
                 return { error: data.message };
@@ -50,15 +94,13 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Kept for Admin/Dev Login bypass
+    // Kept for Admin/Dev/Agent Login
     const mockLogin = (userData) => {
         setUser(userData);
-        localStorage.setItem('user', JSON.stringify(userData));
+        saveToStorage(userData); // Avatar excluded from storage
     };
 
     const signup = async (email, password, name, phone) => {
-        // Placeholder for signup logic interacting with your new API if needed here
-        // For now, pages handle their own signup API calls directly
         return { error: 'Signup logic moved to individual pages.' };
     };
 
@@ -71,7 +113,7 @@ export const AuthProvider = ({ children }) => {
     const updateUser = (updatedData) => {
         setUser((prevUser) => {
             const newUser = { ...prevUser, ...updatedData };
-            localStorage.setItem('user', JSON.stringify(newUser));
+            saveToStorage(newUser); // Avatar excluded from storage
             return newUser;
         });
     };

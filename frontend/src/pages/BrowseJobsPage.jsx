@@ -12,11 +12,14 @@ import {
     Star,
     Clock,
     Briefcase,
-    Share2
+    Share2,
+    Heart,
+    Bookmark
 } from 'lucide-react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useLocation } from 'react-router-dom';
 import JobCard from '../components/JobCard';
 import { MOCK_JOBS, INDUSTRIES } from '../constants';
+import { fetchSavedJobs, toggleSavedJob } from '../api/api';
 import { JobStatus } from '../types';
 
 const BrowseJobsPage = () => {
@@ -24,9 +27,16 @@ const BrowseJobsPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [viewType, setViewType] = useState('list');
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [isSalaryFilterOpen, setIsSalaryFilterOpen] = useState(false);
     const [sortBy, setSortBy] = useState('recent');
     const [isSortOpen, setIsSortOpen] = useState(false);
     const [expandedJobId, setExpandedJobId] = useState(null);
+    const [savedJobIds, setSavedJobIds] = useState(new Set()); // IDs of jobs saved by the user
+    const [toast, setToast] = useState({ show: false, message: '' });
+    
+    // Auth info
+    const location = useLocation();
+    const [user, setUser] = useState(null);
 
     // MongoDB State
     const [jobs, setJobs] = useState([]);
@@ -34,6 +44,18 @@ const BrowseJobsPage = () => {
     const [loading, setLoading] = useState(true);
 
     const selectedIndustry = searchParams.get('category') || 'All';
+    const selectedSalaryLabel = searchParams.get('salary') || 'All Salaries';
+
+    const SALARY_RANGES = useMemo(() => [
+        { label: 'All Salaries', min: 0, max: Infinity },
+        { label: 'Under $1,000', min: 0, max: 1000 },
+        { label: '$1,000 - $5,000', min: 1000, max: 5000 },
+        { label: '$5,000 - $10,000', min: 5000, max: 10000 },
+        { label: '$10,000 - $15,000', min: 10000, max: 15000 },
+        { label: 'Above $15,000', min: 15000, max: Infinity }
+    ], []);
+
+    const selectedSalary = useMemo(() => SALARY_RANGES.find(r => r.label === selectedSalaryLabel) || SALARY_RANGES[0], [selectedSalaryLabel, SALARY_RANGES]);
 
     const clearCategory = () => {
         setSearchParams({});
@@ -48,11 +70,26 @@ const BrowseJobsPage = () => {
                 job.company.toLowerCase().includes(sanitizedSearch);
 
             // Filter by Category check
-            const matchesCategory = selectedIndustry === 'All' || job.industry === selectedIndustry;
+            const matchesCategory = selectedIndustry === 'All' || (job.industry || job.category) === selectedIndustry;
 
-            return matchesSearch && matchesCategory;
+            // Filter by Salary check
+            let matchesSalary = true;
+            if (selectedSalary.label !== 'All Salaries') {
+                const salaryStr = job.salaryRange || job.salary_range || '';
+                const numbers = salaryStr.replace(/,/g, '').match(/\d+/g);
+                if (numbers && numbers.length > 0) {
+                    const minSalary = parseInt(numbers[0], 10);
+                    const maxSalary = numbers.length > 1 ? parseInt(numbers[1], 10) : minSalary;
+                    const avgSalary = (minSalary + maxSalary) / 2;
+                    matchesSalary = avgSalary >= selectedSalary.min && avgSalary <= selectedSalary.max;
+                } else {
+                    matchesSalary = false; // No parseable salary
+                }
+            }
+
+            return matchesSearch && matchesCategory && matchesSalary;
         });
-    }, [searchTerm, jobs, selectedIndustry]);
+    }, [searchTerm, jobs, selectedIndustry, selectedSalary]);
 
     const formatPostedDate = (dateString) => {
         if (!dateString) return 'Recently';
@@ -103,6 +140,54 @@ const BrowseJobsPage = () => {
             scrollContainerRef.current.scrollTop = parseInt(savedScroll, 10);
         }
     }, [filteredJobs]);
+
+    // Handle user session on load
+    useEffect(() => {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+            setUser(JSON.parse(storedUser));
+        }
+    }, [searchParams]);
+
+    // Fetch Saved Jobs for Candidate
+    useEffect(() => {
+        if (user && user.role?.toLowerCase() === 'candidate') {
+            fetchSavedJobs(user.id)
+                .then(savedJobsList => {
+                    const ids = new Set(savedJobsList.map(j => j.id || j._id));
+                    setSavedJobIds(ids);
+                })
+                .catch(err => console.error('Failed to load saved jobs', err));
+        }
+    }, [user]);
+
+    const handleToggleSave = async (e, jobId) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (!user || user.role?.toLowerCase() !== 'candidate') return;
+
+        try {
+            await toggleSavedJob(user.id, jobId);
+            setSavedJobIds(prev => {
+                const next = new Set(prev);
+                const isNowSaved = !next.has(jobId);
+                if (next.has(jobId)) {
+                    next.delete(jobId);
+                } else {
+                    next.add(jobId);
+                }
+                
+                // Show notification
+                setToast({ show: true, message: isNowSaved ? 'Job saved to your dashboard' : 'Job removed from your dashboard' });
+                setTimeout(() => setToast({ show: false, message: '' }), 3000);
+                
+                return next;
+            });
+        } catch (error) {
+            console.error('Failed to toggle saved job:', error);
+        }
+    };
 
     // Fetch Categories from Backend
     useEffect(() => {
@@ -218,7 +303,15 @@ const BrowseJobsPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-100 md:bg-gradient-to-br md:from-slate-100 md:via-slate-50 md:to-slate-200 font-sans text-slate-900 pb-10">
+        <div className="min-h-screen bg-slate-100 md:bg-gradient-to-br md:from-slate-100 md:via-slate-50 md:to-slate-200 font-sans text-slate-900 pb-10 relative">
+
+            {/* Toast Notification */}
+            {toast.show && (
+                <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] bg-slate-900 text-white px-6 py-3 rounded-full text-sm font-bold shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-300 border border-slate-700">
+                    <Bookmark className="w-4 h-4 text-white" fill="white" />
+                    {toast.message}
+                </div>
+            )}
 
             {/* 1. EDITORIAL HERO */}
             <div className="relative bg-white pt-24 pb-10 lg:pt-28 lg:pb-16 px-6 rounded-b-[3rem] lg:rounded-b-[4rem] shadow-sm z-20 overflow-hidden">
@@ -305,46 +398,81 @@ const BrowseJobsPage = () => {
                 <div className="container mx-auto max-w-7xl px-4 md:px-6">
                     <div className="flex flex-col md:flex-row items-start md:items-center justify-between py-4 gap-4 md:gap-0">
 
-                        <div className="relative">
-                            <button
-                                onClick={() => setIsFilterOpen(!isFilterOpen)}
-                                className={`flex items-center gap-3 px-6 py-3 rounded-xl border text-sm font-bold transition-all ${isFilterOpen || selectedIndustry !== 'All' ? 'bg-[#0B1A33] text-white border-[#0B1A33] shadow-lg' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:shadow-sm'}`}
-                            >
-                                <Filter className="w-4 h-4" />
-                                <span>Category: <span className="text-teal-400">{selectedIndustry}</span></span>
-                                <ChevronDown className={`w-4 h-4 transition-transform ${isFilterOpen ? 'rotate-180' : ''}`} />
-                            </button>
+                        <div className="flex flex-wrap items-center gap-3">
+                            <div className="relative">
+                                <button
+                                    onClick={() => setIsFilterOpen(!isFilterOpen)}
+                                    className={`flex items-center gap-3 px-6 py-3 rounded-xl border text-sm font-bold transition-all ${isFilterOpen || selectedIndustry !== 'All' ? 'bg-[#0B1A33] text-white border-[#0B1A33] shadow-lg' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:shadow-sm'}`}
+                                >
+                                    <Filter className="w-4 h-4" />
+                                    <span>Category: <span className="text-teal-400">{selectedIndustry}</span></span>
+                                    <ChevronDown className={`w-4 h-4 transition-transform ${isFilterOpen ? 'rotate-180' : ''}`} />
+                                </button>
 
-                            {isFilterOpen && (
-                                <>
-                                    <div className="fixed inset-0 z-10" onClick={() => setIsFilterOpen(false)}></div>
-                                    <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 z-20 animate-in fade-in zoom-in-95 duration-200">
-                                        <div className="max-h-[300px] overflow-y-auto no-scrollbar space-y-1">
-                                            <button
-                                                onClick={() => {
-                                                    setSearchParams({ ...Object.fromEntries(searchParams), category: 'All' });
-                                                    setIsFilterOpen(false);
-                                                }}
-                                                className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors ${selectedIndustry === 'All' ? 'bg-teal-50 text-teal-700' : 'text-slate-500 hover:bg-slate-50'}`}
-                                            >
-                                                All Categories
-                                            </button>
-                                            {categories.map((ind) => (
+                                {isFilterOpen && (
+                                    <>
+                                        <div className="fixed inset-0 z-10" onClick={() => setIsFilterOpen(false)}></div>
+                                        <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 z-20 animate-in fade-in zoom-in-95 duration-200">
+                                            <div className="max-h-[300px] overflow-y-auto no-scrollbar space-y-1">
                                                 <button
-                                                    key={ind}
                                                     onClick={() => {
-                                                        setSearchParams({ ...Object.fromEntries(searchParams), category: ind });
+                                                        setSearchParams({ ...Object.fromEntries(searchParams), category: 'All' });
                                                         setIsFilterOpen(false);
                                                     }}
-                                                    className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors ${selectedIndustry === ind ? 'bg-teal-50 text-teal-700' : 'text-slate-500 hover:bg-slate-50'}`}
+                                                    className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors ${selectedIndustry === 'All' ? 'bg-teal-50 text-teal-700' : 'text-slate-500 hover:bg-slate-50'}`}
                                                 >
-                                                    {ind}
+                                                    All Categories
                                                 </button>
-                                            ))}
+                                                {categories.map((ind) => (
+                                                    <button
+                                                        key={ind}
+                                                        onClick={() => {
+                                                            setSearchParams({ ...Object.fromEntries(searchParams), category: ind });
+                                                            setIsFilterOpen(false);
+                                                        }}
+                                                        className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors ${selectedIndustry === ind ? 'bg-teal-50 text-teal-700' : 'text-slate-500 hover:bg-slate-50'}`}
+                                                    >
+                                                        {ind}
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
-                                </>
-                            )}
+                                    </>
+                                )}
+                            </div>
+
+                            <div className="relative">
+                                <button
+                                    onClick={() => setIsSalaryFilterOpen(!isSalaryFilterOpen)}
+                                    className={`flex items-center gap-3 px-6 py-3 rounded-xl border text-sm font-bold transition-all ${isSalaryFilterOpen || selectedSalaryLabel !== 'All Salaries' ? 'bg-[#0B1A33] text-white border-[#0B1A33] shadow-lg' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:shadow-sm'}`}
+                                >
+                                    <DollarSign className="w-4 h-4" />
+                                    <span>Salary: <span className="text-teal-400">{selectedSalaryLabel}</span></span>
+                                    <ChevronDown className={`w-4 h-4 transition-transform ${isSalaryFilterOpen ? 'rotate-180' : ''}`} />
+                                </button>
+
+                                {isSalaryFilterOpen && (
+                                    <>
+                                        <div className="fixed inset-0 z-10" onClick={() => setIsSalaryFilterOpen(false)}></div>
+                                        <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 z-20 animate-in fade-in zoom-in-95 duration-200">
+                                            <div className="max-h-[300px] overflow-y-auto no-scrollbar space-y-1">
+                                                {SALARY_RANGES.map((range) => (
+                                                    <button
+                                                        key={range.label}
+                                                        onClick={() => {
+                                                            setSearchParams({ ...Object.fromEntries(searchParams), salary: range.label });
+                                                            setIsSalaryFilterOpen(false);
+                                                        }}
+                                                        className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors ${selectedSalaryLabel === range.label ? 'bg-teal-50 text-teal-700' : 'text-slate-500 hover:bg-slate-50'}`}
+                                                    >
+                                                        {range.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
 
 
@@ -478,6 +606,16 @@ const BrowseJobsPage = () => {
                                                     >
                                                         <Share2 className="w-5 h-5" />
                                                     </button>
+                                                    
+                                                    {user?.role?.toLowerCase() === 'candidate' && (
+                                                        <button
+                                                            onClick={(e) => handleToggleSave(e, job.id || job._id)}
+                                                            className={`md:hidden absolute top-6 right-16 p-2 rounded-full transition-all z-10 ${savedJobIds.has(job.id || job._id) ? 'text-rose-500 bg-rose-50' : 'text-slate-400 bg-slate-50'}`}
+                                                            title="Save Job"
+                                                        >
+                                                            <Bookmark className="w-5 h-5" fill={savedJobIds.has(job.id || job._id) ? "currentColor" : "none"} />
+                                                        </button>
+                                                    )}
 
                                                     <div className="w-16 h-16 rounded-[1.2rem] flex items-center justify-center text-xl font-black border border-slate-100 transition-colors bg-teal-600 text-white md:bg-white md:text-slate-900 md:shadow-md md:group-hover:scale-110 md:group-hover:rotate-3 duration-300">
                                                         {job.company.charAt(0)}
@@ -487,7 +625,7 @@ const BrowseJobsPage = () => {
                                                         <div className="flex flex-wrap items-center gap-y-2 gap-x-4 text-xs font-medium text-slate-500">
                                                             <span className="uppercase tracking-wider font-bold text-slate-400">{job.company}</span>
                                                             <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md"><MapPin className="w-3 h-3" /> {job.location}</span>
-                                                            <span className="flex items-center gap-1 bg-teal-50 text-teal-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase">{job.industry}</span>
+                                                            <span className="flex items-center gap-1 bg-teal-50 text-teal-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase">{job.category || job.industry || 'Full Time'}</span>
                                                             <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md"><Clock className="w-3 h-3" /> {formatPostedDate(job.postedDate)}</span>
                                                         </div>
                                                     </div>
@@ -541,6 +679,16 @@ const BrowseJobsPage = () => {
                                                 >
                                                     <Share2 className="w-5 h-5" />
                                                 </button>
+                                                
+                                                {user?.role?.toLowerCase() === 'candidate' && (
+                                                    <button
+                                                        onClick={(e) => handleToggleSave(e, job.id || job._id)}
+                                                        className={`md:hidden absolute top-6 right-16 p-2 rounded-full transition-all z-10 ${savedJobIds.has(job.id || job._id) ? 'text-rose-500 bg-rose-50' : 'text-slate-400 bg-slate-50'}`}
+                                                        title="Save Job"
+                                                    >
+                                                        <Bookmark className="w-5 h-5" fill={savedJobIds.has(job.id || job._id) ? "currentColor" : "none"} />
+                                                    </button>
+                                                )}
 
                                                 <div className="w-16 h-16 rounded-[1.2rem] flex items-center justify-center text-xl font-black border border-slate-100 transition-colors bg-teal-600 text-white md:bg-white md:text-slate-900 md:shadow-md md:group-hover:scale-110 md:group-hover:rotate-3 duration-300">
                                                     {job.company.charAt(0)}
@@ -550,7 +698,7 @@ const BrowseJobsPage = () => {
                                                     <div className="flex flex-wrap items-center gap-y-2 gap-x-4 text-xs font-medium text-slate-500">
                                                         <span className="uppercase tracking-wider font-bold text-slate-400">{job.company}</span>
                                                         <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md"><MapPin className="w-3 h-3" /> {job.location}</span>
-                                                        <span className="flex items-center gap-1 bg-teal-50 text-teal-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase">{job.industry}</span>
+                                                        <span className="flex items-center gap-1 bg-teal-50 text-teal-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase">{job.category || job.industry || 'Full Time'}</span>
                                                         <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md"><Clock className="w-3 h-3" /> {formatPostedDate(job.postedDate)}</span>
                                                     </div>
                                                 </div>
@@ -566,6 +714,15 @@ const BrowseJobsPage = () => {
                                                         >
                                                             <Share2 className="w-4 h-4" />
                                                         </button>
+                                                        {user?.role?.toLowerCase() === 'candidate' && (
+                                                            <button
+                                                                onClick={(e) => handleToggleSave(e, job.id || job._id)}
+                                                                className={`hidden md:flex p-1.5 rounded-full transition-all ${savedJobIds.has(job.id || job._id) ? 'text-rose-500 hover:bg-rose-50' : 'text-slate-300 hover:text-rose-500 hover:bg-rose-50'}`}
+                                                                title="Save Job"
+                                                            >
+                                                                <Bookmark className="w-4 h-4" fill={savedJobIds.has(job.id || job._id) ? "currentColor" : "none"} />
+                                                            </button>
+                                                        )}
                                                         <span className="text-sm font-black text-slate-900">{job.salaryRange || job.salary_range}</span>
                                                     </div>
                                                     <span className="inline-flex items-center justify-center w-full px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all bg-[#0B1A33] text-white md:bg-white md:border md:border-slate-200 md:text-slate-600 md:group-hover:bg-[#0B1A33] md:group-hover:text-white md:group-hover:border-transparent md:shadow-sm">
@@ -595,7 +752,16 @@ const BrowseJobsPage = () => {
                                                     >
                                                         <Share2 className="w-4 h-4" />
                                                     </button>
-                                                    <span className="px-3 py-1 rounded-full border border-slate-100 bg-slate-50/50 text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:bg-white group-hover:shadow-sm transition-all">{job.type}</span>
+                                                    {user?.role?.toLowerCase() === 'candidate' && (
+                                                        <button
+                                                            onClick={(e) => handleToggleSave(e, job.id || job._id)}
+                                                            className={`p-2 z-10 rounded-full transition-all ${savedJobIds.has(job.id || job._id) ? 'text-rose-500 hover:bg-rose-50' : 'text-slate-400 hover:text-rose-500 hover:bg-rose-50'}`}
+                                                            title="Save Job"
+                                                        >
+                                                            <Bookmark className={`w-4 h-4 ${savedJobIds.has(job.id || job._id) ? 'fill-current' : ''}`} />
+                                                        </button>
+                                                    )}
+                                                    <span className="px-3 py-1 rounded-full border border-slate-100 bg-slate-50/50 text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:bg-white group-hover:shadow-sm transition-all z-10">{job.category || job.type || 'Full Time'}</span>
                                                 </div>
                                             </div>
 

@@ -8,7 +8,8 @@ import {
     AlertTriangle, Globe, ArrowRight, UserPlus,
     MapPin, Award, User,
     AlignLeft, ChevronDown, ShieldCheck,
-    FilePlus, Clock, Settings, Key, Eye, EyeOff
+    FilePlus, Clock, Settings, Key, Eye, EyeOff,
+    Camera, Pencil, Phone, Save
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -16,7 +17,7 @@ import FileUpload from '../components/FileUpload';
 
 const RecruiterDashboard = () => {
     const navigate = useNavigate();
-    const { user, login, logout } = useAuth();
+    const { user, login, logout, updateUser, mockLogin } = useAuth();
 
     const [activeTab, setActiveTab] = useState('overview');
     const [applications, setApplications] = useState(MOCK_APPLICATIONS || []);
@@ -113,6 +114,67 @@ const RecruiterDashboard = () => {
     const [showJobRequestForm, setShowJobRequestForm] = useState(false);
     const [jobRequestSearchTerm, setJobRequestSearchTerm] = useState('');
     const [expandedJobRequestId, setExpandedJobRequestId] = useState(null);
+
+    // Agent Profile Photo State
+    const [agentAvatarPreview, setAgentAvatarPreview] = useState(user?.avatar || null);
+    const [isUploadingAgentAvatar, setIsUploadingAgentAvatar] = useState(false);
+    const agentAvatarInputRef = React.useRef(null);
+
+    // Phone Edit State
+    const [isEditingPhone, setIsEditingPhone] = useState(false);
+    const [editPhoneValue, setEditPhoneValue] = useState(user?.contact_number || user?.phone || '');
+    const [isSavingPhone, setIsSavingPhone] = useState(false);
+
+    // Sync agentAvatarPreview and editPhoneValue when user loads
+    React.useEffect(() => {
+        setAgentAvatarPreview(user?.avatar || null);
+        setEditPhoneValue(user?.contact_number || user?.phone || '');
+    }, [user?.avatar, user?.contact_number]);
+
+    const handleAgentAvatarUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file || !user?.id) return;
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) { alert('Please select a JPG, PNG, or WEBP image.'); return; }
+        if (file.size > 5 * 1024 * 1024) { alert('Image must be smaller than 5MB.'); return; }
+        const formData = new FormData();
+        formData.append('avatar', file);
+        try {
+            setIsUploadingAgentAvatar(true);
+            const res = await fetch(`http://localhost:5000/api/profile/${user.id}/avatar`, { method: 'POST', body: formData });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Upload failed');
+            setAgentAvatarPreview(data.avatar);
+            if (updateUser) updateUser({ avatar: data.avatar });
+        } catch (err) {
+            console.error('Avatar upload error:', err);
+            alert(`Failed to update photo: ${err.message}`);
+        } finally {
+            setIsUploadingAgentAvatar(false);
+            if (agentAvatarInputRef.current) agentAvatarInputRef.current.value = '';
+        }
+    };
+
+    const handlePhoneSave = async () => {
+        if (!user?.id) return;
+        setIsSavingPhone(true);
+        try {
+            const res = await fetch(`http://localhost:5000/api/profile/${user.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contact_number: editPhoneValue })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Failed to save');
+            if (updateUser) updateUser({ contact_number: editPhoneValue, phone: editPhoneValue });
+            setIsEditingPhone(false);
+        } catch (err) {
+            console.error('Phone save error:', err);
+            alert(`Failed to save phone: ${err.message}`);
+        } finally {
+            setIsSavingPhone(false);
+        }
+    };
 
     // Password Reset State
     const [passwordData, setPasswordData] = useState({
@@ -792,22 +854,97 @@ const RecruiterDashboard = () => {
                                         <p className="text-slate-500 text-sm mt-1">Your registered agent information</p>
                                     </div>
                                     <div className="p-8">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                            <div className="space-y-1">
-                                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Full Name</label>
-                                                <p className="text-base font-semibold text-slate-900">{user?.name || 'Not Set'}</p>
+                                        <div className="flex flex-col md:flex-row gap-8 items-start">
+                                            {/* Profile Photo Section */}
+                                            <div className="flex flex-col items-center gap-3 flex-shrink-0">
+                                                <div className="relative group">
+                                                    <div
+                                                        className="w-24 h-24 rounded-full border-4 border-white shadow-lg overflow-hidden bg-gradient-to-br from-teal-500 to-slate-700 flex items-center justify-center cursor-pointer"
+                                                        onClick={() => agentAvatarInputRef.current?.click()}
+                                                    >
+                                                        {agentAvatarPreview
+                                                            ? <img src={agentAvatarPreview} alt="Agent" className="w-full h-full object-cover" />
+                                                            : <span className="text-2xl font-black text-white">{(user?.name || 'A').charAt(0).toUpperCase()}</span>
+                                                        }
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => agentAvatarInputRef.current?.click()}
+                                                        disabled={isUploadingAgentAvatar}
+                                                        className="absolute -bottom-1 -right-1 w-8 h-8 bg-teal-600 hover:bg-teal-700 text-white rounded-full flex items-center justify-center shadow-md transition-all border-2 border-white disabled:opacity-50"
+                                                        title="Change photo"
+                                                    >
+                                                        {isUploadingAgentAvatar
+                                                            ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                            : <Camera className="w-3.5 h-3.5" />
+                                                        }
+                                                    </button>
+                                                </div>
+                                                <p className="text-xs text-slate-400 font-medium">Click to change</p>
+                                                <input
+                                                    ref={agentAvatarInputRef}
+                                                    type="file"
+                                                    accept="image/jpeg,image/png,image/webp"
+                                                    className="hidden"
+                                                    onChange={handleAgentAvatarUpload}
+                                                />
                                             </div>
-                                            <div className="space-y-1">
-                                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Email Address</label>
-                                                <p className="text-base font-semibold text-slate-900">{user?.email || 'Not Set'}</p>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Phone Number</label>
-                                                <p className="text-base font-semibold text-slate-900">{user?.contact_number || 'Not Set'}</p>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Agency Name</label>
-                                                <p className="text-base font-semibold text-teal-700">{user?.agency_name || 'Not Set'}</p>
+
+                                            {/* Details Grid */}
+                                            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                                <div className="space-y-1">
+                                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Full Name</label>
+                                                    <p className="text-base font-semibold text-slate-900">{user?.name || 'Not Set'}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Email Address</label>
+                                                    <p className="text-base font-semibold text-slate-900">{user?.email || 'Not Set'}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                                        Phone Number
+                                                        {!isEditingPhone && (
+                                                            <button type="button" onClick={() => { setIsEditingPhone(true); setEditPhoneValue(user?.contact_number || user?.phone || ''); }} className="text-teal-600 hover:text-teal-800 transition-colors" title="Edit phone">
+                                                                <Pencil className="w-3 h-3" />
+                                                            </button>
+                                                        )}
+                                                    </label>
+                                                    {isEditingPhone ? (
+                                                        <div className="flex items-center gap-2">
+                                                            <input
+                                                                type="tel"
+                                                                value={editPhoneValue}
+                                                                onChange={e => setEditPhoneValue(e.target.value)}
+                                                                className="w-full border border-teal-400 rounded-lg px-3 py-1.5 text-sm font-semibold text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20"
+                                                                autoFocus
+                                                                placeholder="Enter phone number"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={handlePhoneSave}
+                                                                disabled={isSavingPhone}
+                                                                className="w-8 h-8 bg-teal-600 hover:bg-teal-700 text-white rounded-lg flex items-center justify-center flex-shrink-0 disabled:opacity-50 transition-colors"
+                                                                title="Save"
+                                                            >
+                                                                {isSavingPhone ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setIsEditingPhone(false)}
+                                                                className="w-8 h-8 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors"
+                                                                title="Cancel"
+                                                            >
+                                                                <X className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-base font-semibold text-slate-900">{user?.contact_number || user?.phone || 'Not Set'}</p>
+                                                    )}
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Agency Name</label>
+                                                    <p className="text-base font-semibold text-teal-700">{user?.agency_name || 'Not Set'}</p>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

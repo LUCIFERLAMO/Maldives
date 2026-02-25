@@ -12,6 +12,7 @@ import CandidateLoginPage from './pages/CandidateLoginPage';
 import AgentLoginPage from './pages/AgentLoginPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import CandidateDashboard from './pages/CandidateDashboard';
+import SavedJobsPage from './pages/SavedJobsPage';
 
 import ProfilePage from './pages/ProfilePage';
 import SupportPage from './pages/SupportPage';
@@ -92,6 +93,15 @@ const AppContent = () => {
                         element={
                             <ProtectedRoute allowedRoles={['candidate', 'agent']}>
                                 <ProfilePage />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    <Route
+                        path="/saved-jobs"
+                        element={
+                            <ProtectedRoute allowedRoles={['candidate']}>
+                                <SavedJobsPage />
                             </ProtectedRoute>
                         }
                     />

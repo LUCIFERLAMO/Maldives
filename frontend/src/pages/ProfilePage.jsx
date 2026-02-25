@@ -75,7 +75,7 @@ const AGENT_DOCS = [
 ];
 
 
-const CandidateProfile = ({ user, profileData, docs, handleDocAction, handleDeleteItem, setIsResettingPassword, setIsEditingPersonal, previewImage, isAddingDoc, setIsAddingDoc, newDocName, setNewDocName, handleAddDoc, applications }) => {
+const CandidateProfile = ({ user, profileData, docs, handleDocAction, handleDeleteItem, setIsResettingPassword, setIsEditingPersonal, previewImage, isAddingDoc, setIsAddingDoc, newDocName, setNewDocName, handleAddDoc, applications, handleAvatarClick, isUploadingAvatar, isProfileIncomplete }) => {
     return (
         <>
             {/* MALDIVES GRADIENT HEADER (CLIENT ONLY) */}
@@ -94,19 +94,56 @@ const CandidateProfile = ({ user, profileData, docs, handleDocAction, handleDele
             </div>
 
             <div className="container mx-auto max-w-5xl px-4 py-8 space-y-8">
+
+                {/* Profile Completion Banner */}
+                {isProfileIncomplete && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-2xl px-6 py-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                        <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <AlertTriangle className="w-4 h-4 text-amber-600" />
+                            </div>
+                            <div>
+                                <p className="font-bold text-amber-900">Complete Your Profile to Apply for Jobs</p>
+                                <p className="text-amber-700 text-sm mt-0.5">Your name, phone number, and location are required before you can apply. Profile photo and documents are optional.</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => setIsEditingPersonal(true)}
+                            className="flex-shrink-0 px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-sm transition-colors whitespace-nowrap shadow-sm"
+                        >
+                            Fill In Details
+                        </button>
+                    </div>
+                )}
+
                 {/* PERSONAL INFO CARD */}
                 <div className="bg-white rounded-3xl p-1 shadow-sm border border-slate-100">
                     <div className="bg-gradient-to-r from-teal-50/50 to-slate-50/50 rounded-[1.4rem] p-8 flex flex-col md:flex-row gap-8 items-start">
                         {/* Avatar */}
                         <div className="flex-shrink-0">
-                            <div className="w-28 h-28 rounded-full bg-white border-4 border-white shadow-lg overflow-hidden relative group">
-                                {previewImage ? (
+                            <button
+                                onClick={handleAvatarClick}
+                                className="w-28 h-28 rounded-full bg-white border-4 border-white shadow-lg overflow-hidden relative group block cursor-pointer"
+                                title="Click to change profile picture"
+                                disabled={isUploadingAvatar}
+                            >
+                                {isUploadingAvatar ? (
+                                    <div className="w-full h-full flex flex-col items-center justify-center bg-teal-50">
+                                        <div className="w-6 h-6 border-2 border-teal-500 border-t-transparent rounded-full animate-spin mb-1"></div>
+                                        <span className="text-[9px] font-bold text-teal-600">Uploading</span>
+                                    </div>
+                                ) : previewImage ? (
                                     <img src={previewImage} alt="Profile" className="w-full h-full object-cover" />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-slate-300"><User className="w-12 h-12" /></div>
                                 )}
-                                <button onClick={() => setIsEditingPersonal(true)} className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white text-xs font-bold uppercase tracking-wider">Change</button>
-                            </div>
+                                {/* Overlay — always visible on mobile, hover on desktop */}
+                                <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                    <Camera className="w-6 h-6 mb-1" />
+                                    <span className="text-[9px] font-bold uppercase tracking-wider">Change</span>
+                                </div>
+                            </button>
+                            <p className="text-center text-[10px] text-slate-400 font-medium mt-2">Tap to change</p>
                         </div>
                         {/* Details */}
                         <div className="flex-grow space-y-6 w-full">
@@ -133,11 +170,23 @@ const CandidateProfile = ({ user, profileData, docs, handleDocAction, handleDele
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Phone</label>
-                                    <div className="flex items-center gap-2 text-slate-900 font-medium"><Phone className="w-4 h-4 text-slate-400" /> {profileData.phone}</div>
+                                    <div className="flex items-center gap-2 font-medium">
+                                        <Phone className="w-4 h-4 text-slate-400" />
+                                        {profileData.phone
+                                            ? <span className="text-slate-900">{profileData.phone}</span>
+                                            : <span className="text-amber-500 italic text-sm">Not set — click Edit Details</span>
+                                        }
+                                    </div>
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Location</label>
-                                    <div className="flex items-center gap-2 text-slate-900 font-medium"><MapPin className="w-4 h-4 text-slate-400" /> {profileData.location}</div>
+                                    <div className="flex items-center gap-2 font-medium">
+                                        <MapPin className="w-4 h-4 text-slate-400" />
+                                        {profileData.location
+                                            ? <span className="text-slate-900">{profileData.location}</span>
+                                            : <span className="text-amber-500 italic text-sm">Not set — click Edit Details</span>
+                                        }
+                                    </div>
                                 </div>
                             </div>
                             {/* Skills Section */}
@@ -250,7 +299,7 @@ const CandidateProfile = ({ user, profileData, docs, handleDocAction, handleDele
 };
 
 
-const AgentProfile = ({ user, profileData, docs, handleDocAction, setIsResettingPassword, setIsEditingPersonal, previewImage }) => {
+const AgentProfile = ({ user, profileData, docs, handleDocAction, setIsResettingPassword, setIsEditingPersonal, previewImage, handleAvatarClick, isUploadingAvatar }) => {
     // Determine agent status display
     const getAgentStatusBadge = () => {
         const status = user?.status || 'ACTIVE';
@@ -294,9 +343,29 @@ const AgentProfile = ({ user, profileData, docs, handleDocAction, setIsResetting
                 <div className="md:col-span-1 space-y-6">
                     <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                         <div className="flex flex-col items-center text-center pb-6 border-b border-slate-100 mb-6">
-                            <div className="w-24 h-24 rounded-full bg-slate-50 border-2 border-slate-100 flex items-center justify-center text-slate-300 mb-4 overflow-hidden">
-                                {previewImage ? <img src={previewImage} className="w-full h-full object-cover" alt="Agent" /> : <Building2 className="w-10 h-10" />}
-                            </div>
+                            <button
+                                onClick={handleAvatarClick}
+                                className="w-24 h-24 rounded-full bg-slate-50 border-2 border-slate-100 flex items-center justify-center mb-4 overflow-hidden relative group cursor-pointer"
+                                title="Click to change profile picture"
+                                disabled={isUploadingAvatar}
+                            >
+                                {isUploadingAvatar ? (
+                                    <div className="flex flex-col items-center">
+                                        <div className="w-6 h-6 border-2 border-slate-500 border-t-transparent rounded-full animate-spin mb-1"></div>
+                                        <span className="text-[9px] font-bold text-slate-600">Uploading</span>
+                                    </div>
+                                ) : previewImage ? (
+                                    <img src={previewImage} className="w-full h-full object-cover" alt="Agent" />
+                                ) : (
+                                    <Building2 className="w-10 h-10 text-slate-300" />
+                                )}
+                                {/* Camera overlay */}
+                                <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                    <Camera className="w-5 h-5 mb-1" />
+                                    <span className="text-[9px] font-bold uppercase">Change</span>
+                                </div>
+                            </button>
+                            <p className="text-center text-[10px] text-slate-400 font-medium -mt-2 mb-3">Tap to change</p>
                             <h2 className="font-bold text-slate-900 text-lg">{profileData.title}</h2>
                             <p className="text-slate-500 text-xs uppercase tracking-wider font-bold mt-1">Tier 1 Partner</p>
                         </div>
@@ -394,12 +463,12 @@ const ProfilePage = () => {
 
     const [profileData, setProfileData] = useState({
         name: '',
-        title: isAgent ? 'Global Talent Ltd' : '',
+        title: '',
         email: '',
-        phone: isAgent ? '+1 (115) 555-0198' : '+91 98765 43110',
-        location: isAgent ? 'Business District, Mumbai' : 'Mumbai, India',
-        founded: '2016',
-        sectors: isAgent ? 'Hospitality, Healthcare, Construction' : '',
+        phone: '',
+        location: '',
+        founded: '',
+        sectors: '',
         skills: '',
         experience: 0
     });
@@ -417,6 +486,51 @@ const ProfilePage = () => {
     const [applications, setApplications] = useState([]);
     const fileInputRef = React.useRef(null);
     const [uploadingDocId, setUploadingDocId] = useState(null);
+    const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+    const [isProfileIncomplete, setIsProfileIncomplete] = useState(false);
+    const avatarInputRef = React.useRef(null);
+
+    const handleAvatarClick = () => {
+        if (avatarInputRef.current) avatarInputRef.current.click();
+    };
+
+    const handleAvatarUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file || !user?.id) return;
+
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            popup.error('Please select a JPG, PNG, or WEBP image.');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            popup.error('Image must be smaller than 5MB.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('avatar', file);
+
+        try {
+            setIsUploadingAvatar(true);
+            const response = await fetch(`http://localhost:5000/api/profile/${user.id}/avatar`, {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message || 'Upload failed');
+
+            setPreviewImage(data.avatar);
+            if (updateUser) updateUser({ avatar: data.avatar });
+            popup.success('Profile picture updated!');
+        } catch (error) {
+            console.error('Avatar upload error:', error);
+            popup.error(`Failed to update profile picture: ${error.message}`);
+        } finally {
+            setIsUploadingAvatar(false);
+            if (avatarInputRef.current) avatarInputRef.current.value = '';
+        }
+    };
 
     useEffect(() => {
         if (user) {
@@ -424,16 +538,21 @@ const ProfilePage = () => {
             setProfileData(prev => ({
                 ...prev,
                 name: user.name || user.full_name || '',
-                title: user.title || (isAgent ? 'Global Talent Ltd' : ''),
+                title: user.title || '',
                 email: user.email || '',
                 phone: user.phone || user.contact_number || '',
-                location: user.location || (isAgent ? 'Business District, Mumbai' : 'Mumbai, India'),
+                location: user.location || '',
                 role: user.role || '',
                 skills: Array.isArray(user.skills) ? user.skills.join(', ') : (user.skills || ''),
                 experience: user.experience_years || 0
             }));
 
             setPreviewImage(user.avatar || null);
+
+            // Show profile completion banner if essential fields are missing (first login)
+            const essential = [user.name || user.full_name, user.phone || user.contact_number, user.location];
+            const isIncomplete = !isAgent && essential.some(v => !v || String(v).trim() === '');
+            setIsProfileIncomplete(isIncomplete);
 
             // Fetch Documents from MongoDB backend
             async function fetchDocuments() {
@@ -735,6 +854,8 @@ const ProfilePage = () => {
                         setIsResettingPassword={setIsResettingPassword}
                         setIsEditingPersonal={setIsEditingPersonal}
                         previewImage={previewImage}
+                        handleAvatarClick={handleAvatarClick}
+                        isUploadingAvatar={isUploadingAvatar}
                     />
                 ) : (
                     <CandidateProfile
@@ -752,16 +873,28 @@ const ProfilePage = () => {
                         setNewDocName={setNewDocName}
                         handleAddDoc={handleAddDoc}
                         applications={applications}
+                        handleAvatarClick={handleAvatarClick}
+                        isUploadingAvatar={isUploadingAvatar}
+                        isProfileIncomplete={isProfileIncomplete}
                     />
                 )}
 
-                {/* Hidden File Input */}
+                {/* Hidden File Input for Documents */}
                 <input
                     type="file"
                     ref={fileInputRef}
                     onChange={handleFileSelect}
                     className="hidden"
                     accept=".pdf,.jpg,.jpeg,.png"
+                />
+
+                {/* Hidden File Input for Avatar */}
+                <input
+                    type="file"
+                    ref={avatarInputRef}
+                    onChange={handleAvatarUpload}
+                    className="hidden"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
                 />
 
                 {/* MODALS (Shared Logic, Visuals Neutral) */}

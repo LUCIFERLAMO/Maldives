@@ -39,21 +39,34 @@ const AgentLoginPage = () => {
             const data = await response.json();
 
             if (response.ok) {
+                // Fetch fresh full profile from DB to get latest avatar, phone etc.
+                let fullProfile = null;
+                try {
+                    const profileRes = await fetch(`http://localhost:5000/api/profile/${data.user.id}`);
+                    if (profileRes.ok) fullProfile = await profileRes.json();
+                } catch (e) {
+                    console.warn('Could not fetch agent profile after login:', e);
+                }
+
                 const userData = {
-                    id: data.user._id || data.user.id,
-                    name: data.user.full_name,
+                    id: data.user.id || data.user._id,
+                    _id: data.user._id,
+                    name: fullProfile?.full_name || data.user.full_name,
+                    full_name: fullProfile?.full_name || data.user.full_name,
                     email: data.user.email,
                     role: data.user.role,
-                    status: data.user.status || 'ACTIVE',
-                    agency_name: data.user.agency_name || null,
-                    contact_number: data.user.contact_number || null
+                    status: fullProfile?.status || data.user.status || 'ACTIVE',
+                    avatar: fullProfile?.avatar || data.user.avatar || null,
+                    agency_name: fullProfile?.agency_name || data.user.agency_name || null,
+                    contact_number: fullProfile?.contact_number || data.user.contact_number || '',
+                    phone: fullProfile?.contact_number || data.user.contact_number || '',
+                    location: fullProfile?.location || data.user.location || ''
                 };
                 // Use mockLogin to set user in AuthContext state AND localStorage
                 mockLogin(userData);
-                // Use navigate instead of window.location.href to avoid full page reload
                 navigate('/recruiter', { replace: true });
             } else {
-                popup.error("Invalid email or password.");
+                popup.error(data.message || "Invalid email or password.");
             }
         } catch (err) {
             console.error(err);

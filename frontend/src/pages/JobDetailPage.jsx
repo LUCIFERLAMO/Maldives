@@ -3,8 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { MOCK_JOBS } from '../constants';
 import { JobStatus } from '../types';
 import FileUpload from '../components/FileUpload';
-import { ArrowLeft, ArrowRight, AlertCircle, ShieldCheck, User, Mail, Phone, Lock, MapPin, Clock, Briefcase, DollarSign, List, CheckCircle, X, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, AlertCircle, ShieldCheck, User, Mail, Phone, Lock, MapPin, Clock, Briefcase, DollarSign, List, CheckCircle, X, Sparkles, Heart, Bookmark } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { fetchSavedJobs, toggleSavedJob } from '../api/api';
 
 const JobDetailPage = () => {
     const { id } = useParams();
@@ -13,6 +14,10 @@ const JobDetailPage = () => {
     const [job, setJob] = useState(undefined);
     const [error, setError] = useState(null);
     const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+    
+    // Saved Jobs state
+    const [isSaved, setIsSaved] = useState(false);
+    const [toast, setToast] = useState({ show: false, message: '' });
 
     // Form State
     const [formData, setFormData] = useState({
@@ -79,6 +84,39 @@ const JobDetailPage = () => {
         }
     }, [isAuthenticated, user]);
 
+    // Check saved job status
+    useEffect(() => {
+        const checkSavedStatus = async () => {
+            if (isAuthenticated && user?.role?.toLowerCase() === 'candidate' && id) {
+                try {
+                    const savedJobsList = await fetchSavedJobs(user.id);
+                    const isJobSaved = savedJobsList.some(j => j.id === id || j._id === id);
+                    setIsSaved(isJobSaved);
+                } catch (err) {
+                    console.error('Failed to check saved job status', err);
+                }
+            }
+        };
+        checkSavedStatus();
+    }, [isAuthenticated, user, id]);
+
+    const handleToggleSave = async () => {
+        if (!isAuthenticated || user?.role?.toLowerCase() !== 'candidate' || !id) return;
+        
+        try {
+            await toggleSavedJob(user.id, id);
+            
+            const isNowSaved = !isSaved;
+            setIsSaved(isNowSaved);
+            
+            // Show notification
+            setToast({ show: true, message: isNowSaved ? 'Job saved to your dashboard' : 'Job removed from your dashboard' });
+            setTimeout(() => setToast({ show: false, message: '' }), 3000);
+            
+        } catch (error) {
+            console.error('Failed to toggle saved job:', error);
+        }
+    };
 
     /* ---------------- HELPER FUNCTIONS ---------------- */
     const formatPostedDate = (dateString) => {
@@ -205,6 +243,14 @@ const JobDetailPage = () => {
 
     return (
         <div className="min-h-screen bg-slate-50 pb-20 font-sans selection:bg-teal-100 selection:text-teal-900">
+            {/* Toast Notification */}
+            {toast.show && (
+                <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] bg-slate-900 text-white px-6 py-3 rounded-full text-sm font-bold shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-300 border border-slate-700">
+                    <Bookmark className="w-4 h-4 text-white" fill="white" />
+                    {toast.message}
+                </div>
+            )}
+
             {/* 1. NAVIGATION (Simple Back) */}
             <div className="bg-white/80 backdrop-blur-md sticky top-0 z-40 border-b border-slate-100">
                 <div className="container mx-auto max-w-7xl px-6 py-4">
@@ -342,24 +388,49 @@ const JobDetailPage = () => {
                                         <p className="text-center text-slate-500 text-sm font-medium mb-4">
                                             Ready to take the next step?
                                         </p>
-                                        {isAuthenticated ? (
-                                            <button
-                                                onClick={() => setIsApplyModalOpen(true)}
-                                                className="w-full py-5 bg-teal-600 hover:bg-teal-500 text-white rounded-[2rem] font-black text-lg shadow-lg hover:shadow-teal-500/30 hover:-translate-y-1 transition-all flex items-center justify-center gap-3 group"
-                                            >
-                                                Apply Now
-                                                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors">
-                                                    <ArrowRight className="w-4 h-4" />
-                                                </div>
-                                            </button>
-                                        ) : (
-                                            <button
-                                                onClick={() => navigate('/login')}
-                                                className="w-full py-5 bg-slate-900 hover:bg-slate-800 text-white rounded-[2rem] font-black text-lg shadow-lg hover:-translate-y-1 transition-all"
-                                            >
-                                                Login to Apply
-                                            </button>
-                                        )}
+                                        <div className="flex gap-2">
+                                            {isAuthenticated ? (
+                                                <button
+                                                    onClick={() => {
+                                                        // Check if candidate has completed essential profile fields
+                                                        if (user?.role?.toLowerCase() === 'candidate') {
+                                                            const hasName = !!(user.name || user.full_name);
+                                                            const hasPhone = !!(user.phone || user.contact_number);
+                                                            const hasLocation = !!user.location;
+                                                            if (!hasName || !hasPhone || !hasLocation) {
+                                                                alert('Please complete your profile (name, phone, location) before applying. You will be redirected to your profile page.');
+                                                                navigate('/profile');
+                                                                return;
+                                                            }
+                                                        }
+                                                        setIsApplyModalOpen(true);
+                                                    }}
+                                                    className="flex-1 py-5 bg-teal-600 hover:bg-teal-500 text-white rounded-[2rem] font-black text-lg shadow-lg hover:shadow-teal-500/30 hover:-translate-y-1 transition-all flex items-center justify-center gap-3 group"
+                                                >
+                                                    Apply Now
+                                                    <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                                                        <ArrowRight className="w-4 h-4" />
+                                                    </div>
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => navigate('/login')}
+                                                    className="flex-1 py-5 bg-slate-900 hover:bg-slate-800 text-white rounded-[2rem] font-black text-lg shadow-lg hover:-translate-y-1 transition-all"
+                                                >
+                                                    Login to Apply
+                                                </button>
+                                            )}
+                                            
+                                            {user?.role?.toLowerCase() === 'candidate' && (
+                                                <button
+                                                    onClick={handleToggleSave}
+                                                    className={`w-[60px] h-[60px] my-auto flex items-center justify-center rounded-2xl flex-shrink-0 transition-all ${isSaved ? 'bg-rose-50 text-rose-500 border border-rose-100' : 'bg-slate-50 text-slate-400 hover:text-rose-500 hover:bg-rose-50 border border-slate-100 hover:border-rose-100'}`}
+                                                    title={isSaved ? "Unsave Job" : "Save Job"}
+                                                >
+                                                    <Bookmark className="w-6 h-6" fill={isSaved ? "currentColor" : "none"} />
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
                             </div>

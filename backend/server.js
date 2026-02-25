@@ -64,10 +64,15 @@ app.use('/api', notificationRoutes);
 // AUTH ROUTES
 app.post('/api/auth/register', async (req, res) => {
     try {
-        const { email, password, role, name, agencyName, skills, contact, phone } = req.body;
+        let { email, password, role, name, agencyName, skills, contact, phone } = req.body;
+        
+        // Normalize email
+        if (email) {
+            email = email.toLowerCase().trim();
+        }
 
-        // Check if user exists
-        const existingUser = await Profile.findOne({ email });
+        // Check if user exists (case-insensitive)
+        const existingUser = await Profile.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
         if (existingUser) {
             return res.status(400).json({ message: 'User already exists' });
         }
@@ -92,10 +97,15 @@ app.post('/api/auth/register', async (req, res) => {
 
 app.post('/api/auth/login', async (req, res) => {
     try {
-        const { email, password, role } = req.body;
+        let { email, password, role } = req.body;
+        
+        // Normalize email
+        if (email) {
+            email = email.toLowerCase().trim();
+        }
 
-        // Check user
-        const user = await Profile.findOne({ email });
+        // Check user - use case-insensitive regex so emails like 'BCD@gmail.com' still match when user types 'bcd@gmail.com'
+        const user = await Profile.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
         if (!user) {
             return res.status(400).json({ message: 'User not found' });
         }
@@ -124,12 +134,20 @@ app.post('/api/auth/login', async (req, res) => {
             user: {
                 id: user.id,
                 _id: user._id,
+                name: user.full_name,
                 full_name: user.full_name,
                 email: user.email,
                 role: user.role,
                 agency_name: user.agency_name,
+                agencyName: user.agency_name,
                 contact_number: user.contact_number,
-                status: user.status // Include status for approval check
+                phone: user.contact_number,
+                location: user.location || '',
+                skills: user.skills || [],
+                experience_years: user.experience_years || 0,
+                avatar: user.avatar || null,
+                status: user.status,
+                requiresPasswordChange
             },
             requiresPasswordChange
         });
@@ -141,7 +159,12 @@ app.post('/api/auth/login', async (req, res) => {
 // PASSWORD RESET ROUTE (For agents to reset their password with old password verification)
 app.post('/api/auth/reset-password', async (req, res) => {
     try {
-        const { email, oldPassword, newPassword } = req.body;
+        let { email, oldPassword, newPassword } = req.body;
+        
+        // Normalize email
+        if (email) {
+            email = email.toLowerCase().trim();
+        }
 
         // Find user by email
         const user = await Profile.findOne({ email });
@@ -170,11 +193,12 @@ app.post('/api/auth/reset-password', async (req, res) => {
 // PASSWORD CHANGE ROUTE (For first-time agents)
 app.put('/api/auth/change-password', async (req, res) => {
     try {
-        const { email, agentId, newPassword } = req.body;
+        let { email, agentId, newPassword } = req.body;
 
         // Find user by email or agentId
         let user;
         if (email) {
+            email = email.toLowerCase().trim();
             user = await Profile.findOne({ email });
         } else if (agentId) {
             user = await Profile.findById(agentId);
@@ -253,7 +277,7 @@ app.get('/api/profile/:id', async (req, res) => {
 // PUT: Update Profile Details
 app.put('/api/profile/:id', async (req, res) => {
     try {
-        const { full_name, contact_number, skills, experience_years } = req.body;
+        const { full_name, contact_number, location, skills, experience_years } = req.body;
 
         // Find by MongoDB _id or custom id field
         let profile;
@@ -272,9 +296,10 @@ app.put('/api/profile/:id', async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Update fields
+        // Update shared fields
         if (full_name) profile.full_name = full_name;
-        if (contact_number) profile.contact_number = contact_number;
+        if (contact_number !== undefined) profile.contact_number = contact_number;
+        if (location !== undefined) profile.location = location;
 
         // Update Candidate specific fields
         if (profile.role === 'CANDIDATE') {
@@ -287,6 +312,89 @@ app.put('/api/profile/:id', async (req, res) => {
         res.json({ message: 'Profile updated successfully', profile });
     } catch (err) {
         res.status(500).json({ message: 'Failed to update profile', error: err.message });
+    }
+});
+
+// POST: Upload/Update Profile Avatar
+app.post('/api/profile/:id/avatar', upload.single('avatar'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ message: 'No image file uploaded' });
+
+        let profile;
+        const isMongoId = /^[0-9a-fA-F]{24}$/.test(req.params.id);
+        if (isMongoId) profile = await Profile.findById(req.params.id);
+        if (!profile) profile = await Profile.findOne({ id: req.params.id });
+        if (!profile) return res.status(404).json({ message: 'User not found' });
+
+        // Convert to base64 data URL so it can be stored directly in DB and displayed
+        const base64 = req.file.buffer.toString('base64');
+        const mimeType = req.file.mimetype;
+        const dataUrl = `data:${mimeType};base64,${base64}`;
+
+        profile.avatar = dataUrl;
+        await profile.save();
+
+        res.json({ message: 'Avatar updated successfully', avatar: dataUrl });
+    } catch (err) {
+        console.error('Avatar upload error:', err);
+        res.status(500).json({ message: 'Failed to upload avatar', error: err.message });
+    }
+});
+
+// POST: Toggle Saved Job
+app.post('/api/profile/:id/save-job', async (req, res) => {
+    try {
+        const { jobId } = req.body;
+        if (!jobId) return res.status(400).json({ message: 'Job ID is required' });
+
+        let profile;
+        const isMongoId = /^[0-9a-fA-F]{24}$/.test(req.params.id);
+        if (isMongoId) profile = await Profile.findById(req.params.id);
+        if (!profile) profile = await Profile.findOne({ id: req.params.id });
+
+        if (!profile) return res.status(404).json({ message: 'User not found' });
+        
+        // Ensure user is candidate
+        if (profile.role?.toLowerCase() !== 'candidate') return res.status(403).json({ message: 'Only candidates can save jobs' });
+
+        const index = profile.savedJobs.indexOf(jobId);
+        if (index > -1) {
+            profile.savedJobs.splice(index, 1); // Remove
+        } else {
+            profile.savedJobs.push(jobId); // Add
+        }
+
+        await profile.save();
+        res.json({ message: 'Saved jobs updated', savedJobs: profile.savedJobs });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to update saved jobs', error: err.message });
+    }
+});
+
+// GET: Fetch Saved Jobs for Candidate
+app.get('/api/profile/:id/saved-jobs', async (req, res) => {
+    try {
+        let profile;
+        const isMongoId = /^[0-9a-fA-F]{24}$/.test(req.params.id);
+        if (isMongoId) profile = await Profile.findById(req.params.id);
+        if (!profile) profile = await Profile.findOne({ id: req.params.id });
+
+        if (!profile) return res.status(404).json({ message: 'User not found' });
+        if (profile.role?.toLowerCase() !== 'candidate') return res.status(403).json({ message: 'Only candidates have saved jobs' });
+
+        const savedJobsIds = profile.savedJobs || [];
+        const validMongoIds = savedJobsIds.filter(id => /^[0-9a-fA-F]{24}$/.test(id));
+        
+        const jobs = await Job.find({
+            $or: [
+                { id: { $in: savedJobsIds } },
+                { _id: { $in: validMongoIds } }
+            ]
+        });
+
+        res.json(jobs);
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to fetch saved jobs', error: err.message });
     }
 });
 
@@ -401,7 +509,7 @@ app.put('/api/admin/agencies/:id/approve', async (req, res) => {
             // Create new agent profile
             agentProfile = new Profile({
                 full_name: agency.name,
-                email: agency.email,
+                email: agency.email.toLowerCase().trim(),
                 password: tempPassword,
                 temporaryPassword: tempPassword,
                 role: 'AGENT',
@@ -423,11 +531,11 @@ app.put('/api/admin/agencies/:id/approve', async (req, res) => {
             message: 'Agency approved successfully',
             agency: {
                 name: agency.name,
-                email: agency.email,
+                email: agency.email.toLowerCase().trim(),
                 status: agency.status
             },
             agentCredentials: {
-                email: agency.email,
+                email: agency.email.toLowerCase().trim(),
                 temporaryPassword: tempPassword
             }
         });

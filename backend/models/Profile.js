@@ -43,9 +43,23 @@ const profileSchema = new mongoose.Schema({
         type: [String],
         default: []
     },
+    // Profile Avatar
+    avatar: {
+        type: String,  // base64 data URL or URL to hosted image
+        required: false
+    },
     experience_years: {
         type: Number,
         default: 0
+    },
+    location: {
+        type: String,
+        required: false,
+        default: ''
+    },
+    savedJobs: {
+        type: [String], // Array of Job IDs (custom string IDs or ObjectIds as strings)
+        default: []
     },
     // Status
     status: {
