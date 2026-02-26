@@ -100,6 +100,55 @@ export const AuthProvider = ({ children }) => {
         saveToStorage(userData); // Avatar excluded from storage
     };
 
+    // Google OAuth Login (Candidate and Agent portals only)
+    const loginWithGoogle = async (credential, role = 'CANDIDATE') => {
+        try {
+            const response = await fetch('http://localhost:5000/api/auth/google', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ credential, role })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // Fetch fresh full profile from DB to get latest avatar, location etc.
+                let fullProfile = null;
+                try {
+                    const profileRes = await fetch(`http://localhost:5000/api/profile/${data.user.id}`);
+                    if (profileRes.ok) fullProfile = await profileRes.json();
+                } catch (e) {
+                    console.warn('Could not fetch full profile after Google login:', e);
+                }
+
+                const userData = {
+                    id: data.user.id,
+                    _id: data.user._id,
+                    name: fullProfile?.full_name || data.user.full_name,
+                    full_name: fullProfile?.full_name || data.user.full_name,
+                    email: data.user.email,
+                    role: data.user.role.toLowerCase(),
+                    avatar: fullProfile?.avatar || data.user.avatar || null,
+                    phone: fullProfile?.contact_number || data.user.contact_number || '',
+                    contact_number: fullProfile?.contact_number || data.user.contact_number || '',
+                    location: fullProfile?.location || data.user.location || '',
+                    skills: fullProfile?.skills || data.user.skills || [],
+                    experience_years: fullProfile?.experience_years ?? data.user.experience_years ?? 0,
+                    agency_name: fullProfile?.agency_name || data.user.agency_name || null,
+                    status: fullProfile?.status || data.user.status || 'ACTIVE'
+                };
+                setUser(userData);
+                saveToStorage(userData);
+                return { error: null };
+            } else {
+                return { error: data.message };
+            }
+        } catch (error) {
+            console.error('Google login error:', error);
+            return { error: 'Network error. Please try again.' };
+        }
+    };
+
     const signup = async (email, password, name, phone) => {
         return { error: 'Signup logic moved to individual pages.' };
     };
@@ -122,6 +171,7 @@ export const AuthProvider = ({ children }) => {
         <AuthContext.Provider value={{
             user,
             login,
+            loginWithGoogle,
             mockLogin,
             signup,
             logout,

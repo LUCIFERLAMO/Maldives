@@ -82,6 +82,12 @@ const profileSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Agency',
         required: false
+    },
+    // Google OAuth - stores Google's unique user ID (sub) for account linking
+    googleId: {
+        type: String,
+        required: false,
+        default: null
     }
 }, {
     timestamps: true

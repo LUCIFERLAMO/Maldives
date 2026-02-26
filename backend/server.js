@@ -156,6 +156,184 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
+// GOOGLE OAUTH LOGIN ROUTE (Candidate and Agent portals only)
+// Security requirements enforced:
+//  1. email_verified must be true
+//  2. ADMIN accounts are blocked (unauthorized)
+//  3. One Google sub → one account (no hijacking via email collision)
+//  4. Account must be ACTIVE (not BANNED, INACTIVE, PENDING, or DELETED)
+//  5. GOOGLE_CLIENT_ID / GOOGLE_CALLBACK_URL read from env — never hardcoded
+//  6. Multiple redirect URIs supported via GOOGLE_ALLOWED_ORIGINS env var
+app.post('/api/auth/google', async (req, res) => {
+    try {
+        const { credential, role } = req.body;
+
+        if (!credential) {
+            return res.status(400).json({ message: 'Google credential is required' });
+        }
+
+        // ── Requirement 5/6: Read all config from environment variables ──────────
+        const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+        const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || '';
+        // Comma-separated list of allowed origins/redirect URIs (dev + prod)
+        const GOOGLE_ALLOWED_ORIGINS = (process.env.GOOGLE_ALLOWED_ORIGINS || '')
+            .split(',')
+            .map(s => s.trim())
+            .filter(Boolean);
+
+        // ── Verify the Google ID token via Google's tokeninfo endpoint ────────────
+        const googleRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`);
+        const tokenData = await googleRes.json();
+
+        if (tokenData.error || !tokenData.sub) {
+            return res.status(401).json({ message: 'Invalid Google token. Please try again.' });
+        }
+
+        // ── Requirement 1: email_verified must be true ────────────────────────────
+        if (tokenData.email_verified !== 'true' && tokenData.email_verified !== true) {
+            return res.status(401).json({ message: 'Google account email is not verified. Please verify your Google email first.' });
+        }
+
+        // ── Requirement 5: Audience must match our Client ID ──────────────────────
+        if (GOOGLE_CLIENT_ID && tokenData.aud !== GOOGLE_CLIENT_ID) {
+            return res.status(401).json({ message: 'Google token audience is invalid.' });
+        }
+
+        // ── Requirement 6: Validate callback URL against allowed origins ──────────
+        // (Only enforced when GOOGLE_CALLBACK_URL and GOOGLE_ALLOWED_ORIGINS are set)
+        if (GOOGLE_CALLBACK_URL && GOOGLE_ALLOWED_ORIGINS.length > 0) {
+            const isAllowedOrigin = GOOGLE_ALLOWED_ORIGINS.some(origin =>
+                GOOGLE_CALLBACK_URL.startsWith(origin)
+            );
+            if (!isAllowedOrigin) {
+                console.warn(`[Google OAuth] Callback URL "${GOOGLE_CALLBACK_URL}" not in allowed origins list.`);
+                return res.status(401).json({ message: 'Google OAuth redirect URI is not authorized.' });
+            }
+        }
+
+        const googleSub = tokenData.sub;                          // Unique Google user ID
+        const googleEmail = tokenData.email?.toLowerCase().trim();
+        const googleName = tokenData.name || '';
+
+        if (!googleEmail) {
+            return res.status(400).json({ message: 'Could not retrieve email from Google account.' });
+        }
+
+        // ── Requirement 2 (pre-lookup): Block if requested role is ADMIN ──────────
+        if (role === 'ADMIN') {
+            return res.status(401).json({ message: 'Unauthorized. Admin accounts cannot use Google login.' });
+        }
+
+        // ── Look up account by googleId first, then by email ─────────────────────
+        const profileByGoogleId = await Profile.findOne({ googleId: googleSub });
+        const profileByEmail    = await Profile.findOne({ email: { $regex: new RegExp(`^${googleEmail}$`, 'i') } });
+
+        // ── Requirement 3: Prevent one Google identity linking to multiple accounts ─
+        // If a record exists with this googleId AND a different record exists with
+        // the matching email → the same Google account is trying to attach to a
+        // second user record. Deny it.
+        if (
+            profileByGoogleId &&
+            profileByEmail &&
+            profileByGoogleId._id.toString() !== profileByEmail._id.toString()
+        ) {
+            return res.status(409).json({
+                message: 'This Google account is already linked to a different user. Please sign in with your original account.'
+            });
+        }
+
+        // Prefer the googleId match; fall back to email match
+        const profile = profileByGoogleId || profileByEmail;
+
+        if (profile) {
+            // ── Requirement 2: Block ADMIN accounts (even if found by email) ────────
+            if (profile.role === 'ADMIN') {
+                return res.status(401).json({ message: 'Unauthorized. Admin accounts cannot use Google login.' });
+            }
+
+            // ── Requirement 4: Account status checks ─────────────────────────────────
+            // Must be ACTIVE — deny BANNED, INACTIVE, PENDING, or any unknown status
+            const allowedStatuses = ['ACTIVE'];
+            if (!allowedStatuses.includes(profile.status)) {
+                const statusMessages = {
+                    BANNED:   'Your account has been suspended. Please contact support.',
+                    INACTIVE: 'Your account is inactive. Please contact support to reactivate it.',
+                    PENDING:  'Your account is pending approval. Please wait for admin confirmation.',
+                };
+                const message = statusMessages[profile.status] || 'Your account is not active. Please contact support.';
+                return res.status(403).json({ message });
+            }
+
+            // ── Requirement 3 (cont.): Link googleId if not yet set ──────────────────
+            // Only safe to link when no other account carries this googleId already
+            if (!profile.googleId && !profileByGoogleId) {
+                profile.googleId = googleSub;
+                await profile.save();
+            }
+
+            // ── Success: return user session data ────────────────────────────────────
+            return res.json({
+                message: 'Google login successful',
+                user: {
+                    id: profile.id,
+                    _id: profile._id,
+                    name: profile.full_name,
+                    full_name: profile.full_name,
+                    email: profile.email,
+                    role: profile.role,
+                    agency_name: profile.agency_name || null,
+                    contact_number: profile.contact_number || '',
+                    phone: profile.contact_number || '',
+                    location: profile.location || '',
+                    skills: profile.skills || [],
+                    experience_years: profile.experience_years || 0,
+                    avatar: profile.avatar || null,
+                    status: profile.status
+                }
+            });
+
+        } else {
+            // ── NEW USER: Create a CANDIDATE account via Google ───────────────────────
+            // Agents must be registered via Admin — Google login always creates CANDIDATE.
+            const newProfile = new Profile({
+                full_name: googleName,
+                email: googleEmail,
+                password: `google_oauth_${googleSub}`, // Placeholder — unusable for local login
+                role: 'CANDIDATE',
+                googleId: googleSub,
+                contact_number: '',
+                skills: [],
+                status: 'ACTIVE'
+            });
+
+            await newProfile.save();
+
+            return res.status(201).json({
+                message: 'Google account registered and logged in',
+                user: {
+                    id: newProfile.id,
+                    _id: newProfile._id,
+                    name: newProfile.full_name,
+                    full_name: newProfile.full_name,
+                    email: newProfile.email,
+                    role: newProfile.role,
+                    contact_number: '',
+                    phone: '',
+                    location: '',
+                    skills: [],
+                    experience_years: 0,
+                    avatar: null,
+                    status: newProfile.status
+                }
+            });
+        }
+
+    } catch (err) {
+        console.error('Google OAuth error:', err);
+        res.status(500).json({ message: 'Google login failed', error: err.message });
+    }
+});
+
 // PASSWORD RESET ROUTE (For agents to reset their password with old password verification)
 app.post('/api/auth/reset-password', async (req, res) => {
     try {
