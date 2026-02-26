@@ -464,17 +464,19 @@ app.post('/api/auth/forgot-password', async (req, res) => {
         let devMode = false;
 
         if (emailUser && emailPass) {
-            // PRODUCTION — explicit Gmail SMTP port 587 STARTTLS
+            // PRODUCTION — Gmail SMTP port 587 STARTTLS, forced IPv4
+            // family:4 required: Render free tier does not support IPv6 outbound
             transporter = nodemailer.createTransport({
                 host: 'smtp.gmail.com',
                 port: 587,
-                secure: false,          // STARTTLS
+                secure: false,
+                family: 4,
                 auth: { user: emailUser, pass: emailPass },
                 connectionTimeout: 10000,
                 socketTimeout: 15000,
             });
             fromAddress = `"GlobalAKJobs" <${emailUser}>`;
-            console.log(`[Email] Using Gmail SMTP (587) for ${emailUser}`);
+            console.log(`[Email] Using Gmail SMTP (IPv4/587) for ${emailUser}`);
         } else {
             // DEV / NO CREDENTIALS — Ethereal auto-account (no setup needed)
             const testAccount = await nodemailer.createTestAccount();
@@ -523,8 +525,8 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 
         res.json({ message: 'Reset link sent! Please check your inbox (and spam folder).' });
     } catch (err) {
-        console.error('Forgot password error:', err.message || err);
-        res.status(500).json({ message: 'Failed to send reset email: ' + (err.message || 'Unknown error') });
+        console.error('Forgot password error:', err);
+        res.status(500).json({ message: 'Failed to send reset email. Please try again in a moment.' });
     }
 });
 
