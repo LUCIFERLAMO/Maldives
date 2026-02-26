@@ -1,5 +1,5 @@
-import API_BASE_URL from './config.js';
-const API_BASE_URL = '${API_BASE_URL}/api';
+import _API_BASE from './config.js';
+const API_BASE_URL = `${_API_BASE}/api`;
 
 /**
  * Fetch all jobs
