@@ -459,48 +459,6 @@ app.post('/api/auth/forgot-password', async (req, res) => {
         const frontendOrigin = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173').split(',')[0].trim();
         const resetLink = `${frontendOrigin}/reset-password?token=${token}`;
 
-        // ── Configure transporter: Gmail (prod) or Ethereal (dev/fallback) ─────────
-        const emailUser = (process.env.EMAIL_USER || '').trim();
-        const emailPass = (process.env.EMAIL_APP_PASSWORD || '').replace(/\s+/g, ''); // strip spaces
-
-        let transporter;
-        let fromAddress;
-        let devMode = false;
-
-        if (emailUser && emailPass) {
-            // Manually resolve smtp.gmail.com to IPv4 — bypasses Render's OS-level IPv6 DNS
-            let gmailHost = 'smtp.gmail.com';
-            try {
-                const addrs = await dns.promises.resolve4('smtp.gmail.com');
-                if (addrs && addrs.length > 0) gmailHost = addrs[0];
-                console.log(`[Email] Resolved smtp.gmail.com -> ${gmailHost} (IPv4)`);
-            } catch (dnsErr) {
-                console.warn('[Email] DNS resolve4 failed, using hostname fallback:', dnsErr.message);
-            }
-            transporter = nodemailer.createTransport({
-                host: gmailHost,
-                port: 587,
-                secure: false,
-                auth: { user: emailUser, pass: emailPass },
-                tls: { servername: 'smtp.gmail.com' }, // needed when using raw IP
-                connectionTimeout: 10000,
-                socketTimeout: 15000,
-            });
-            fromAddress = `"GlobalAKJobs" <${emailUser}>`;
-            console.log(`[Email] Using Gmail SMTP (IPv4/587) for ${emailUser}`);
-        } else {
-            // DEV / NO CREDENTIALS — Ethereal auto-account (no setup needed)
-            const testAccount = await nodemailer.createTestAccount();
-            transporter = nodemailer.createTransport({
-                host: 'smtp.ethereal.email',
-                port: 587,
-                auth: { user: testAccount.user, pass: testAccount.pass },
-            });
-            fromAddress = '"GlobalAKJobs [TEST]" <noreply@globalaKjobs.dev>';
-            devMode = true;
-            console.log('[Email] No Gmail credentials — using Ethereal test mode');
-        }
-
         const emailHtml = `
             <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; background: #f9f9f9; border-radius: 12px; overflow: hidden;">
                 <div style="background: linear-gradient(135deg, #0f172a, #134e4a); padding: 32px; text-align: center;">
@@ -521,15 +479,45 @@ app.post('/api/auth/forgot-password', async (req, res) => {
             </div>
         `;
 
-        const info = await transporter.sendMail({
-            from: fromAddress,
-            to: user.email,
-            subject: 'Reset Your GlobalAKJobs Password',
-            html: emailHtml,
-        });
+        const resendApiKey = (process.env.RESEND_API_KEY || '').trim();
 
-        if (devMode) {
-            console.log('\n📧 [DEV] Email captured by Ethereal — no real email sent');
+        if (resendApiKey) {
+            // ── PRODUCTION: Resend HTTP API (works on Render — port 443, no SMTP) ──
+            console.log('[Email] Sending via Resend HTTP API');
+            const resendRes = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${resendApiKey}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    from: 'GlobalAKJobs <onboarding@resend.dev>',
+                    to: [user.email],
+                    subject: 'Reset Your GlobalAKJobs Password',
+                    html: emailHtml,
+                }),
+            });
+            const resendData = await resendRes.json();
+            if (!resendRes.ok) {
+                throw new Error(resendData?.message || `Resend API error ${resendRes.status}`);
+            }
+            console.log('[Email] Resend sent OK, id:', resendData.id);
+        } else {
+            // ── DEV / LOCAL: Ethereal auto-account (no setup needed) ─────────────
+            console.log('[Email] No RESEND_API_KEY — using Ethereal dev mode');
+            const testAccount = await nodemailer.createTestAccount();
+            const transporter = nodemailer.createTransport({
+                host: 'smtp.ethereal.email',
+                port: 587,
+                auth: { user: testAccount.user, pass: testAccount.pass },
+            });
+            const info = await transporter.sendMail({
+                from: '"GlobalAKJobs [TEST]" <noreply@globalaKjobs.dev>',
+                to: user.email,
+                subject: 'Reset Your GlobalAKJobs Password',
+                html: emailHtml,
+            });
+            console.log('\n📧 [DEV] Email captured — no real email sent');
             console.log('🔗 Preview  :', nodemailer.getTestMessageUrl(info));
             console.log('🔑 Reset link:', resetLink, '\n');
         }
