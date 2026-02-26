@@ -7,6 +7,10 @@ import dotenv from 'dotenv';
 import multer from 'multer';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
+import dns from 'dns';
+
+// Force all DNS resolution to prefer IPv4 (Render free tier blocks IPv6 outbound)
+dns.setDefaultResultOrder('ipv4first');
 
 // Configure dotenv
 const __filename = fileURLToPath(import.meta.url);
@@ -525,8 +529,9 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 
         res.json({ message: 'Reset link sent! Please check your inbox (and spam folder).' });
     } catch (err) {
-        console.error('Forgot password error:', err);
-        res.status(500).json({ message: 'Failed to send reset email. Please try again in a moment.' });
+        const errMsg = err?.message || String(err);
+        console.error('Forgot password error:', errMsg);
+        res.status(500).json({ message: 'Failed to send reset email: ' + errMsg });
     }
 });
 
