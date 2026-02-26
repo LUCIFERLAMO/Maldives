@@ -28,7 +28,7 @@ const HomePage = () => {
    useEffect(() => {
       async function fetchJobStats() {
          try {
-            const response = await fetch('${API_BASE_URL}/api/jobs');
+            const response = await fetch(`${API_BASE_URL}/api/jobs`);
             const jobs = await response.json();
 
             setJobStats({

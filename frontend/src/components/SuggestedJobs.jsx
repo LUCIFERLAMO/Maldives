@@ -20,7 +20,7 @@ const SuggestedJobs = ({ skills }) => {
 
             try {
                 // Fetch all open jobs
-                const response = await fetch('${API_BASE_URL}/api/jobs?status=OPEN');
+                const response = await fetch(`${API_BASE_URL}/api/jobs?status=OPEN`);
                 const allJobs = await response.json();
 
                 let matches = [];

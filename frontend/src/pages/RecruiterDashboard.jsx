@@ -61,7 +61,7 @@ const RecruiterDashboard = () => {
     useEffect(() => {
         const fetchJobs = async () => {
             try {
-                const response = await fetch('${API_BASE_URL}/api/jobs');
+                const response = await fetch(`${API_BASE_URL}/api/jobs`);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -214,7 +214,7 @@ const RecruiterDashboard = () => {
         setIsResettingPassword(true);
 
         try {
-            const response = await fetch('${API_BASE_URL}/api/auth/reset-password', {
+            const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -292,7 +292,7 @@ const RecruiterDashboard = () => {
             formDataPayload.append('nationality', submissionData.nationality);
             formDataPayload.append('resume', submissionFiles.resume);
 
-            const response = await fetch('${API_BASE_URL}/api/applications', {
+            const response = await fetch(`${API_BASE_URL}/api/applications`, {
                 method: 'POST',
                 body: formDataPayload,
             });
@@ -509,7 +509,7 @@ const RecruiterDashboard = () => {
                                                         vacancies: Number(formData.get('vacancies')) || 1
                                                     };
 
-                                                    const response = await fetch('${API_BASE_URL}/api/job-requests', {
+                                                    const response = await fetch(`${API_BASE_URL}/api/job-requests`, {
                                                         method: 'POST',
                                                         headers: { 'Content-Type': 'application/json' },
                                                         body: JSON.stringify(payload)

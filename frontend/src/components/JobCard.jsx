@@ -46,7 +46,7 @@ const JobCard = ({ job }) => {
         setIsSubscribed(newStatus); // Optimistic UI
 
         try {
-            await fetch('${API_BASE_URL}/api/subscribe', {
+            await fetch(`${API_BASE_URL}/api/subscribe`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user.id, jobId: job.id || job._id })

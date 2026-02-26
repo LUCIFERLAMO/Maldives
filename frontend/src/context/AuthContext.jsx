@@ -49,7 +49,7 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (email, password) => {
         try {
-            const response = await fetch('${API_BASE_URL}/api/auth/login', {
+            const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password, role: 'CANDIDATE' })
@@ -104,7 +104,7 @@ export const AuthProvider = ({ children }) => {
     // Google OAuth Login (Candidate and Agent portals only)
     const loginWithGoogle = async (credential, role = 'CANDIDATE') => {
         try {
-            const response = await fetch('${API_BASE_URL}/api/auth/google', {
+            const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ credential, role })

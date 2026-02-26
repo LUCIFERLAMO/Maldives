@@ -785,7 +785,7 @@ const ProfilePage = () => {
 
         try {
             setIsAddingDoc(true); // Using this as loading indicator temporarily
-            const response = await fetch('${API_BASE_URL}/api/documents', {
+            const response = await fetch(`${API_BASE_URL}/api/documents`, {
                 method: 'POST',
                 body: formData
             });

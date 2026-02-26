@@ -181,7 +181,7 @@ const JobDetailPage = () => {
             }
 
             // Post Application
-            const response = await fetch('${API_BASE_URL}/api/applications', {
+            const response = await fetch(`${API_BASE_URL}/api/applications`, {
                 method: 'POST',
                 body: formDataPayload,
             });

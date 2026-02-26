@@ -194,7 +194,7 @@ const BrowseJobsPage = () => {
     useEffect(() => {
         async function fetchCategories() {
             try {
-                const response = await fetch('${API_BASE_URL}/api/jobs/categories');
+                const response = await fetch(`${API_BASE_URL}/api/jobs/categories`);
                 const data = await response.json();
                 setCategories(data || []);
             } catch (error) {

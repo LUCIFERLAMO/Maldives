@@ -454,7 +454,7 @@ const AdminDashboard = () => {
 
    const fetchApplicationCounts = async () => {
       try {
-         const response = await fetch('${API_BASE_URL}/api/admin/applications');
+         const response = await fetch(`${API_BASE_URL}/api/admin/applications`);
          const data = await response.json();
          const counts = {};
          const formattedApps = [];
@@ -565,7 +565,7 @@ const AdminDashboard = () => {
    const fetchPendingAgents = async (showLoading = false) => {
       if (showLoading) setIsRefreshingAgents(true);
       try {
-         const response = await fetch('${API_BASE_URL}/api/admin/pending-agents');
+         const response = await fetch(`${API_BASE_URL}/api/admin/pending-agents`);
          const data = await response.json();
          setPendingAgencies(data);
       } catch (error) {
@@ -580,14 +580,14 @@ const AdminDashboard = () => {
       if (showLoading) setIsLoadingJobs(true);
       try {
          // 1. Fetch Categories
-         const catRes = await fetch('${API_BASE_URL}/api/jobs/categories');
+         const catRes = await fetch(`${API_BASE_URL}/api/jobs/categories`);
          if (catRes.ok) {
             const catData = await catRes.json();
             setCategories(catData || []);
          }
 
          // 2. Fetch Jobs
-         const jobRes = await fetch('${API_BASE_URL}/api/jobs');
+         const jobRes = await fetch(`${API_BASE_URL}/api/jobs`);
          if (jobRes.ok) {
             const jobData = await jobRes.json();
             const mappedJobs = (jobData || []).map(j => ({
@@ -601,7 +601,7 @@ const AdminDashboard = () => {
          }
 
          // 3. Fetch Applications
-         const appRes = await fetch('${API_BASE_URL}/api/admin/applications');
+         const appRes = await fetch(`${API_BASE_URL}/api/admin/applications`);
          if (appRes.ok) {
             const appData = await appRes.json();
             if (appData && appData.length > 0) {
@@ -897,7 +897,7 @@ const AdminDashboard = () => {
    const fetchVisibilityRequests = async () => {
       setIsLoadingVisibilityRequests(true);
       try {
-         const response = await fetch('${API_BASE_URL}/api/admin/visibility-requests');
+         const response = await fetch(`${API_BASE_URL}/api/admin/visibility-requests`);
          const data = await response.json();
          if (response.ok) {
             setVisibilityRequests(data);
@@ -1401,7 +1401,7 @@ const AdminDashboard = () => {
 
    const fetchCategories = async () => {
       try {
-         const res = await fetch('${API_BASE_URL}/api/jobs/categories');
+         const res = await fetch(`${API_BASE_URL}/api/jobs/categories`);
          if (res.ok) {
             const data = await res.json();
             setCategories(data || []);
@@ -1425,7 +1425,7 @@ const AdminDashboard = () => {
       }
 
       try {
-         const res = await fetch('${API_BASE_URL}/api/jobs/categories', {
+         const res = await fetch(`${API_BASE_URL}/api/jobs/categories`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: newCategoryName })
