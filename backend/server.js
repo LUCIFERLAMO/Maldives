@@ -524,9 +524,8 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 
         res.json({ message: 'Reset link sent! Please check your inbox (and spam folder).' });
     } catch (err) {
-        const errMsg = err?.message || String(err);
-        console.error('Forgot password error:', errMsg);
-        res.status(500).json({ message: 'Failed to send reset email: ' + errMsg });
+        console.error('Forgot password error:', err?.message || err);
+        res.status(500).json({ message: 'Failed to send reset email. Please try again later.' });
     }
 });
 
