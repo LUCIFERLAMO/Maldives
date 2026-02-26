@@ -1,3 +1,4 @@
+import API_BASE_URL from '../api/config.js';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, User, ArrowRight, ArrowLeft, Eye, EyeOff } from 'lucide-react';
@@ -26,7 +27,7 @@ const AgentLoginPage = () => {
         e.preventDefault();
 
         try {
-            const response = await fetch('http://localhost:5000/api/auth/login', {
+            const response = await fetch('${API_BASE_URL}/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -42,7 +43,7 @@ const AgentLoginPage = () => {
                 // Fetch fresh full profile from DB to get latest avatar, phone etc.
                 let fullProfile = null;
                 try {
-                    const profileRes = await fetch(`http://localhost:5000/api/profile/${data.user.id}`);
+                    const profileRes = await fetch(`${API_BASE_URL}/api/profile/${data.user.id}`);
                     if (profileRes.ok) fullProfile = await profileRes.json();
                 } catch (e) {
                     console.warn('Could not fetch agent profile after login:', e);

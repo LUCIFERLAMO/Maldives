@@ -1,3 +1,4 @@
+import API_BASE_URL from '../api/config.js';
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Briefcase, MapPin, Sparkles, ChevronRight } from 'lucide-react';
@@ -19,7 +20,7 @@ const SuggestedJobs = ({ skills }) => {
 
             try {
                 // Fetch all open jobs
-                const response = await fetch('http://localhost:5000/api/jobs?status=OPEN');
+                const response = await fetch('${API_BASE_URL}/api/jobs?status=OPEN');
                 const allJobs = await response.json();
 
                 let matches = [];

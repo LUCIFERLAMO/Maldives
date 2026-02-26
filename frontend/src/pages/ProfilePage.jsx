@@ -1,3 +1,4 @@
+import API_BASE_URL from '../api/config.js';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { usePopup } from '../context/PopupContext';
@@ -513,7 +514,7 @@ const ProfilePage = () => {
 
         try {
             setIsUploadingAvatar(true);
-            const response = await fetch(`http://localhost:5000/api/profile/${user.id}/avatar`, {
+            const response = await fetch(`${API_BASE_URL}/api/profile/${user.id}/avatar`, {
                 method: 'POST',
                 body: formData
             });
@@ -557,7 +558,7 @@ const ProfilePage = () => {
             // Fetch Documents from MongoDB backend
             async function fetchDocuments() {
                 try {
-                    const response = await fetch(`http://localhost:5000/api/documents?user_id=${user.id}`);
+                    const response = await fetch(`${API_BASE_URL}/api/documents?user_id=${user.id}`);
                     if (response.ok) {
                         const data = await response.json();
                         // Ensure data is array
@@ -608,7 +609,7 @@ const ProfilePage = () => {
             if (!isAgent) {
                 async function fetchApplications() {
                     try {
-                        const response = await fetch(`http://localhost:5000/api/applications/candidate/${user.email}`);
+                        const response = await fetch(`${API_BASE_URL}/api/applications/candidate/${user.email}`);
                         if (response.ok) {
                             const data = await response.json();
                             // Ensure data is array
@@ -634,7 +635,7 @@ const ProfilePage = () => {
     const handlePersonalSubmit = async (e) => {
         e.preventDefault();
         try {
-            const response = await fetch(`http://localhost:5000/api/profile/${user.id}`, {
+            const response = await fetch(`${API_BASE_URL}/api/profile/${user.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -686,7 +687,7 @@ const ProfilePage = () => {
         }
 
         try {
-            const response = await fetch(`http://localhost:5000/api/auth/password`, {
+            const response = await fetch(`${API_BASE_URL}/api/auth/password`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -737,7 +738,7 @@ const ProfilePage = () => {
         // In merge: return { ...defDoc, ...found }; -> found.id overwrites defDoc.id
 
         try {
-            const response = await fetch(`http://localhost:5000/api/documents/${id}`, {
+            const response = await fetch(`${API_BASE_URL}/api/documents/${id}`, {
                 method: 'DELETE'
             });
 
@@ -784,7 +785,7 @@ const ProfilePage = () => {
 
         try {
             setIsAddingDoc(true); // Using this as loading indicator temporarily
-            const response = await fetch('http://localhost:5000/api/documents', {
+            const response = await fetch('${API_BASE_URL}/api/documents', {
                 method: 'POST',
                 body: formData
             });

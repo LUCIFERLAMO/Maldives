@@ -1,3 +1,4 @@
+import API_BASE_URL from '../api/config.js';
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { MapPin, DollarSign, Clock, Heart, Briefcase, ChevronRight, Share2, Check, Bell, Bookmark } from 'lucide-react';
@@ -21,7 +22,7 @@ const JobCard = ({ job }) => {
 
     React.useEffect(() => {
         if (isClosed && user?.id) {
-            fetch(`http://localhost:5000/api/subscription/check?userId=${user.id}&jobId=${job.id || job._id}`)
+            fetch(`${API_BASE_URL}/api/subscription/check?userId=${user.id}&jobId=${job.id || job._id}`)
                 .then(res => res.json())
                 .then(data => setIsSubscribed(data.subscribed))
                 .catch(err => console.error("Error checking subscription:", err));
@@ -45,7 +46,7 @@ const JobCard = ({ job }) => {
         setIsSubscribed(newStatus); // Optimistic UI
 
         try {
-            await fetch('http://localhost:5000/api/subscribe', {
+            await fetch('${API_BASE_URL}/api/subscribe', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user.id, jobId: job.id || job._id })

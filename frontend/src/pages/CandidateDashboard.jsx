@@ -1,3 +1,4 @@
+import API_BASE_URL from '../api/config.js';
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { INDUSTRIES } from '../constants';
@@ -69,7 +70,7 @@ const CandidateDashboard = () => {
             }
 
             try {
-                const response = await fetch(`http://localhost:5000/api/applications/candidate/${encodeURIComponent(user.email)}`);
+                const response = await fetch(`${API_BASE_URL}/api/applications/candidate/${encodeURIComponent(user.email)}`);
                 const data = await response.json();
 
                 const transformedApps = (data || []).map(app => ({
@@ -102,7 +103,7 @@ const CandidateDashboard = () => {
     // Fetch Notifications
     useEffect(() => {
         if (user?.id) {
-            fetch(`http://localhost:5000/api/notifications/${user.id}`)
+            fetch(`${API_BASE_URL}/api/notifications/${user.id}`)
                 .then(res => res.json())
                 .then(data => {
                     setNotifications(data.notifications || []);

@@ -1,3 +1,4 @@
+import API_BASE_URL from '../api/config.js';
 import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
 import {
     Search,
@@ -193,7 +194,7 @@ const BrowseJobsPage = () => {
     useEffect(() => {
         async function fetchCategories() {
             try {
-                const response = await fetch('http://localhost:5000/api/jobs/categories');
+                const response = await fetch('${API_BASE_URL}/api/jobs/categories');
                 const data = await response.json();
                 setCategories(data || []);
             } catch (error) {
@@ -220,7 +221,7 @@ const BrowseJobsPage = () => {
                 const status = sortBy === 'closed' ? 'CLOSED' : 'OPEN';
                 query.append('status', status);
 
-                const response = await fetch(`http://localhost:5000/api/jobs?${query.toString()}`);
+                const response = await fetch(`${API_BASE_URL}/api/jobs?${query.toString()}`);
                 const data = await response.json();
 
                 // Map database fields to frontend structure

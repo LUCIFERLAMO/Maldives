@@ -1,3 +1,4 @@
+import API_BASE_URL from '../api/config.js';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MOCK_JOBS } from '../constants';
@@ -42,7 +43,7 @@ const JobDetailPage = () => {
             setJob(undefined);
             setError(null);
             try {
-                const response = await fetch(`http://localhost:5000/api/jobs/${id}`);
+                const response = await fetch(`${API_BASE_URL}/api/jobs/${id}`);
                 if (!response.ok) {
                     throw new Error('API Error');
                 }
@@ -180,7 +181,7 @@ const JobDetailPage = () => {
             }
 
             // Post Application
-            const response = await fetch('http://localhost:5000/api/applications', {
+            const response = await fetch('${API_BASE_URL}/api/applications', {
                 method: 'POST',
                 body: formDataPayload,
             });

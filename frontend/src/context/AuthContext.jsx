@@ -1,3 +1,4 @@
+import API_BASE_URL from '../api/config.js';
 import React, { createContext, useState, useContext, useEffect } from 'react';
 
 const AuthContext = createContext(undefined);
@@ -25,7 +26,7 @@ export const AuthProvider = ({ children }) => {
             setUser(parsed);
             // Then fetch the avatar (and other fresh data) from DB in the background
             if (parsed.id) {
-                fetch(`http://localhost:5000/api/profile/${parsed.id}`)
+                fetch(`${API_BASE_URL}/api/profile/${parsed.id}`)
                     .then(r => r.ok ? r.json() : null)
                     .then(profile => {
                         if (profile) {
@@ -48,7 +49,7 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (email, password) => {
         try {
-            const response = await fetch('http://localhost:5000/api/auth/login', {
+            const response = await fetch('${API_BASE_URL}/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password, role: 'CANDIDATE' })
@@ -60,7 +61,7 @@ export const AuthProvider = ({ children }) => {
                 // Fetch fresh full profile from DB to get latest avatar, location, phone etc.
                 let fullProfile = null;
                 try {
-                    const profileRes = await fetch(`http://localhost:5000/api/profile/${data.user.id}`);
+                    const profileRes = await fetch(`${API_BASE_URL}/api/profile/${data.user.id}`);
                     if (profileRes.ok) fullProfile = await profileRes.json();
                 } catch (e) {
                     console.warn('Could not fetch full profile after login:', e);
@@ -103,7 +104,7 @@ export const AuthProvider = ({ children }) => {
     // Google OAuth Login (Candidate and Agent portals only)
     const loginWithGoogle = async (credential, role = 'CANDIDATE') => {
         try {
-            const response = await fetch('http://localhost:5000/api/auth/google', {
+            const response = await fetch('${API_BASE_URL}/api/auth/google', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ credential, role })
@@ -115,7 +116,7 @@ export const AuthProvider = ({ children }) => {
                 // Fetch fresh full profile from DB to get latest avatar, location etc.
                 let fullProfile = null;
                 try {
-                    const profileRes = await fetch(`http://localhost:5000/api/profile/${data.user.id}`);
+                    const profileRes = await fetch(`${API_BASE_URL}/api/profile/${data.user.id}`);
                     if (profileRes.ok) fullProfile = await profileRes.json();
                 } catch (e) {
                     console.warn('Could not fetch full profile after Google login:', e);

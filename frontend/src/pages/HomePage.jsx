@@ -1,3 +1,4 @@
+import API_BASE_URL from '../api/config.js';
 import React, { useState, useEffect } from 'react';
 import {
    ArrowRight,
@@ -27,7 +28,7 @@ const HomePage = () => {
    useEffect(() => {
       async function fetchJobStats() {
          try {
-            const response = await fetch('http://localhost:5000/api/jobs');
+            const response = await fetch('${API_BASE_URL}/api/jobs');
             const jobs = await response.json();
 
             setJobStats({

@@ -1,3 +1,4 @@
+import API_BASE_URL from '../api/config.js';
 import React, { useState, useMemo, useEffect } from 'react';
 import { ApplicationStatus, JobStatus } from '../types';
 import { MOCK_APPLICATIONS, MOCK_JOBS } from '../constants';
@@ -38,7 +39,7 @@ const RecruiterDashboard = () => {
 
         const fetchPipeline = async () => {
             try {
-                const response = await fetch(`http://localhost:5000/api/applications?agent_id=${user.id}`);
+                const response = await fetch(`${API_BASE_URL}/api/applications?agent_id=${user.id}`);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -60,7 +61,7 @@ const RecruiterDashboard = () => {
     useEffect(() => {
         const fetchJobs = async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/jobs');
+                const response = await fetch('${API_BASE_URL}/api/jobs');
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -97,7 +98,7 @@ const RecruiterDashboard = () => {
         const fetchRequests = async () => {
             try {
                 // CHANGED: Use the path parameter endpoint as requested
-                const response = await fetch(`http://localhost:5000/api/job-requests/agent/${user.id}`);
+                const response = await fetch(`${API_BASE_URL}/api/job-requests/agent/${user.id}`);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -141,7 +142,7 @@ const RecruiterDashboard = () => {
         formData.append('avatar', file);
         try {
             setIsUploadingAgentAvatar(true);
-            const res = await fetch(`http://localhost:5000/api/profile/${user.id}/avatar`, { method: 'POST', body: formData });
+            const res = await fetch(`${API_BASE_URL}/api/profile/${user.id}/avatar`, { method: 'POST', body: formData });
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Upload failed');
             setAgentAvatarPreview(data.avatar);
@@ -159,7 +160,7 @@ const RecruiterDashboard = () => {
         if (!user?.id) return;
         setIsSavingPhone(true);
         try {
-            const res = await fetch(`http://localhost:5000/api/profile/${user.id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/profile/${user.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ contact_number: editPhoneValue })
@@ -213,7 +214,7 @@ const RecruiterDashboard = () => {
         setIsResettingPassword(true);
 
         try {
-            const response = await fetch('http://localhost:5000/api/auth/reset-password', {
+            const response = await fetch('${API_BASE_URL}/api/auth/reset-password', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -291,7 +292,7 @@ const RecruiterDashboard = () => {
             formDataPayload.append('nationality', submissionData.nationality);
             formDataPayload.append('resume', submissionFiles.resume);
 
-            const response = await fetch('http://localhost:5000/api/applications', {
+            const response = await fetch('${API_BASE_URL}/api/applications', {
                 method: 'POST',
                 body: formDataPayload,
             });
@@ -305,7 +306,7 @@ const RecruiterDashboard = () => {
             setSelectedJobForSubmission(null);
 
             // Refresh Pipeline
-            const pipelineResponse = await fetch(`http://localhost:5000/api/applications?agent_id=${user.id}`);
+            const pipelineResponse = await fetch(`${API_BASE_URL}/api/applications?agent_id=${user.id}`);
             const pipelineData = await pipelineResponse.json();
             if (pipelineData) setPipelineData(Array.isArray(pipelineData) ? pipelineData : []);
 
@@ -322,7 +323,7 @@ const RecruiterDashboard = () => {
 
         const fetchAgentProfile = async () => {
             try {
-                const response = await fetch(`http://localhost:5000/api/agents/${user.id}`);
+                const response = await fetch(`${API_BASE_URL}/api/agents/${user.id}`);
                 if (response.ok) {
                     const data = await response.json();
                     setAgentProfile(data);
@@ -508,7 +509,7 @@ const RecruiterDashboard = () => {
                                                         vacancies: Number(formData.get('vacancies')) || 1
                                                     };
 
-                                                    const response = await fetch('http://localhost:5000/api/job-requests', {
+                                                    const response = await fetch('${API_BASE_URL}/api/job-requests', {
                                                         method: 'POST',
                                                         headers: { 'Content-Type': 'application/json' },
                                                         body: JSON.stringify(payload)
@@ -522,7 +523,7 @@ const RecruiterDashboard = () => {
                                                     setShowJobRequestForm(false);
 
                                                     // Refresh list
-                                                    const refreshResponse = await fetch(`http://localhost:5000/api/job-requests/agent/${user.id}`);
+                                                    const refreshResponse = await fetch(`${API_BASE_URL}/api/job-requests/agent/${user.id}`);
                                                     const data = await refreshResponse.json();
                                                     if (data) setJobRequests(Array.isArray(data) ? data : []);
 
