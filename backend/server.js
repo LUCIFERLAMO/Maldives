@@ -455,42 +455,71 @@ app.post('/api/auth/forgot-password', async (req, res) => {
         const frontendOrigin = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173').split(',')[0].trim();
         const resetLink = `${frontendOrigin}/reset-password?token=${token}`;
 
-        // ── Send email via Gmail SMTP with timeouts to prevent hanging ────────────
-        const transporter = nodemailer.createTransport({
-            service: 'gmail',
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_APP_PASSWORD,
-            },
-            connectionTimeout: 8000,  // fail fast if Gmail is unreachable (8s)
-            greetingTimeout: 8000,
-            socketTimeout: 10000,
-        });
+        // ── Configure transporter: Gmail (prod) or Ethereal (dev/fallback) ─────────
+        const emailUser = (process.env.EMAIL_USER || '').trim();
+        const emailPass = (process.env.EMAIL_APP_PASSWORD || '').replace(/\s+/g, ''); // strip spaces
 
-        await transporter.sendMail({
-            from: `"GlobalAKJobs" <${process.env.EMAIL_USER}>`,
+        let transporter;
+        let fromAddress;
+        let devMode = false;
+
+        if (emailUser && emailPass) {
+            // PRODUCTION — explicit Gmail SMTP (more reliable than service shorthand)
+            transporter = nodemailer.createTransport({
+                host: 'smtp.gmail.com',
+                port: 465,
+                secure: true,           // SSL
+                auth: { user: emailUser, pass: emailPass },
+                connectionTimeout: 10000,
+                socketTimeout: 15000,
+            });
+            fromAddress = `"GlobalAKJobs" <${emailUser}>`;
+            console.log(`[Email] Using Gmail SMTP for ${emailUser}`);
+        } else {
+            // DEV / NO CREDENTIALS — Ethereal auto-account (no setup needed)
+            const testAccount = await nodemailer.createTestAccount();
+            transporter = nodemailer.createTransport({
+                host: 'smtp.ethereal.email',
+                port: 587,
+                auth: { user: testAccount.user, pass: testAccount.pass },
+            });
+            fromAddress = '"GlobalAKJobs [TEST]" <noreply@globalaKjobs.dev>';
+            devMode = true;
+            console.log('[Email] No Gmail credentials — using Ethereal test mode');
+        }
+
+        const emailHtml = `
+            <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; background: #f9f9f9; border-radius: 12px; overflow: hidden;">
+                <div style="background: linear-gradient(135deg, #0f172a, #134e4a); padding: 32px; text-align: center;">
+                    <h1 style="color: #5eead4; margin: 0; font-size: 24px;">GlobalAKJobs</h1>
+                    <p style="color: #99f6e4; margin: 8px 0 0; font-size: 14px;">Island Jobs Simplified</p>
+                </div>
+                <div style="padding: 32px;">
+                    <h2 style="color: #0f172a; margin-top: 0;">Reset Your Password</h2>
+                    <p style="color: #475569; line-height: 1.6;">Hi ${user.full_name},</p>
+                    <p style="color: #475569; line-height: 1.6;">We received a request to reset the password for your account. Click the button below to set a new password. This link is valid for <strong>15 minutes</strong>.</p>
+                    <div style="text-align: center; margin: 32px 0;">
+                        <a href="${resetLink}" style="background: #0d9488; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block;">Reset Password</a>
+                    </div>
+                    <p style="color: #94a3b8; font-size: 13px;">If you didn't request this, you can safely ignore this email. Your password won't change.</p>
+                    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
+                    <p style="color: #94a3b8; font-size: 12px; text-align: center;">GlobalAKJobs · Maldives Career Platform</p>
+                </div>
+            </div>
+        `;
+
+        const info = await transporter.sendMail({
+            from: fromAddress,
             to: user.email,
             subject: 'Reset Your GlobalAKJobs Password',
-            html: `
-                <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; background: #f9f9f9; border-radius: 12px; overflow: hidden;">
-                    <div style="background: linear-gradient(135deg, #0f172a, #134e4a); padding: 32px; text-align: center;">
-                        <h1 style="color: #5eead4; margin: 0; font-size: 24px;">GlobalAKJobs</h1>
-                        <p style="color: #99f6e4; margin: 8px 0 0; font-size: 14px;">Island Jobs Simplified</p>
-                    </div>
-                    <div style="padding: 32px;">
-                        <h2 style="color: #0f172a; margin-top: 0;">Reset Your Password</h2>
-                        <p style="color: #475569; line-height: 1.6;">Hi ${user.full_name},</p>
-                        <p style="color: #475569; line-height: 1.6;">We received a request to reset the password for your account. Click the button below to set a new password. This link is valid for <strong>15 minutes</strong>.</p>
-                        <div style="text-align: center; margin: 32px 0;">
-                            <a href="${resetLink}" style="background: #0d9488; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block;">Reset Password</a>
-                        </div>
-                        <p style="color: #94a3b8; font-size: 13px;">If you didn't request this, you can safely ignore this email. Your password won't change.</p>
-                        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
-                        <p style="color: #94a3b8; font-size: 12px; text-align: center;">GlobalAKJobs · Maldives Career Platform</p>
-                    </div>
-                </div>
-            `,
+            html: emailHtml,
         });
+
+        if (devMode) {
+            console.log('\n📧 [DEV] Email captured by Ethereal — no real email sent');
+            console.log('🔗 Preview  :', nodemailer.getTestMessageUrl(info));
+            console.log('🔑 Reset link:', resetLink, '\n');
+        }
 
         res.json({ message: 'Reset link sent! Please check your inbox (and spam folder).' });
     } catch (err) {
