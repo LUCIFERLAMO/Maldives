@@ -423,47 +423,47 @@ app.post('/api/auth/forgot-password', async (req, res) => {
         if (!email) return res.status(400).json({ message: 'Email is required.' });
         email = email.toLowerCase().trim();
 
-        // ── Check email env vars are configured ───────────────────────────────
+        // ── Check server email config is set ─────────────────────────────────────
         if (!process.env.EMAIL_USER || !process.env.EMAIL_APP_PASSWORD) {
-            console.error('Forgot-password: EMAIL_USER or EMAIL_APP_PASSWORD not set in environment.');
-            return res.status(503).json({ message: 'Email service is not configured yet. Please contact support.' });
+            console.error('Forgot password: EMAIL_USER or EMAIL_APP_PASSWORD not configured.');
+            return res.status(503).json({ message: 'Password reset via email is not configured yet. Please contact support.' });
         }
 
-        // ── Find user — MUST exist in the database ────────────────────────────
+        // ── Look up user — return real error if not found ────────────────────────
         const user = await Profile.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
         if (!user) {
             return res.status(404).json({ message: 'No account found with that email address. Please check and try again.' });
         }
 
-        // ── Only CANDIDATE accounts can reset password via email ───────────────
+        // ── Only CANDIDATE accounts can use this flow ────────────────────────────
         if (user.role !== 'CANDIDATE') {
-            return res.status(403).json({ message: 'Password reset by email is only available for candidate accounts.' });
+            return res.status(403).json({ message: 'Password reset via email is only available for candidate accounts.' });
         }
 
-        // ── Block BANNED accounts ──────────────────────────────────────────────
-        if (user.status === 'BANNED') {
-            return res.status(403).json({ message: 'Your account has been suspended. Please contact support.' });
+        // ── Account must be ACTIVE ────────────────────────────────────────────────
+        if (user.status !== 'ACTIVE') {
+            return res.status(403).json({ message: 'Your account is not active. Please contact support.' });
         }
 
-        // ── Generate secure random token, valid for 15 minutes ────────────────
+        // ── Generate secure random token ──────────────────────────────────────────
         const token = crypto.randomBytes(32).toString('hex');
         user.resetPasswordToken = token;
-        user.resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000);
+        user.resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
         await user.save();
 
-        // ── Build reset link ──────────────────────────────────────────────────
+        // ── Build reset link ──────────────────────────────────────────────────────
         const frontendOrigin = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173').split(',')[0].trim();
         const resetLink = `${frontendOrigin}/reset-password?token=${token}`;
 
-        // ── Send email with a 10-second timeout ───────────────────────────────
+        // ── Send email via Gmail SMTP with timeouts to prevent hanging ────────────
         const transporter = nodemailer.createTransport({
             service: 'gmail',
             auth: {
                 user: process.env.EMAIL_USER,
                 pass: process.env.EMAIL_APP_PASSWORD,
             },
-            connectionTimeout: 10000,   // 10 seconds
-            greetingTimeout: 10000,
+            connectionTimeout: 8000,  // fail fast if Gmail is unreachable (8s)
+            greetingTimeout: 8000,
             socketTimeout: 10000,
         });
 
@@ -480,11 +480,11 @@ app.post('/api/auth/forgot-password', async (req, res) => {
                     <div style="padding: 32px;">
                         <h2 style="color: #0f172a; margin-top: 0;">Reset Your Password</h2>
                         <p style="color: #475569; line-height: 1.6;">Hi ${user.full_name},</p>
-                        <p style="color: #475569; line-height: 1.6;">We received a request to reset your password. Click the button below — this link is valid for <strong>15 minutes</strong>.</p>
+                        <p style="color: #475569; line-height: 1.6;">We received a request to reset the password for your account. Click the button below to set a new password. This link is valid for <strong>15 minutes</strong>.</p>
                         <div style="text-align: center; margin: 32px 0;">
                             <a href="${resetLink}" style="background: #0d9488; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block;">Reset Password</a>
                         </div>
-                        <p style="color: #94a3b8; font-size: 13px;">If you didn't request this, you can safely ignore this email.</p>
+                        <p style="color: #94a3b8; font-size: 13px;">If you didn't request this, you can safely ignore this email. Your password won't change.</p>
                         <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
                         <p style="color: #94a3b8; font-size: 12px; text-align: center;">GlobalAKJobs · Maldives Career Platform</p>
                     </div>
@@ -492,10 +492,10 @@ app.post('/api/auth/forgot-password', async (req, res) => {
             `,
         });
 
-        res.json({ message: `Reset link sent to ${user.email}. Check your inbox (and spam folder).` });
+        res.json({ message: 'Reset link sent! Please check your inbox (and spam folder).' });
     } catch (err) {
         console.error('Forgot password error:', err);
-        res.status(500).json({ message: 'Failed to send reset email. Please try again later.' });
+        res.status(500).json({ message: 'Failed to send reset email. Please try again in a moment.' });
     }
 });
 

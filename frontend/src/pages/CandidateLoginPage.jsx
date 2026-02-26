@@ -100,8 +100,9 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
         setForgotLoading(true);
         setForgotMessage(null);
 
+        // Abort if backend takes more than 15 seconds (prevents infinite spinner)
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15-second timeout
+        const timeout = setTimeout(() => controller.abort(), 15000);
 
         try {
             const res = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
@@ -110,7 +111,7 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
                 body: JSON.stringify({ email: forgotEmail }),
                 signal: controller.signal,
             });
-            clearTimeout(timeoutId);
+            clearTimeout(timeout);
             const data = await res.json();
             if (res.ok) {
                 setForgotMessage({ type: 'success', text: data.message });
@@ -118,7 +119,7 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
                 setForgotMessage({ type: 'error', text: data.message || 'Failed to send reset email.' });
             }
         } catch (err) {
-            clearTimeout(timeoutId);
+            clearTimeout(timeout);
             if (err.name === 'AbortError') {
                 setForgotMessage({ type: 'error', text: 'Request timed out. Please check your connection and try again.' });
             } else {
