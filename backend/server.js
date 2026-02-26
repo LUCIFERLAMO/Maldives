@@ -468,14 +468,21 @@ app.post('/api/auth/forgot-password', async (req, res) => {
         let devMode = false;
 
         if (emailUser && emailPass) {
-            // PRODUCTION — Gmail SMTP port 587 STARTTLS, forced IPv4
-            // family:4 required: Render free tier does not support IPv6 outbound
+            // Manually resolve smtp.gmail.com to IPv4 — bypasses Render's OS-level IPv6 DNS
+            let gmailHost = 'smtp.gmail.com';
+            try {
+                const addrs = await dns.promises.resolve4('smtp.gmail.com');
+                if (addrs && addrs.length > 0) gmailHost = addrs[0];
+                console.log(`[Email] Resolved smtp.gmail.com -> ${gmailHost} (IPv4)`);
+            } catch (dnsErr) {
+                console.warn('[Email] DNS resolve4 failed, using hostname fallback:', dnsErr.message);
+            }
             transporter = nodemailer.createTransport({
-                host: 'smtp.gmail.com',
+                host: gmailHost,
                 port: 587,
                 secure: false,
-                family: 4,
                 auth: { user: emailUser, pass: emailPass },
+                tls: { servername: 'smtp.gmail.com' }, // needed when using raw IP
                 connectionTimeout: 10000,
                 socketTimeout: 15000,
             });
