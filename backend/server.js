@@ -420,32 +420,51 @@ app.put('/api/auth/change-password', async (req, res) => {
 app.post('/api/auth/forgot-password', async (req, res) => {
     try {
         let { email } = req.body;
-        if (!email) return res.status(400).json({ message: 'Email is required' });
+        if (!email) return res.status(400).json({ message: 'Email is required.' });
         email = email.toLowerCase().trim();
 
-        // Always return 200 to prevent user enumeration attacks
-        const user = await Profile.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
-        if (!user) {
-            return res.json({ message: 'If that email is registered, a reset link has been sent.' });
+        // ── Check email env vars are configured ───────────────────────────────
+        if (!process.env.EMAIL_USER || !process.env.EMAIL_APP_PASSWORD) {
+            console.error('Forgot-password: EMAIL_USER or EMAIL_APP_PASSWORD not set in environment.');
+            return res.status(503).json({ message: 'Email service is not configured yet. Please contact support.' });
         }
 
-        // Generate secure random token
+        // ── Find user — MUST exist in the database ────────────────────────────
+        const user = await Profile.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
+        if (!user) {
+            return res.status(404).json({ message: 'No account found with that email address. Please check and try again.' });
+        }
+
+        // ── Only CANDIDATE accounts can reset password via email ───────────────
+        if (user.role !== 'CANDIDATE') {
+            return res.status(403).json({ message: 'Password reset by email is only available for candidate accounts.' });
+        }
+
+        // ── Block BANNED accounts ──────────────────────────────────────────────
+        if (user.status === 'BANNED') {
+            return res.status(403).json({ message: 'Your account has been suspended. Please contact support.' });
+        }
+
+        // ── Generate secure random token, valid for 15 minutes ────────────────
         const token = crypto.randomBytes(32).toString('hex');
         user.resetPasswordToken = token;
-        user.resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+        user.resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000);
         await user.save();
 
-        // Build reset link
+        // ── Build reset link ──────────────────────────────────────────────────
         const frontendOrigin = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173').split(',')[0].trim();
         const resetLink = `${frontendOrigin}/reset-password?token=${token}`;
 
-        // Configure Gmail transporter
+        // ── Send email with a 10-second timeout ───────────────────────────────
         const transporter = nodemailer.createTransport({
             service: 'gmail',
             auth: {
                 user: process.env.EMAIL_USER,
                 pass: process.env.EMAIL_APP_PASSWORD,
             },
+            connectionTimeout: 10000,   // 10 seconds
+            greetingTimeout: 10000,
+            socketTimeout: 10000,
         });
 
         await transporter.sendMail({
@@ -461,11 +480,11 @@ app.post('/api/auth/forgot-password', async (req, res) => {
                     <div style="padding: 32px;">
                         <h2 style="color: #0f172a; margin-top: 0;">Reset Your Password</h2>
                         <p style="color: #475569; line-height: 1.6;">Hi ${user.full_name},</p>
-                        <p style="color: #475569; line-height: 1.6;">We received a request to reset the password for your account. Click the button below to set a new password. This link is valid for <strong>15 minutes</strong>.</p>
+                        <p style="color: #475569; line-height: 1.6;">We received a request to reset your password. Click the button below — this link is valid for <strong>15 minutes</strong>.</p>
                         <div style="text-align: center; margin: 32px 0;">
                             <a href="${resetLink}" style="background: #0d9488; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block;">Reset Password</a>
                         </div>
-                        <p style="color: #94a3b8; font-size: 13px;">If you didn't request this, you can safely ignore this email. Your password won't change.</p>
+                        <p style="color: #94a3b8; font-size: 13px;">If you didn't request this, you can safely ignore this email.</p>
                         <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
                         <p style="color: #94a3b8; font-size: 12px; text-align: center;">GlobalAKJobs · Maldives Career Platform</p>
                     </div>
@@ -473,10 +492,10 @@ app.post('/api/auth/forgot-password', async (req, res) => {
             `,
         });
 
-        res.json({ message: 'If that email is registered, a reset link has been sent.' });
+        res.json({ message: `Reset link sent to ${user.email}. Check your inbox (and spam folder).` });
     } catch (err) {
         console.error('Forgot password error:', err);
-        res.status(500).json({ message: 'Failed to send reset email. Please try again.' });
+        res.status(500).json({ message: 'Failed to send reset email. Please try again later.' });
     }
 });
 

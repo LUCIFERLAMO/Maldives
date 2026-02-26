@@ -99,20 +99,31 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
         e.preventDefault();
         setForgotLoading(true);
         setForgotMessage(null);
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15-second timeout
+
         try {
             const res = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: forgotEmail }),
+                signal: controller.signal,
             });
+            clearTimeout(timeoutId);
             const data = await res.json();
             if (res.ok) {
-                setForgotMessage({ type: 'success', text: 'Reset link sent! Check your inbox (and spam folder).' });
+                setForgotMessage({ type: 'success', text: data.message });
             } else {
                 setForgotMessage({ type: 'error', text: data.message || 'Failed to send reset email.' });
             }
-        } catch {
-            setForgotMessage({ type: 'error', text: 'Network error. Please try again.' });
+        } catch (err) {
+            clearTimeout(timeoutId);
+            if (err.name === 'AbortError') {
+                setForgotMessage({ type: 'error', text: 'Request timed out. Please check your connection and try again.' });
+            } else {
+                setForgotMessage({ type: 'error', text: 'Network error. Please try again.' });
+            }
         } finally {
             setForgotLoading(false);
         }
