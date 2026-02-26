@@ -88,6 +88,17 @@ const profileSchema = new mongoose.Schema({
         type: String,
         required: false,
         default: null
+    },
+    // Password Reset via Email
+    resetPasswordToken: {
+        type: String,
+        required: false,
+        default: null
+    },
+    resetPasswordExpires: {
+        type: Date,
+        required: false,
+        default: null
     }
 }, {
     timestamps: true

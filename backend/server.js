@@ -5,6 +5,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import multer from 'multer';
+import crypto from 'crypto';
+import nodemailer from 'nodemailer';
 
 // Configure dotenv
 const __filename = fileURLToPath(import.meta.url);
@@ -409,6 +411,119 @@ app.put('/api/auth/change-password', async (req, res) => {
         res.json({ message: 'Password updated successfully' });
     } catch (err) {
         res.status(500).json({ message: 'Failed to update password', error: err.message });
+    }
+});
+
+// ── EMAIL-BASED FORGOT PASSWORD ROUTES ──────────────────────────────────────
+
+// POST /api/auth/forgot-password — generate token + send reset email
+app.post('/api/auth/forgot-password', async (req, res) => {
+    try {
+        let { email } = req.body;
+        if (!email) return res.status(400).json({ message: 'Email is required' });
+        email = email.toLowerCase().trim();
+
+        // Always return 200 to prevent user enumeration attacks
+        const user = await Profile.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
+        if (!user) {
+            return res.json({ message: 'If that email is registered, a reset link has been sent.' });
+        }
+
+        // Generate secure random token
+        const token = crypto.randomBytes(32).toString('hex');
+        user.resetPasswordToken = token;
+        user.resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+        await user.save();
+
+        // Build reset link
+        const frontendOrigin = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173').split(',')[0].trim();
+        const resetLink = `${frontendOrigin}/reset-password?token=${token}`;
+
+        // Configure Gmail transporter
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_APP_PASSWORD,
+            },
+        });
+
+        await transporter.sendMail({
+            from: `"GlobalAKJobs" <${process.env.EMAIL_USER}>`,
+            to: user.email,
+            subject: 'Reset Your GlobalAKJobs Password',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; background: #f9f9f9; border-radius: 12px; overflow: hidden;">
+                    <div style="background: linear-gradient(135deg, #0f172a, #134e4a); padding: 32px; text-align: center;">
+                        <h1 style="color: #5eead4; margin: 0; font-size: 24px;">GlobalAKJobs</h1>
+                        <p style="color: #99f6e4; margin: 8px 0 0; font-size: 14px;">Island Jobs Simplified</p>
+                    </div>
+                    <div style="padding: 32px;">
+                        <h2 style="color: #0f172a; margin-top: 0;">Reset Your Password</h2>
+                        <p style="color: #475569; line-height: 1.6;">Hi ${user.full_name},</p>
+                        <p style="color: #475569; line-height: 1.6;">We received a request to reset the password for your account. Click the button below to set a new password. This link is valid for <strong>15 minutes</strong>.</p>
+                        <div style="text-align: center; margin: 32px 0;">
+                            <a href="${resetLink}" style="background: #0d9488; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block;">Reset Password</a>
+                        </div>
+                        <p style="color: #94a3b8; font-size: 13px;">If you didn't request this, you can safely ignore this email. Your password won't change.</p>
+                        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
+                        <p style="color: #94a3b8; font-size: 12px; text-align: center;">GlobalAKJobs · Maldives Career Platform</p>
+                    </div>
+                </div>
+            `,
+        });
+
+        res.json({ message: 'If that email is registered, a reset link has been sent.' });
+    } catch (err) {
+        console.error('Forgot password error:', err);
+        res.status(500).json({ message: 'Failed to send reset email. Please try again.' });
+    }
+});
+
+// GET /api/auth/validate-reset-token/:token — check token validity
+app.get('/api/auth/validate-reset-token/:token', async (req, res) => {
+    try {
+        const { token } = req.params;
+        const user = await Profile.findOne({
+            resetPasswordToken: token,
+            resetPasswordExpires: { $gt: new Date() }
+        });
+        if (!user) {
+            return res.status(400).json({ valid: false, message: 'Reset link is invalid or has expired.' });
+        }
+        res.json({ valid: true, email: user.email });
+    } catch (err) {
+        res.status(500).json({ valid: false, message: 'Error validating token.' });
+    }
+});
+
+// POST /api/auth/reset-password-token — apply new password using token
+app.post('/api/auth/reset-password-token', async (req, res) => {
+    try {
+        const { token, newPassword } = req.body;
+        if (!token || !newPassword) {
+            return res.status(400).json({ message: 'Token and new password are required.' });
+        }
+        if (newPassword.length < 6) {
+            return res.status(400).json({ message: 'Password must be at least 6 characters.' });
+        }
+        const user = await Profile.findOne({
+            resetPasswordToken: token,
+            resetPasswordExpires: { $gt: new Date() }
+        });
+        if (!user) {
+            return res.status(400).json({ message: 'Reset link is invalid or has expired. Please request a new one.' });
+        }
+        user.password = newPassword;
+        user.resetPasswordToken = null;
+        user.resetPasswordExpires = null;
+        user.temporaryPassword = undefined;
+        user.requiresPasswordChange = false;
+        await user.save();
+        res.json({ message: 'Password reset successfully. You can now log in.' });
+    } catch (err) {
+        console.error('Reset password token error:', err);
+        res.status(500).json({ message: 'Failed to reset password. Please try again.' });
     }
 });
 

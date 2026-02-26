@@ -17,6 +17,7 @@ import SavedJobsPage from './pages/SavedJobsPage';
 import ProfilePage from './pages/ProfilePage';
 import SupportPage from './pages/SupportPage';
 import AgentRegistrationPage from './pages/AgentRegistrationPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import { AuthProvider } from './context/AuthContext';
 import { PopupProvider } from './context/PopupContext';
 import GlobalErrorBoundary from './components/GlobalErrorBoundary';
@@ -55,6 +56,7 @@ const AppContent = () => {
                     <Route path="/agent-login" element={<AgentLoginPage />} />
                     <Route path="/login/admin" element={<AdminLoginPage />} />
                     <Route path="/agent-registration" element={<AgentRegistrationPage />} />
+                    <Route path="/reset-password" element={<ResetPasswordPage />} />
 
                     {/* Protected Admin Routes */}
                     <Route

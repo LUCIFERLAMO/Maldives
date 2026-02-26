@@ -23,6 +23,12 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
     const googleLoginRef = useRef(null);
     const googleSignupRef = useRef(null);
 
+    // Forgot password state
+    const [forgotMode, setForgotMode] = useState(false);
+    const [forgotEmail, setForgotEmail] = useState('');
+    const [forgotLoading, setForgotLoading] = useState(false);
+    const [forgotMessage, setForgotMessage] = useState(null); // { type: 'success'|'error', text }
+
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -88,6 +94,29 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
             return () => clearTimeout(timer);
         }
     }, [handleGoogleLogin, mode]);
+
+    const handleForgotPassword = async (e) => {
+        e.preventDefault();
+        setForgotLoading(true);
+        setForgotMessage(null);
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: forgotEmail }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setForgotMessage({ type: 'success', text: 'Reset link sent! Check your inbox (and spam folder).' });
+            } else {
+                setForgotMessage({ type: 'error', text: data.message || 'Failed to send reset email.' });
+            }
+        } catch {
+            setForgotMessage({ type: 'error', text: 'Network error. Please try again.' });
+        } finally {
+            setForgotLoading(false);
+        }
+    };
 
     const handleLoginSubmit = async (e) => {
         e.preventDefault();
@@ -255,6 +284,11 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
                                     <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
                                     <input type="password" required placeholder="Password" className="w-full pl-14 pr-6 py-5 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-slate-700 placeholder:text-slate-400" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
                                 </div>
+                                <div className="text-right">
+                                    <button type="button" onClick={() => { setForgotMode(true); setForgotMessage(null); setForgotEmail(''); }} className="text-teal-600 hover:text-teal-800 text-xs font-bold transition-colors">
+                                        Forgot Password?
+                                    </button>
+                                </div>
                                 <button type="submit" disabled={isLoading} className="w-full bg-[#0B1A33] text-white py-5 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 hover:shadow-2xl hover:shadow-slate-900/20 hover:-translate-y-0.5 flex items-center justify-center gap-2 mt-4 disabled:opacity-50 disabled:cursor-not-allowed">
                                     {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Logging in...</> : <>Log In <ArrowRight className="w-5 h-5" /></>}
                                 </button>
@@ -268,6 +302,39 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
 
                             {/* Google Sign-In — rendered by Google SDK */}
                             <div ref={googleLoginRef} className="w-full flex justify-center" style={{ minHeight: '44px' }} />
+
+                            {/* Forgot Password Inline Panel */}
+                            {forgotMode && (
+                                <div className="mt-4 bg-slate-50 border border-slate-200 rounded-2xl p-5 animate-in slide-in-from-top-4 duration-300">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <p className="text-sm font-black text-slate-700">Reset your password</p>
+                                        <button type="button" onClick={() => { setForgotMode(false); setForgotMessage(null); }} className="text-slate-400 hover:text-slate-600 text-xs font-bold">✕ Close</button>
+                                    </div>
+                                    {forgotMessage ? (
+                                        <div className={`text-sm font-semibold p-3 rounded-xl ${forgotMessage.type === 'success' ? 'bg-teal-50 text-teal-700 border border-teal-100' : 'bg-red-50 text-red-600 border border-red-100'}`}>
+                                            {forgotMessage.text}
+                                        </div>
+                                    ) : (
+                                        <form onSubmit={handleForgotPassword} className="flex gap-2">
+                                            <input
+                                                type="email"
+                                                required
+                                                placeholder="Your email address"
+                                                className="flex-1 px-4 py-3 bg-white border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all placeholder:text-slate-400"
+                                                value={forgotEmail}
+                                                onChange={e => setForgotEmail(e.target.value)}
+                                            />
+                                            <button
+                                                type="submit"
+                                                disabled={forgotLoading}
+                                                className="bg-teal-600 text-white px-4 py-3 rounded-xl font-bold text-sm hover:bg-teal-700 transition-colors disabled:opacity-50 flex items-center gap-1"
+                                            >
+                                                {forgotLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send'}
+                                            </button>
+                                        </form>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     )}
 
