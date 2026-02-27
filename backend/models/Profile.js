@@ -43,9 +43,23 @@ const profileSchema = new mongoose.Schema({
         type: [String],
         default: []
     },
+    // Profile Avatar
+    avatar: {
+        type: String,  // base64 data URL or URL to hosted image
+        required: false
+    },
     experience_years: {
         type: Number,
         default: 0
+    },
+    location: {
+        type: String,
+        required: false,
+        default: ''
+    },
+    savedJobs: {
+        type: [String], // Array of Job IDs (custom string IDs or ObjectIds as strings)
+        default: []
     },
     // Status
     status: {
@@ -68,6 +82,23 @@ const profileSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Agency',
         required: false
+    },
+    // Google OAuth - stores Google's unique user ID (sub) for account linking
+    googleId: {
+        type: String,
+        required: false,
+        default: null
+    },
+    // Password Reset via Email
+    resetPasswordToken: {
+        type: String,
+        required: false,
+        default: null
+    },
+    resetPasswordExpires: {
+        type: Date,
+        required: false,
+        default: null
     }
 }, {
     timestamps: true

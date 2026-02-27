@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import API_BASE_URL from '../api/config.js';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, DollarSign, Clock, Heart, Briefcase, ChevronRight, Share2, Check, Bell } from 'lucide-react';
+import { MapPin, DollarSign, Clock, Heart, Briefcase, ChevronRight, Share2, Check, Bell, Bookmark } from 'lucide-react';
 import { JobStatus } from '../types';
 import { useAuth } from '../context/AuthContext';
-
 import { usePopup } from '../context/PopupContext';
+import { toggleSavedJob, fetchSavedJobs } from '../api/api';
 
 const JobCard = ({ job }) => {
     const { user } = useAuth();
@@ -12,6 +13,8 @@ const JobCard = ({ job }) => {
     const [isLiked, setIsLiked] = useState(false);
     const [isCopied, setIsCopied] = useState(false);
     const [isSubscribed, setIsSubscribed] = useState(false);
+    const [isSaved, setIsSaved] = useState(false);
+    const [saveToast, setSaveToast] = useState(null);
     const isClosed = job.status === 'CLOSED' || job.status === JobStatus.CLOSED;
 
     // Generate a random "closing in" date for the high-end UI look
@@ -19,10 +22,19 @@ const JobCard = ({ job }) => {
 
     React.useEffect(() => {
         if (isClosed && user?.id) {
-            fetch(`http://localhost:5000/api/subscription/check?userId=${user.id}&jobId=${job.id || job._id}`)
+            fetch(`${API_BASE_URL}/api/subscription/check?userId=${user.id}&jobId=${job.id || job._id}`)
                 .then(res => res.json())
                 .then(data => setIsSubscribed(data.subscribed))
                 .catch(err => console.error("Error checking subscription:", err));
+        }
+        // Also load initial saved state if user is a candidate
+        if (user?.role?.toLowerCase() === 'candidate' && user?.id) {
+            fetchSavedJobs(user.id)
+                .then(savedList => {
+                    const isJobSaved = savedList.some(j => (j.id || j._id) === (job.id || job._id));
+                    setIsSaved(isJobSaved);
+                })
+                .catch(() => {});
         }
     }, [isClosed, user, job]);
 
@@ -34,7 +46,7 @@ const JobCard = ({ job }) => {
         setIsSubscribed(newStatus); // Optimistic UI
 
         try {
-            await fetch('http://localhost:5000/api/subscribe', {
+            await fetch(`${API_BASE_URL}/api/subscribe`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user.id, jobId: job.id || job._id })
@@ -53,8 +65,35 @@ const JobCard = ({ job }) => {
         setTimeout(() => setIsCopied(false), 2000);
     };
 
+    const handleToggleSave = async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!user || user.role?.toLowerCase() !== 'candidate') {
+            popup.alert('Please log in as a candidate to save jobs.');
+            return;
+        }
+        const jobId = job.id || job._id;
+        try {
+            await toggleSavedJob(user.id, jobId);
+            const nowSaved = !isSaved;
+            setIsSaved(nowSaved);
+            setSaveToast(nowSaved ? 'Job saved!' : 'Job removed!');
+            setTimeout(() => setSaveToast(null), 2500);
+        } catch (error) {
+            console.error('Failed to toggle saved job:', error);
+        }
+    };
+
     return (
         <div className={`group relative bg-white border border-slate-100 rounded-[3rem] p-8 transition-all hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.12)] hover:border-teal-500/20 flex flex-col md:flex-row items-center gap-8 ${isClosed ? 'opacity-90' : ''}`}>
+
+            {/* Save Toast */}
+            {saveToast && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 shadow-xl pointer-events-none animate-bounce">
+                    <Bookmark className="w-3 h-3" fill="white" />
+                    {saveToast}
+                </div>
+            )}
 
             {/* Premium Gradient Border Accent */}
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/2 h-1 bg-gradient-to-r from-transparent via-teal-500/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -81,7 +120,7 @@ const JobCard = ({ job }) => {
                         </h3>
                         <div className="flex gap-2">
                             <span className="px-4 py-1.5 bg-teal-50 text-teal-600 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] border border-teal-100/30">
-                                {job.type.toUpperCase()}
+                                {job.type?.toUpperCase() || 'FULL TIME'}
                             </span>
                             {job.isReopened && (
                                 <span className="px-4 py-1.5 bg-orange-50 text-orange-600 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] border border-orange-100/30">
@@ -99,7 +138,7 @@ const JobCard = ({ job }) => {
                         <span className="text-slate-200">|</span>
                         <div className="flex items-center gap-2">
                             <Briefcase className="w-4 h-4 text-slate-300" />
-                            <span className="uppercase tracking-widest text-[9px] font-black">{job.industry}</span>
+                            <span className="uppercase tracking-widest text-[9px] font-black">{job.category || job.industry || 'General'}</span>
                         </div>
                     </div>
 
@@ -169,6 +208,20 @@ const JobCard = ({ job }) => {
                             <><Share2 className="w-4 h-4" /> Share Link</>
                         )}
                     </button>
+                    {user?.role?.toLowerCase() === 'candidate' && (
+                        <button
+                            onClick={handleToggleSave}
+                            className={`w-full py-3.5 rounded-2xl text-[9px] font-black uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-2 border ${
+                                isSaved
+                                    ? 'bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100'
+                                    : 'bg-white border-slate-100 text-slate-400 hover:bg-rose-50 hover:text-rose-500 hover:border-rose-200'
+                            }`}
+                            title={isSaved ? 'Remove from saved jobs' : 'Save job'}
+                        >
+                            <Bookmark className="w-4 h-4" fill={isSaved ? 'currentColor' : 'none'} />
+                            {isSaved ? 'Saved' : 'Save Job'}
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

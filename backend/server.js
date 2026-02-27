@@ -5,6 +5,12 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import multer from 'multer';
+import crypto from 'crypto';
+import nodemailer from 'nodemailer';
+import dns from 'dns';
+
+// Force all DNS resolution to prefer IPv4 (Render free tier blocks IPv6 outbound)
+dns.setDefaultResultOrder('ipv4first');
 
 // Configure dotenv
 const __filename = fileURLToPath(import.meta.url);
@@ -14,8 +20,22 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors());
+// CORS — allow local dev origins + any production origins set in ALLOWED_ORIGINS env var
+const allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://localhost:3001',
+    ...(process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean)
+];
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow requests with no origin (e.g. mobile apps, Postman, server-to-server)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        callback(new Error(`CORS: origin ${origin} not allowed`));
+    },
+    credentials: true
+}));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -64,10 +84,15 @@ app.use('/api', notificationRoutes);
 // AUTH ROUTES
 app.post('/api/auth/register', async (req, res) => {
     try {
-        const { email, password, role, name, agencyName, skills, contact, phone } = req.body;
+        let { email, password, role, name, agencyName, skills, contact, phone } = req.body;
+        
+        // Normalize email
+        if (email) {
+            email = email.toLowerCase().trim();
+        }
 
-        // Check if user exists
-        const existingUser = await Profile.findOne({ email });
+        // Check if user exists (case-insensitive)
+        const existingUser = await Profile.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
         if (existingUser) {
             return res.status(400).json({ message: 'User already exists' });
         }
@@ -92,10 +117,15 @@ app.post('/api/auth/register', async (req, res) => {
 
 app.post('/api/auth/login', async (req, res) => {
     try {
-        const { email, password, role } = req.body;
+        let { email, password, role } = req.body;
+        
+        // Normalize email
+        if (email) {
+            email = email.toLowerCase().trim();
+        }
 
-        // Check user
-        const user = await Profile.findOne({ email });
+        // Check user - use case-insensitive regex so emails like 'BCD@gmail.com' still match when user types 'bcd@gmail.com'
+        const user = await Profile.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
         if (!user) {
             return res.status(400).json({ message: 'User not found' });
         }
@@ -124,12 +154,20 @@ app.post('/api/auth/login', async (req, res) => {
             user: {
                 id: user.id,
                 _id: user._id,
+                name: user.full_name,
                 full_name: user.full_name,
                 email: user.email,
                 role: user.role,
                 agency_name: user.agency_name,
+                agencyName: user.agency_name,
                 contact_number: user.contact_number,
-                status: user.status // Include status for approval check
+                phone: user.contact_number,
+                location: user.location || '',
+                skills: user.skills || [],
+                experience_years: user.experience_years || 0,
+                avatar: user.avatar || null,
+                status: user.status,
+                requiresPasswordChange
             },
             requiresPasswordChange
         });
@@ -138,10 +176,193 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
+// GOOGLE OAUTH LOGIN ROUTE (Candidate and Agent portals only)
+// Security requirements enforced:
+//  1. email_verified must be true
+//  2. ADMIN accounts are blocked (unauthorized)
+//  3. One Google sub → one account (no hijacking via email collision)
+//  4. Account must be ACTIVE (not BANNED, INACTIVE, PENDING, or DELETED)
+//  5. GOOGLE_CLIENT_ID / GOOGLE_CALLBACK_URL read from env — never hardcoded
+//  6. Multiple redirect URIs supported via GOOGLE_ALLOWED_ORIGINS env var
+app.post('/api/auth/google', async (req, res) => {
+    try {
+        const { credential, role } = req.body;
+
+        if (!credential) {
+            return res.status(400).json({ message: 'Google credential is required' });
+        }
+
+        // ── Requirement 5/6: Read all config from environment variables ──────────
+        const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+        const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || '';
+        // Comma-separated list of allowed origins/redirect URIs (dev + prod)
+        const GOOGLE_ALLOWED_ORIGINS = (process.env.GOOGLE_ALLOWED_ORIGINS || '')
+            .split(',')
+            .map(s => s.trim())
+            .filter(Boolean);
+
+        // ── Verify the Google ID token via Google's tokeninfo endpoint ────────────
+        const googleRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`);
+        const tokenData = await googleRes.json();
+
+        if (tokenData.error || !tokenData.sub) {
+            return res.status(401).json({ message: 'Invalid Google token. Please try again.' });
+        }
+
+        // ── Requirement 1: email_verified must be true ────────────────────────────
+        if (tokenData.email_verified !== 'true' && tokenData.email_verified !== true) {
+            return res.status(401).json({ message: 'Google account email is not verified. Please verify your Google email first.' });
+        }
+
+        // ── Requirement 5: Audience must match our Client ID ──────────────────────
+        if (GOOGLE_CLIENT_ID && tokenData.aud !== GOOGLE_CLIENT_ID) {
+            return res.status(401).json({ message: 'Google token audience is invalid.' });
+        }
+
+        // ── Requirement 6: Validate callback URL against allowed origins ──────────
+        // (Only enforced when GOOGLE_CALLBACK_URL and GOOGLE_ALLOWED_ORIGINS are set)
+        if (GOOGLE_CALLBACK_URL && GOOGLE_ALLOWED_ORIGINS.length > 0) {
+            const isAllowedOrigin = GOOGLE_ALLOWED_ORIGINS.some(origin =>
+                GOOGLE_CALLBACK_URL.startsWith(origin)
+            );
+            if (!isAllowedOrigin) {
+                console.warn(`[Google OAuth] Callback URL "${GOOGLE_CALLBACK_URL}" not in allowed origins list.`);
+                return res.status(401).json({ message: 'Google OAuth redirect URI is not authorized.' });
+            }
+        }
+
+        const googleSub = tokenData.sub;                          // Unique Google user ID
+        const googleEmail = tokenData.email?.toLowerCase().trim();
+        const googleName = tokenData.name || '';
+
+        if (!googleEmail) {
+            return res.status(400).json({ message: 'Could not retrieve email from Google account.' });
+        }
+
+        // ── Requirement 2 (pre-lookup): Block if requested role is ADMIN ──────────
+        if (role === 'ADMIN') {
+            return res.status(401).json({ message: 'Unauthorized. Admin accounts cannot use Google login.' });
+        }
+
+        // ── Look up account by googleId first, then by email ─────────────────────
+        const profileByGoogleId = await Profile.findOne({ googleId: googleSub });
+        const profileByEmail    = await Profile.findOne({ email: { $regex: new RegExp(`^${googleEmail}$`, 'i') } });
+
+        // ── Requirement 3: Prevent one Google identity linking to multiple accounts ─
+        // If a record exists with this googleId AND a different record exists with
+        // the matching email → the same Google account is trying to attach to a
+        // second user record. Deny it.
+        if (
+            profileByGoogleId &&
+            profileByEmail &&
+            profileByGoogleId._id.toString() !== profileByEmail._id.toString()
+        ) {
+            return res.status(409).json({
+                message: 'This Google account is already linked to a different user. Please sign in with your original account.'
+            });
+        }
+
+        // Prefer the googleId match; fall back to email match
+        const profile = profileByGoogleId || profileByEmail;
+
+        if (profile) {
+            // ── Requirement 2: Block ADMIN accounts (even if found by email) ────────
+            if (profile.role === 'ADMIN') {
+                return res.status(401).json({ message: 'Unauthorized. Admin accounts cannot use Google login.' });
+            }
+
+            // ── Requirement 4: Account status checks ─────────────────────────────────
+            // Must be ACTIVE — deny BANNED, INACTIVE, PENDING, or any unknown status
+            const allowedStatuses = ['ACTIVE'];
+            if (!allowedStatuses.includes(profile.status)) {
+                const statusMessages = {
+                    BANNED:   'Your account has been suspended. Please contact support.',
+                    INACTIVE: 'Your account is inactive. Please contact support to reactivate it.',
+                    PENDING:  'Your account is pending approval. Please wait for admin confirmation.',
+                };
+                const message = statusMessages[profile.status] || 'Your account is not active. Please contact support.';
+                return res.status(403).json({ message });
+            }
+
+            // ── Requirement 3 (cont.): Link googleId if not yet set ──────────────────
+            // Only safe to link when no other account carries this googleId already
+            if (!profile.googleId && !profileByGoogleId) {
+                profile.googleId = googleSub;
+                await profile.save();
+            }
+
+            // ── Success: return user session data ────────────────────────────────────
+            return res.json({
+                message: 'Google login successful',
+                user: {
+                    id: profile.id,
+                    _id: profile._id,
+                    name: profile.full_name,
+                    full_name: profile.full_name,
+                    email: profile.email,
+                    role: profile.role,
+                    agency_name: profile.agency_name || null,
+                    contact_number: profile.contact_number || '',
+                    phone: profile.contact_number || '',
+                    location: profile.location || '',
+                    skills: profile.skills || [],
+                    experience_years: profile.experience_years || 0,
+                    avatar: profile.avatar || null,
+                    status: profile.status
+                }
+            });
+
+        } else {
+            // ── NEW USER: Create a CANDIDATE account via Google ───────────────────────
+            // Agents must be registered via Admin — Google login always creates CANDIDATE.
+            const newProfile = new Profile({
+                full_name: googleName,
+                email: googleEmail,
+                password: `google_oauth_${googleSub}`, // Placeholder — unusable for local login
+                role: 'CANDIDATE',
+                googleId: googleSub,
+                contact_number: '',
+                skills: [],
+                status: 'ACTIVE'
+            });
+
+            await newProfile.save();
+
+            return res.status(201).json({
+                message: 'Google account registered and logged in',
+                user: {
+                    id: newProfile.id,
+                    _id: newProfile._id,
+                    name: newProfile.full_name,
+                    full_name: newProfile.full_name,
+                    email: newProfile.email,
+                    role: newProfile.role,
+                    contact_number: '',
+                    phone: '',
+                    location: '',
+                    skills: [],
+                    experience_years: 0,
+                    avatar: null,
+                    status: newProfile.status
+                }
+            });
+        }
+
+    } catch (err) {
+        console.error('Google OAuth error:', err);
+        res.status(500).json({ message: 'Google login failed', error: err.message });
+    }
+});
+
 // PASSWORD RESET ROUTE (For agents to reset their password with old password verification)
 app.post('/api/auth/reset-password', async (req, res) => {
     try {
-        const { email, oldPassword, newPassword } = req.body;
+        let { email, oldPassword, newPassword } = req.body;
+        
+        // Normalize email
+        if (email) {
+            email = email.toLowerCase().trim();
+        }
 
         // Find user by email
         const user = await Profile.findOne({ email });
@@ -170,11 +391,12 @@ app.post('/api/auth/reset-password', async (req, res) => {
 // PASSWORD CHANGE ROUTE (For first-time agents)
 app.put('/api/auth/change-password', async (req, res) => {
     try {
-        const { email, agentId, newPassword } = req.body;
+        let { email, agentId, newPassword } = req.body;
 
         // Find user by email or agentId
         let user;
         if (email) {
+            email = email.toLowerCase().trim();
             user = await Profile.findOne({ email });
         } else if (agentId) {
             user = await Profile.findById(agentId);
@@ -193,6 +415,164 @@ app.put('/api/auth/change-password', async (req, res) => {
         res.json({ message: 'Password updated successfully' });
     } catch (err) {
         res.status(500).json({ message: 'Failed to update password', error: err.message });
+    }
+});
+
+// ── EMAIL-BASED FORGOT PASSWORD ROUTES ──────────────────────────────────────
+
+// POST /api/auth/forgot-password — generate token + send reset email
+app.post('/api/auth/forgot-password', async (req, res) => {
+    try {
+        let { email } = req.body;
+        if (!email) return res.status(400).json({ message: 'Email is required.' });
+        email = email.toLowerCase().trim();
+
+        // ── Check server email config is set ─────────────────────────────────────
+        if (!process.env.EMAIL_USER || !process.env.EMAIL_APP_PASSWORD) {
+            console.error('Forgot password: EMAIL_USER or EMAIL_APP_PASSWORD not configured.');
+            return res.status(503).json({ message: 'Password reset via email is not configured yet. Please contact support.' });
+        }
+
+        // ── Look up user — return real error if not found ────────────────────────
+        const user = await Profile.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
+        if (!user) {
+            return res.status(404).json({ message: 'No account found with that email address. Please check and try again.' });
+        }
+
+        // ── Only CANDIDATE accounts can use this flow ────────────────────────────
+        if (user.role !== 'CANDIDATE') {
+            return res.status(403).json({ message: 'Password reset via email is only available for candidate accounts.' });
+        }
+
+        // ── Account must be ACTIVE ────────────────────────────────────────────────
+        if (user.status !== 'ACTIVE') {
+            return res.status(403).json({ message: 'Your account is not active. Please contact support.' });
+        }
+
+        // ── Generate secure random token ──────────────────────────────────────────
+        const token = crypto.randomBytes(32).toString('hex');
+        user.resetPasswordToken = token;
+        user.resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+        await user.save();
+
+        // ── Build reset link ──────────────────────────────────────────────────────
+        const frontendOrigin = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173').split(',')[0].trim();
+        const resetLink = `${frontendOrigin}/reset-password?token=${token}`;
+
+        const emailHtml = `
+            <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; background: #f9f9f9; border-radius: 12px; overflow: hidden;">
+                <div style="background: linear-gradient(135deg, #0f172a, #134e4a); padding: 32px; text-align: center;">
+                    <h1 style="color: #5eead4; margin: 0; font-size: 24px;">GlobalAKJobs</h1>
+                    <p style="color: #99f6e4; margin: 8px 0 0; font-size: 14px;">Island Jobs Simplified</p>
+                </div>
+                <div style="padding: 32px;">
+                    <h2 style="color: #0f172a; margin-top: 0;">Reset Your Password</h2>
+                    <p style="color: #475569; line-height: 1.6;">Hi ${user.full_name},</p>
+                    <p style="color: #475569; line-height: 1.6;">We received a request to reset the password for your account. Click the button below to set a new password. This link is valid for <strong>15 minutes</strong>.</p>
+                    <div style="text-align: center; margin: 32px 0;">
+                        <a href="${resetLink}" style="background: #0d9488; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block;">Reset Password</a>
+                    </div>
+                    <p style="color: #94a3b8; font-size: 13px;">If you didn't request this, you can safely ignore this email. Your password won't change.</p>
+                    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
+                    <p style="color: #94a3b8; font-size: 12px; text-align: center;">GlobalAKJobs · Maldives Career Platform</p>
+                </div>
+            </div>
+        `;
+
+        const resendApiKey = (process.env.RESEND_API_KEY || '').trim();
+
+        if (resendApiKey) {
+            // ── PRODUCTION: Resend HTTP API (works on Render — port 443, no SMTP) ──
+            console.log('[Email] Sending via Resend HTTP API');
+            const resendRes = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${resendApiKey}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    from: 'GlobalAKJobs <onboarding@resend.dev>',
+                    to: [user.email],
+                    subject: 'Reset Your GlobalAKJobs Password',
+                    html: emailHtml,
+                }),
+            });
+            const resendData = await resendRes.json();
+            if (!resendRes.ok) {
+                throw new Error(resendData?.message || `Resend API error ${resendRes.status}`);
+            }
+            console.log('[Email] Resend sent OK, id:', resendData.id);
+        } else {
+            // ── DEV / LOCAL: Ethereal auto-account (no setup needed) ─────────────
+            console.log('[Email] No RESEND_API_KEY — using Ethereal dev mode');
+            const testAccount = await nodemailer.createTestAccount();
+            const transporter = nodemailer.createTransport({
+                host: 'smtp.ethereal.email',
+                port: 587,
+                auth: { user: testAccount.user, pass: testAccount.pass },
+            });
+            const info = await transporter.sendMail({
+                from: '"GlobalAKJobs [TEST]" <noreply@globalaKjobs.dev>',
+                to: user.email,
+                subject: 'Reset Your GlobalAKJobs Password',
+                html: emailHtml,
+            });
+            console.log('\n📧 [DEV] Email captured — no real email sent');
+            console.log('🔗 Preview  :', nodemailer.getTestMessageUrl(info));
+            console.log('🔑 Reset link:', resetLink, '\n');
+        }
+
+        res.json({ message: 'Reset link sent! Please check your inbox (and spam folder).' });
+    } catch (err) {
+        console.error('Forgot password error:', err?.message || err);
+        res.status(500).json({ message: 'Failed to send reset email. Please try again later.' });
+    }
+});
+
+// GET /api/auth/validate-reset-token/:token — check token validity
+app.get('/api/auth/validate-reset-token/:token', async (req, res) => {
+    try {
+        const { token } = req.params;
+        const user = await Profile.findOne({
+            resetPasswordToken: token,
+            resetPasswordExpires: { $gt: new Date() }
+        });
+        if (!user) {
+            return res.status(400).json({ valid: false, message: 'Reset link is invalid or has expired.' });
+        }
+        res.json({ valid: true, email: user.email });
+    } catch (err) {
+        res.status(500).json({ valid: false, message: 'Error validating token.' });
+    }
+});
+
+// POST /api/auth/reset-password-token — apply new password using token
+app.post('/api/auth/reset-password-token', async (req, res) => {
+    try {
+        const { token, newPassword } = req.body;
+        if (!token || !newPassword) {
+            return res.status(400).json({ message: 'Token and new password are required.' });
+        }
+        if (newPassword.length < 6) {
+            return res.status(400).json({ message: 'Password must be at least 6 characters.' });
+        }
+        const user = await Profile.findOne({
+            resetPasswordToken: token,
+            resetPasswordExpires: { $gt: new Date() }
+        });
+        if (!user) {
+            return res.status(400).json({ message: 'Reset link is invalid or has expired. Please request a new one.' });
+        }
+        user.password = newPassword;
+        user.resetPasswordToken = null;
+        user.resetPasswordExpires = null;
+        user.temporaryPassword = undefined;
+        user.requiresPasswordChange = false;
+        await user.save();
+        res.json({ message: 'Password reset successfully. You can now log in.' });
+    } catch (err) {
+        console.error('Reset password token error:', err);
+        res.status(500).json({ message: 'Failed to reset password. Please try again.' });
     }
 });
 
@@ -253,7 +633,7 @@ app.get('/api/profile/:id', async (req, res) => {
 // PUT: Update Profile Details
 app.put('/api/profile/:id', async (req, res) => {
     try {
-        const { full_name, contact_number, skills, experience_years } = req.body;
+        const { full_name, contact_number, location, skills, experience_years } = req.body;
 
         // Find by MongoDB _id or custom id field
         let profile;
@@ -272,9 +652,10 @@ app.put('/api/profile/:id', async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Update fields
+        // Update shared fields
         if (full_name) profile.full_name = full_name;
-        if (contact_number) profile.contact_number = contact_number;
+        if (contact_number !== undefined) profile.contact_number = contact_number;
+        if (location !== undefined) profile.location = location;
 
         // Update Candidate specific fields
         if (profile.role === 'CANDIDATE') {
@@ -287,6 +668,89 @@ app.put('/api/profile/:id', async (req, res) => {
         res.json({ message: 'Profile updated successfully', profile });
     } catch (err) {
         res.status(500).json({ message: 'Failed to update profile', error: err.message });
+    }
+});
+
+// POST: Upload/Update Profile Avatar
+app.post('/api/profile/:id/avatar', upload.single('avatar'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ message: 'No image file uploaded' });
+
+        let profile;
+        const isMongoId = /^[0-9a-fA-F]{24}$/.test(req.params.id);
+        if (isMongoId) profile = await Profile.findById(req.params.id);
+        if (!profile) profile = await Profile.findOne({ id: req.params.id });
+        if (!profile) return res.status(404).json({ message: 'User not found' });
+
+        // Convert to base64 data URL so it can be stored directly in DB and displayed
+        const base64 = req.file.buffer.toString('base64');
+        const mimeType = req.file.mimetype;
+        const dataUrl = `data:${mimeType};base64,${base64}`;
+
+        profile.avatar = dataUrl;
+        await profile.save();
+
+        res.json({ message: 'Avatar updated successfully', avatar: dataUrl });
+    } catch (err) {
+        console.error('Avatar upload error:', err);
+        res.status(500).json({ message: 'Failed to upload avatar', error: err.message });
+    }
+});
+
+// POST: Toggle Saved Job
+app.post('/api/profile/:id/save-job', async (req, res) => {
+    try {
+        const { jobId } = req.body;
+        if (!jobId) return res.status(400).json({ message: 'Job ID is required' });
+
+        let profile;
+        const isMongoId = /^[0-9a-fA-F]{24}$/.test(req.params.id);
+        if (isMongoId) profile = await Profile.findById(req.params.id);
+        if (!profile) profile = await Profile.findOne({ id: req.params.id });
+
+        if (!profile) return res.status(404).json({ message: 'User not found' });
+        
+        // Ensure user is candidate
+        if (profile.role?.toLowerCase() !== 'candidate') return res.status(403).json({ message: 'Only candidates can save jobs' });
+
+        const index = profile.savedJobs.indexOf(jobId);
+        if (index > -1) {
+            profile.savedJobs.splice(index, 1); // Remove
+        } else {
+            profile.savedJobs.push(jobId); // Add
+        }
+
+        await profile.save();
+        res.json({ message: 'Saved jobs updated', savedJobs: profile.savedJobs });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to update saved jobs', error: err.message });
+    }
+});
+
+// GET: Fetch Saved Jobs for Candidate
+app.get('/api/profile/:id/saved-jobs', async (req, res) => {
+    try {
+        let profile;
+        const isMongoId = /^[0-9a-fA-F]{24}$/.test(req.params.id);
+        if (isMongoId) profile = await Profile.findById(req.params.id);
+        if (!profile) profile = await Profile.findOne({ id: req.params.id });
+
+        if (!profile) return res.status(404).json({ message: 'User not found' });
+        if (profile.role?.toLowerCase() !== 'candidate') return res.status(403).json({ message: 'Only candidates have saved jobs' });
+
+        const savedJobsIds = profile.savedJobs || [];
+        const validMongoIds = savedJobsIds.filter(id => /^[0-9a-fA-F]{24}$/.test(id));
+        
+        const jobs = await Job.find({
+            $or: [
+                { id: { $in: savedJobsIds } },
+                { _id: { $in: validMongoIds } }
+            ]
+        });
+
+        res.json(jobs);
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to fetch saved jobs', error: err.message });
     }
 });
 
@@ -401,7 +865,7 @@ app.put('/api/admin/agencies/:id/approve', async (req, res) => {
             // Create new agent profile
             agentProfile = new Profile({
                 full_name: agency.name,
-                email: agency.email,
+                email: agency.email.toLowerCase().trim(),
                 password: tempPassword,
                 temporaryPassword: tempPassword,
                 role: 'AGENT',
@@ -423,11 +887,11 @@ app.put('/api/admin/agencies/:id/approve', async (req, res) => {
             message: 'Agency approved successfully',
             agency: {
                 name: agency.name,
-                email: agency.email,
+                email: agency.email.toLowerCase().trim(),
                 status: agency.status
             },
             agentCredentials: {
-                email: agency.email,
+                email: agency.email.toLowerCase().trim(),
                 temporaryPassword: tempPassword
             }
         });

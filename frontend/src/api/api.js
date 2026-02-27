@@ -1,4 +1,5 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+import _API_BASE from './config.js';
+const API_BASE_URL = `${_API_BASE}/api`;
 
 /**
  * Fetch all jobs
@@ -66,6 +67,40 @@ export const submitApplication = async (formData) => {
         return await response.json();
     } catch (error) {
         console.error('Error submitting application:', error);
+        throw error;
+    }
+};
+
+/**
+ * Fetch saved jobs for a candidate profile
+ */
+export const fetchSavedJobs = async (userId) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/profile/${userId}/saved-jobs`);
+        if (!response.ok) throw new Error('Failed to fetch saved jobs');
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching saved jobs:', error);
+        throw error;
+    }
+};
+
+/**
+ * Toggle a saved job for a candidate profile
+ */
+export const toggleSavedJob = async (userId, jobId) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/profile/${userId}/save-job`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ jobId })
+        });
+        if (!response.ok) throw new Error('Failed to toggle saved job');
+        return await response.json();
+    } catch (error) {
+        console.error('Error toggling saved job:', error);
         throw error;
     }
 };

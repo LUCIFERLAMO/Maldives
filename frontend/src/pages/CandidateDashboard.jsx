@@ -1,3 +1,4 @@
+import API_BASE_URL from '../api/config.js';
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { INDUSTRIES } from '../constants';
@@ -69,7 +70,7 @@ const CandidateDashboard = () => {
             }
 
             try {
-                const response = await fetch(`http://localhost:5000/api/applications/candidate/${encodeURIComponent(user.email)}`);
+                const response = await fetch(`${API_BASE_URL}/api/applications/candidate/${encodeURIComponent(user.email)}`);
                 const data = await response.json();
 
                 const transformedApps = (data || []).map(app => ({
@@ -102,7 +103,7 @@ const CandidateDashboard = () => {
     // Fetch Notifications
     useEffect(() => {
         if (user?.id) {
-            fetch(`http://localhost:5000/api/notifications/${user.id}`)
+            fetch(`${API_BASE_URL}/api/notifications/${user.id}`)
                 .then(res => res.json())
                 .then(data => {
                     setNotifications(data.notifications || []);
@@ -255,6 +256,16 @@ const CandidateDashboard = () => {
                                         </div>
                                     )}
                                     <div className="space-y-3 min-w-[280px]">
+                                        <Link
+                                            to="/saved-jobs"
+                                            className="flex items-center justify-between p-4 bg-white rounded-xl hover:bg-teal-50 transition-all group shadow-md"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <Heart className="w-5 h-5 text-teal-700" />
+                                                <span className="font-bold text-slate-800">Saved Jobs</span>
+                                            </div>
+                                            <ArrowRight className="w-4 h-4 text-teal-600 group-hover:translate-x-1 transition-transform" />
+                                        </Link>
                                         <Link
                                             to="/jobs"
                                             className="flex items-center justify-between p-4 bg-white rounded-xl hover:bg-teal-50 transition-all group shadow-md"

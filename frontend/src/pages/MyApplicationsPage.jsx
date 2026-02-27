@@ -1,3 +1,4 @@
+import API_BASE_URL from '../api/config.js';
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
@@ -35,7 +36,7 @@ const MyApplicationsPage = () => {
             }
 
             try {
-                const response = await fetch(`http://localhost:5000/api/applications/candidate/${encodeURIComponent(user.email)}`);
+                const response = await fetch(`${API_BASE_URL}/api/applications/candidate/${encodeURIComponent(user.email)}`);
                 const data = await response.json();
 
                 // Transform data to match expected format
@@ -96,7 +97,7 @@ const MyApplicationsPage = () => {
     // Handle visibility request - calls backend API
     const handleRequestProgress = async (appId) => {
         try {
-            const response = await fetch(`http://localhost:5000/api/applications/${appId}/request-visibility`, {
+            const response = await fetch(`${API_BASE_URL}/api/applications/${appId}/request-visibility`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });

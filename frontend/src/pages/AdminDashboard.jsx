@@ -1,4 +1,5 @@
-ï»¿import React, { useState, useRef, useEffect } from 'react';
+import API_BASE_URL from '../api/config.js';
+import React, { useState, useRef, useEffect } from 'react';
 import {
    Users,
    Briefcase,
@@ -289,7 +290,7 @@ const AdminDashboard = () => {
          openings: 1,
          state: "HIDDEN",
          stateColor: "text-slate-300",
-         region: "Malâ”œâŒ, Maldives",
+         region: "Mal+¬, Maldives",
          sector: "Tourism",
          description: "Responsible for leading diving excursions and ensuring safety protocols for all guests. Must be certified and experienced in open water diving.",
          requirements: ["PADI CERTIFICATION", "FIRST AID CERTIFIED", "3 YEARS EXPERIENCE"]
@@ -453,7 +454,7 @@ const AdminDashboard = () => {
 
    const fetchApplicationCounts = async () => {
       try {
-         const response = await fetch('http://localhost:5000/api/admin/applications');
+         const response = await fetch(`${API_BASE_URL}/api/admin/applications`);
          const data = await response.json();
          const counts = {};
          const formattedApps = [];
@@ -500,7 +501,7 @@ const AdminDashboard = () => {
       if (!window.confirm("Are you sure you want to delete this job? This action cannot be undone.")) return;
 
       try {
-         const response = await fetch(`http://localhost:5000/api/jobs/${jobId}`, {
+         const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}`, {
             method: 'DELETE'
          });
 
@@ -527,7 +528,7 @@ const AdminDashboard = () => {
 
       try {
          // In a real app, this would hit an API endpoint
-         // await fetch(`http://localhost:5000/api/jobs/${jobId}/premium`, { method: 'PUT' });
+         // await fetch(`${API_BASE_URL}/api/jobs/${jobId}/premium`, { method: 'PUT' });
          console.log(`Toggled premium for job ${jobId}`);
       } catch (error) {
          console.error("Error toggling premium:", error);
@@ -564,7 +565,7 @@ const AdminDashboard = () => {
    const fetchPendingAgents = async (showLoading = false) => {
       if (showLoading) setIsRefreshingAgents(true);
       try {
-         const response = await fetch('http://localhost:5000/api/admin/pending-agents');
+         const response = await fetch(`${API_BASE_URL}/api/admin/pending-agents`);
          const data = await response.json();
          setPendingAgencies(data);
       } catch (error) {
@@ -579,14 +580,14 @@ const AdminDashboard = () => {
       if (showLoading) setIsLoadingJobs(true);
       try {
          // 1. Fetch Categories
-         const catRes = await fetch('http://localhost:5000/api/jobs/categories');
+         const catRes = await fetch(`${API_BASE_URL}/api/jobs/categories`);
          if (catRes.ok) {
             const catData = await catRes.json();
             setCategories(catData || []);
          }
 
          // 2. Fetch Jobs
-         const jobRes = await fetch('http://localhost:5000/api/jobs');
+         const jobRes = await fetch(`${API_BASE_URL}/api/jobs`);
          if (jobRes.ok) {
             const jobData = await jobRes.json();
             const mappedJobs = (jobData || []).map(j => ({
@@ -600,7 +601,7 @@ const AdminDashboard = () => {
          }
 
          // 3. Fetch Applications
-         const appRes = await fetch('http://localhost:5000/api/admin/applications');
+         const appRes = await fetch(`${API_BASE_URL}/api/admin/applications`);
          if (appRes.ok) {
             const appData = await appRes.json();
             if (appData && appData.length > 0) {
@@ -658,7 +659,7 @@ const AdminDashboard = () => {
          setCategoryJobs(prev => prev.filter(job => job.id !== jobId && job._id !== jobId));
 
          // In a real app, you would also call API to delete
-         // fetch(`http://localhost:5000/api/jobs/${jobId}`, { method: 'DELETE' });
+         // fetch(`${API_BASE_URL}/api/jobs/${jobId}`, { method: 'DELETE' });
       }
    };
 
@@ -687,7 +688,7 @@ const AdminDashboard = () => {
    const fetchApplicationsByJob = async (jobId) => {
       setIsLoadingApplications(true);
       try {
-         const response = await fetch(`http://localhost:5000/api/applications?job_id=${encodeURIComponent(jobId)}`);
+         const response = await fetch(`${API_BASE_URL}/api/applications?job_id=${encodeURIComponent(jobId)}`);
          if (response.ok) {
             const data = await response.json();
             if (data.length > 0) {
@@ -762,7 +763,7 @@ const AdminDashboard = () => {
    // Handle application status update (Approve/Reject)
    const handleApplicationAction = async (appId, action) => {
       try {
-         const response = await fetch(`http://localhost:5000/api/applications/${appId}/${action}`, {
+         const response = await fetch(`${API_BASE_URL}/api/applications/${appId}/${action}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' }
          });
@@ -870,7 +871,7 @@ const AdminDashboard = () => {
       if (!window.confirm('Are you sure you want to PERMANENTLY DELETE this job? This action cannot be undone.')) return;
 
       try {
-         const response = await fetch(`http://localhost:5000/api/jobs/${selectedJob.id || selectedJob._id}`, {
+         const response = await fetch(`${API_BASE_URL}/api/jobs/${selectedJob.id || selectedJob._id}`, {
             method: 'DELETE'
          });
 
@@ -896,7 +897,7 @@ const AdminDashboard = () => {
    const fetchVisibilityRequests = async () => {
       setIsLoadingVisibilityRequests(true);
       try {
-         const response = await fetch('http://localhost:5000/api/admin/visibility-requests');
+         const response = await fetch(`${API_BASE_URL}/api/admin/visibility-requests`);
          const data = await response.json();
          if (response.ok) {
             setVisibilityRequests(data);
@@ -911,18 +912,18 @@ const AdminDashboard = () => {
    // Approve visibility request
    const handleApproveVisibilityRequest = async (requestId) => {
       try {
-         const response = await fetch(`http://localhost:5000/api/admin/visibility-requests/${requestId}/approve`, {
+         const response = await fetch(`${API_BASE_URL}/api/admin/visibility-requests/${requestId}/approve`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ reviewed_by: 'Admin' })
          });
 
          if (response.ok) {
-            alert('Î“Â£Ã  Visibility request approved!');
+            alert('G£à Visibility request approved!');
             fetchVisibilityRequests(); // Refresh the list
          } else {
             const data = await response.json();
-            alert(`Î“Â¥Ã® Failed: ${data.message}`);
+            alert(`G¥î Failed: ${data.message}`);
          }
       } catch (error) {
          console.error('Error approving visibility request:', error);
@@ -940,7 +941,7 @@ const AdminDashboard = () => {
       ));
 
       try {
-         const response = await fetch(`http://localhost:5000/api/admin/visibility-requests/${requestId}/reject`, {
+         const response = await fetch(`${API_BASE_URL}/api/admin/visibility-requests/${requestId}/reject`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ reviewed_by: 'Admin' })
@@ -967,7 +968,7 @@ const AdminDashboard = () => {
       ));
 
       try {
-         const response = await fetch(`http://localhost:5000/api/admin/visibility-requests/${requestId}/hold`, {
+         const response = await fetch(`${API_BASE_URL}/api/admin/visibility-requests/${requestId}/hold`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ reviewed_by: 'Admin' })
@@ -1000,7 +1001,7 @@ const AdminDashboard = () => {
    const handleApproveJobRequest = async (request) => {
       setIsApprovingJob(true);
       try {
-         const response = await fetch(`http://localhost:5000/api/admin/job-requests/${request._id}/approve`, {
+         const response = await fetch(`${API_BASE_URL}/api/admin/job-requests/${request._id}/approve`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1010,7 +1011,7 @@ const AdminDashboard = () => {
          });
          const data = await response.json();
          if (response.ok) {
-            alert(`Î“Â£Ã  Job request approved! "${request.title}" is now live.`);
+            alert(`G£à Job request approved! "${request.title}" is now live.`);
             setPendingJobRequests(prev => prev.filter(r => r._id !== request._id));
             setPendingJobRequestsCount(prev => prev - 1);
             fetchJobsByCategory(selectedCategory);
@@ -1030,7 +1031,7 @@ const AdminDashboard = () => {
       if (!selectedJobRequest) return;
       setIsRejectingJob(true);
       try {
-         const response = await fetch(`http://localhost:5000/api/admin/job-requests/${selectedJobRequest._id}/reject`, {
+         const response = await fetch(`${API_BASE_URL}/api/admin/job-requests/${selectedJobRequest._id}/reject`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1040,7 +1041,7 @@ const AdminDashboard = () => {
          });
          const data = await response.json();
          if (response.ok) {
-            alert(`Î“Â¥Ã® Job request "${selectedJobRequest.title}" has been rejected.`);
+            alert(`G¥î Job request "${selectedJobRequest.title}" has been rejected.`);
             setPendingJobRequests(prev => prev.filter(r => r._id !== selectedJobRequest._id));
             setPendingJobRequestsCount(prev => prev - 1);
             setShowRejectModal(false);
@@ -1349,7 +1350,7 @@ const AdminDashboard = () => {
    // Agent Approval Handlers (using Profile model)
    const handleApproveAgency = async (agent) => {
       try {
-         const response = await fetch(`http://localhost:5000/api/admin/agents/${agent._id}/approve`, {
+         const response = await fetch(`${API_BASE_URL}/api/admin/agents/${agent._id}/approve`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' }
          });
@@ -1369,7 +1370,7 @@ const AdminDashboard = () => {
 
    const handleRejectAgency = async (agent) => {
       try {
-         const response = await fetch(`http://localhost:5000/api/admin/agents/${agent._id}/reject`, {
+         const response = await fetch(`${API_BASE_URL}/api/admin/agents/${agent._id}/reject`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' }
          });
@@ -1400,7 +1401,7 @@ const AdminDashboard = () => {
 
    const fetchCategories = async () => {
       try {
-         const res = await fetch('http://localhost:5000/api/jobs/categories');
+         const res = await fetch(`${API_BASE_URL}/api/jobs/categories`);
          if (res.ok) {
             const data = await res.json();
             setCategories(data || []);
@@ -1424,7 +1425,7 @@ const AdminDashboard = () => {
       }
 
       try {
-         const res = await fetch('http://localhost:5000/api/jobs/categories', {
+         const res = await fetch(`${API_BASE_URL}/api/jobs/categories`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: newCategoryName })
@@ -1454,7 +1455,7 @@ const AdminDashboard = () => {
       if (!window.confirm(`Are you sure you want to delete the category "${catName}"?`)) return;
 
       try {
-         const res = await fetch(`http://localhost:5000/api/jobs/categories/${catName}`, {
+         const res = await fetch(`${API_BASE_URL}/api/jobs/categories/${catName}`, {
             method: 'DELETE'
          });
 
@@ -2970,7 +2971,7 @@ const AdminDashboard = () => {
                                                             <div>
                                                                <h4 className="font-bold text-slate-900 text-base mb-1">{job.title}</h4>
                                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                                                  {job.ref} <span className="mx-1">Î“Ã‡Ã³</span> {job.date}
+                                                                  {job.ref} <span className="mx-1">GÇó</span> {job.date}
                                                                </p>
                                                             </div>
                                                          </td>
