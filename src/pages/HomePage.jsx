@@ -48,11 +48,11 @@ const HomePage = () => {
 
    const categories = [
       { name: 'Resort & Hospitality', icon: Palmtree, count: '120+', color: 'text-teal-600', bg: 'bg-teal-50' },
-      { name: 'Culinary & Kitchen', icon: Utensils, count: '85+', color: 'text-orange-600', bg: 'bg-orange-50' },
-      { name: 'Healthcare', icon: Stethoscope, count: '45+', color: 'text-blue-600', bg: 'bg-blue-50' },
-      { name: 'Marine & Water Sports', icon: Ship, count: '30+', color: 'text-cyan-600', bg: 'bg-cyan-50' },
-      { name: 'Corporate & Admin', icon: Building2, count: '60+', color: 'text-purple-600', bg: 'bg-purple-50' },
-      { name: 'Education', icon: GraduationCap, count: '25+', color: 'text-pink-600', bg: 'bg-pink-50' },
+      { name: 'Culinary & Kitchen', icon: Utensils, count: '85+', color: 'text-teal-600', bg: 'bg-teal-50' },
+      { name: 'Healthcare', icon: Stethoscope, count: '45+', color: 'text-teal-600', bg: 'bg-teal-50' },
+      { name: 'Marine & Water Sports', icon: Ship, count: '30+', color: 'text-teal-600', bg: 'bg-teal-50' },
+      { name: 'Corporate & Admin', icon: Building2, count: '60+', color: 'text-teal-600', bg: 'bg-teal-50' },
+      { name: 'Education', icon: GraduationCap, count: '25+', color: 'text-teal-600', bg: 'bg-teal-50' },
    ];
 
    return (
