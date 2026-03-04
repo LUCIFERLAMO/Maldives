@@ -23,9 +23,7 @@ const Navbar = () => {
                 {/* LEFT: BRAND & MAIN LINKS */}
                 <div className="flex items-center gap-12">
                     <Link to="/" className="flex items-center gap-2 font-black text-xl text-slate-900 tracking-tighter">
-                        <div className="w-8 h-8 bg-teal-600 rounded-lg flex items-center justify-center text-white text-sm shadow-lg shadow-teal-600/20">
-                            <Briefcase className="w-4 h-4" />
-                        </div>
+                        <img src="/logo.png" alt="GlobalAKjobs Logo" className="h-16 w-auto object-contain" />
                         <span>GlobalAKjobs</span>
                     </Link>
 
