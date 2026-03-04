@@ -8,6 +8,9 @@ import multer from 'multer';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 import dns from 'dns';
+import bcrypt from 'bcryptjs';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 
 // Force all DNS resolution to prefer IPv4 (Render free tier blocks IPv6 outbound)
 dns.setDefaultResultOrder('ipv4first');
@@ -36,6 +39,36 @@ app.use(cors({
     },
     credentials: true
 }));
+
+// Security: set protective HTTP response headers (XSS, clickjacking, MIME sniffing, etc.)
+app.use(helmet());
+
+// Helper: escape user-supplied strings before using in regex (prevents ReDoS attacks)
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Rate limiting — protect sensitive endpoints from brute-force and abuse
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: 'Too many attempts from this IP. Please try again in 15 minutes.' }
+});
+const forgotPasswordLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: 'Too many password reset requests. Please try again in 15 minutes.' }
+});
+const globalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 300,
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+app.use('/api/', globalLimiter);
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -82,7 +115,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api', notificationRoutes);
 
 // AUTH ROUTES
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', authLimiter, async (req, res) => {
     try {
         let { email, password, role, name, agencyName, skills, contact, phone } = req.body;
         
@@ -92,15 +125,16 @@ app.post('/api/auth/register', async (req, res) => {
         }
 
         // Check if user exists (case-insensitive)
-        const existingUser = await Profile.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
+        const existingUser = await Profile.findOne({ email: { $regex: new RegExp(`^${escapeRegex(email)}$`, 'i') } });
         if (existingUser) {
             return res.status(400).json({ message: 'User already exists' });
         }
 
+        const hashedPassword = await bcrypt.hash(password, 12);
         const newProfile = new Profile({
             full_name: name,
             email,
-            password, // NOTE: In production, hash this password with bcrypt!
+            password: hashedPassword,
             role,
             contact_number: contact || phone,
             agency_name: role === 'AGENT' ? agencyName : undefined,
@@ -115,7 +149,7 @@ app.post('/api/auth/register', async (req, res) => {
     }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', authLimiter, async (req, res) => {
     try {
         let { email, password, role } = req.body;
         
@@ -125,13 +159,21 @@ app.post('/api/auth/login', async (req, res) => {
         }
 
         // Check user - use case-insensitive regex so emails like 'BCD@gmail.com' still match when user types 'bcd@gmail.com'
-        const user = await Profile.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
+        const user = await Profile.findOne({ email: { $regex: new RegExp(`^${escapeRegex(email)}$`, 'i') } });
         if (!user) {
             return res.status(400).json({ message: 'User not found' });
         }
 
-        // Validate password (check both regular and temporary password)
-        const isValidPassword = user.password === password || user.temporaryPassword === password;
+        // Validate password — bcrypt compare with graceful fallback for legacy plain-text accounts
+        let isValidPassword = await bcrypt.compare(password, user.password).catch(() => false);
+        if (!isValidPassword) {
+            // Fallback: support old plain-text passwords and migrate them to bcrypt silently
+            if (user.password === password) {
+                isValidPassword = true;
+                user.password = await bcrypt.hash(password, 12);
+                await user.save();
+            }
+        }
         if (!isValidPassword) {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
@@ -184,7 +226,7 @@ app.post('/api/auth/login', async (req, res) => {
 //  4. Account must be ACTIVE (not BANNED, INACTIVE, PENDING, or DELETED)
 //  5. GOOGLE_CLIENT_ID / GOOGLE_CALLBACK_URL read from env — never hardcoded
 //  6. Multiple redirect URIs supported via GOOGLE_ALLOWED_ORIGINS env var
-app.post('/api/auth/google', async (req, res) => {
+app.post('/api/auth/google', authLimiter, async (req, res) => {
     try {
         const { credential, role } = req.body;
 
@@ -246,7 +288,7 @@ app.post('/api/auth/google', async (req, res) => {
 
         // ── Look up account by googleId first, then by email ─────────────────────
         const profileByGoogleId = await Profile.findOne({ googleId: googleSub });
-        const profileByEmail    = await Profile.findOne({ email: { $regex: new RegExp(`^${googleEmail}$`, 'i') } });
+        const profileByEmail    = await Profile.findOne({ email: { $regex: new RegExp(`^${escapeRegex(googleEmail)}$`, 'i') } });
 
         // ── Requirement 3: Prevent one Google identity linking to multiple accounts ─
         // If a record exists with this googleId AND a different record exists with
@@ -370,14 +412,17 @@ app.post('/api/auth/reset-password', async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Verify old password
-        const isValidOldPassword = user.password === oldPassword || user.temporaryPassword === oldPassword;
+        // Verify old password — bcrypt compare with plain-text fallback for legacy accounts
+        let isValidOldPassword = await bcrypt.compare(oldPassword, user.password).catch(() => false);
+        if (!isValidOldPassword) {
+            isValidOldPassword = user.password === oldPassword;
+        }
         if (!isValidOldPassword) {
             return res.status(400).json({ message: 'Current password is incorrect' });
         }
 
-        // Update to new password
-        user.password = newPassword; // NOTE: In production, hash this!
+        // Update to new password — hashed
+        user.password = await bcrypt.hash(newPassword, 12);
         user.temporaryPassword = undefined; // Clear any temp password
         user.requiresPasswordChange = false;
         await user.save();
@@ -406,8 +451,8 @@ app.put('/api/auth/change-password', async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Update password and clear the flag
-        user.password = newPassword; // NOTE: In production, hash this!
+        // Update password and clear the flag — hashed
+        user.password = await bcrypt.hash(newPassword, 12);
         user.requiresPasswordChange = false;
         user.temporaryPassword = undefined; // Remove temp password
         await user.save();
@@ -421,7 +466,7 @@ app.put('/api/auth/change-password', async (req, res) => {
 // ── EMAIL-BASED FORGOT PASSWORD ROUTES ──────────────────────────────────────
 
 // POST /api/auth/forgot-password — generate token + send reset email
-app.post('/api/auth/forgot-password', async (req, res) => {
+app.post('/api/auth/forgot-password', forgotPasswordLimiter, async (req, res) => {
     try {
         let { email } = req.body;
         if (!email) return res.status(400).json({ message: 'Email is required.' });
@@ -434,7 +479,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
         }
 
         // ── Look up user — return real error if not found ────────────────────────
-        const user = await Profile.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
+        const user = await Profile.findOne({ email: { $regex: new RegExp(`^${escapeRegex(email)}$`, 'i') } });
         if (!user) {
             return res.status(404).json({ message: 'No account found with that email address. Please check and try again.' });
         }
@@ -563,7 +608,7 @@ app.post('/api/auth/reset-password-token', async (req, res) => {
         if (!user) {
             return res.status(400).json({ message: 'Reset link is invalid or has expired. Please request a new one.' });
         }
-        user.password = newPassword;
+        user.password = await bcrypt.hash(newPassword, 12);
         user.resetPasswordToken = null;
         user.resetPasswordExpires = null;
         user.temporaryPassword = undefined;
@@ -593,14 +638,17 @@ app.put('/api/auth/password', async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Verify current password
-        const isMatch = user.password === currentPassword || user.temporaryPassword === currentPassword;
+        // Verify current password — bcrypt compare with plain-text fallback
+        let isMatch = await bcrypt.compare(currentPassword, user.password).catch(() => false);
+        if (!isMatch) {
+            isMatch = user.password === currentPassword;
+        }
         if (!isMatch) {
             return res.status(400).json({ message: 'Current password is incorrect' });
         }
 
-        // Update password
-        user.password = newPassword;
+        // Update password — hashed
+        user.password = await bcrypt.hash(newPassword, 12);
         user.temporaryPassword = undefined; // Clear temp password if any
         user.requiresPasswordChange = false;
 
