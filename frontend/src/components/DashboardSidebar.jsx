@@ -2,7 +2,7 @@ import React from 'react';
 import { LayoutDashboard, Briefcase, UserCheck, Globe2, UserPlus, LogOut, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-export const DashboardSidebar = ({ activeTab, setActiveTab, isOpen = false, onClose }) => {
+export const DashboardSidebar = ({ activeTab, setActiveTab, isOpen = false, onClose, notificationCounts }) => {
     const { logout } = useAuth();
 
     // Auto-close on mobile when selecting an item
@@ -37,9 +37,7 @@ export const DashboardSidebar = ({ activeTab, setActiveTab, isOpen = false, onCl
             `}>
                 <div className="h-20 flex flex-col justify-center px-6 border-b border-slate-900/50 bg-slate-900">
                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-teal-500 border border-teal-500/30">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
-                        </div>
+                        <img src="/logo.png" alt="Logo" className="h-16 w-auto object-contain" />
                         <div className="flex flex-col">
                             <span className="font-bold text-white text-sm tracking-widest uppercase">Governance Hub</span>
                             <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Admin Control</span>
@@ -57,17 +55,24 @@ export const DashboardSidebar = ({ activeTab, setActiveTab, isOpen = false, onCl
                         { id: 'blacklisted', label: 'BLACKLISTED', icon: ShieldAlert },
                     ].map((item) => {
                         const isActive = activeTab === item.id;
+                        const count = notificationCounts ? notificationCounts[item.id] : 0;
+
                         return (
                             <button
                                 key={item.id}
                                 onClick={() => handleTabClick(item.id)}
-                                className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg text-[10px] font-black tracking-widest uppercase transition-all duration-200 ${isActive
+                                className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg text-[10px] font-black tracking-widest uppercase transition-all duration-200 relative ${isActive
                                     ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/20'
                                     : 'text-slate-400 hover:text-white hover:bg-white/5'
                                     }`}
                             >
                                 <item.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-500'}`} />
                                 <span className="text-left leading-tight">{item.label}</span>
+                                {count > 0 && (
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center shadow-sm">
+                                        {count > 99 ? '99+' : count}
+                                    </span>
+                                )}
                             </button>
                         );
                     })}

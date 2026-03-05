@@ -13,9 +13,7 @@ const Footer = () => {
                     {/* Brand Column */}
                     <div className="space-y-6">
                         <Link to="/" className="flex items-center gap-2 font-black text-xl text-white tracking-tighter">
-                            <div className="w-8 h-8 bg-teal-500 rounded-lg flex items-center justify-center text-white text-sm shadow-lg shadow-teal-500/20">
-                                <Briefcase className="w-4 h-4" />
-                            </div>
+                            <img src="/logo.png" alt="GlobalAKjobs Logo" className="h-16 w-auto object-contain drop-shadow-md" />
                             <span>GlobalAKjobs</span>
                         </Link>
                         <p className="text-slate-400 text-sm leading-relaxed max-w-xs">
