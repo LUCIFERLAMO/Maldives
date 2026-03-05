@@ -2454,8 +2454,6 @@ const AdminDashboard = () => {
                                                             headcount: '',
                                                             description: '',
                                                             headcount: '',
-                                                            description: '',
-                                                            requirements: '',
                                                             companyName: '',
                                                             address: '',
                                                             required_documents: []
