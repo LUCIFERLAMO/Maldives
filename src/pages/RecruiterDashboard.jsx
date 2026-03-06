@@ -66,9 +66,9 @@ const RecruiterDashboard = () => {
                 const data = await response.json();
 
                 // Filter for current openings
-                const openJobs = (Array.isArray(data) ? data : []).filter(j => j?.status === 'Current Opening');
+                const openJobs = (Array.isArray(data) ? data : []).filter(j => j?.status === 'OPEN');
                 setJobs(openJobs);
-                if (openJobs.length === 0) console.warn("Fetch successful but 0 jobs found with status 'Current Opening'");
+                if (openJobs.length === 0) console.warn("Fetch successful but 0 jobs found with status 'OPEN'");
             } catch (error) {
                 console.error("Error fetching jobs:", error);
                 setJobs([]);
@@ -109,7 +109,7 @@ const RecruiterDashboard = () => {
         };
         fetchRequests();
     }, [user?.id]);
-    
+
     const [showJobRequestForm, setShowJobRequestForm] = useState(false);
     const [jobRequestSearchTerm, setJobRequestSearchTerm] = useState('');
     const [expandedJobRequestId, setExpandedJobRequestId] = useState(null);
@@ -207,7 +207,7 @@ const RecruiterDashboard = () => {
             alert("Please upload all mandatory documents (Resume, ID/Passport, Certificates).");
             return;
         }
-        
+
         if (!submissionData.name || !submissionData.email || !submissionData.whatsapp || !submissionData.nationality) {
             alert("Please fill in all identity details (Name, Email, Phone, Nationality).");
             return;

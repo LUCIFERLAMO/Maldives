@@ -478,7 +478,7 @@ const AdminDashboard = () => {
          id: (jobs.length + 1).toString(),
          ...newVacancy,
          postedDate: new Date().toISOString().split('T')[0],
-         status: 'Current Opening',
+         status: 'OPEN',
          isReopened: false,
          requirements: newVacancy.requirements.split(',').map(r => r.trim())
       };

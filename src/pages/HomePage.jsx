@@ -32,7 +32,7 @@ const HomePage = () => {
 
             setJobStats({
                totalJobs: jobs.length || 0,
-               activeJobs: jobs.filter(j => j.status === 'Current Opening').length || 0
+               activeJobs: jobs.filter(j => j.status === 'OPEN').length || 0
             });
          } catch (error) {
             console.error('Error fetching stats:', error);

@@ -361,7 +361,7 @@ const BrowseJobsPage = () => {
                         <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Editor's Choice</h2>
                     </div>
                     <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 overflow-x-auto snap-x snap-mandatory pb-8 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0 no-scrollbar">
-                        {jobs.filter(j => j.status === 'Current Opening' && (selectedIndustry === 'All' || j.industry === selectedIndustry)).slice(0, 3).map((job, idx) => (
+                        {jobs.filter(j => j.status === 'OPEN' && (selectedIndustry === 'All' || j.industry === selectedIndustry)).slice(0, 3).map((job, idx) => (
                             <Link to={`/job/${job.id}`} key={idx} className="flex-shrink-0 w-[70%] md:w-auto snap-center [scroll-snap-stop:always] group bg-white rounded-[2rem] p-1 overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500 cursor-pointer">
                                 <div className="bg-slate-50 rounded-[1.8rem] p-4 md:p-8 h-full flex flex-col items-start relative overflow-hidden group-hover:bg-[#0B1A33] transition-colors duration-500">
                                     <div className="absolute -right-10 -top-10 w-32 h-32 bg-white/5 rounded-full blur-2xl group-hover:bg-white/10"></div>
