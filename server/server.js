@@ -423,7 +423,7 @@ app.post('/api/job-requests', async (req, res) => {
         const {
             agent_id, agent_name, agent_email, agency_name,
             title, company, location, category, salary_range,
-            description, requirements, vacancies
+            description, requirements, vacancies, education, experience
         } = req.body;
 
         const newJobRequest = new JobRequest({
@@ -439,6 +439,8 @@ app.post('/api/job-requests', async (req, res) => {
             description,
             requirements: requirements || [],
             vacancies: vacancies || 1,
+            education: education || '',
+            experience: experience || '',
             status: 'PENDING'
         });
 
@@ -510,6 +512,8 @@ app.put('/api/admin/job-requests/:id/approve', async (req, res) => {
             salary_range: jobRequest.salary_range,
             description: jobRequest.description,
             requirements: jobRequest.requirements,
+            education: jobRequest.education,
+            experience: jobRequest.experience,
             status: 'OPEN'
         });
 

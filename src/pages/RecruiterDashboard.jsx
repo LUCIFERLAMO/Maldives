@@ -443,7 +443,9 @@ const RecruiterDashboard = () => {
                                                         salary_range: formData.get('salary_range') || '',
                                                         description: formData.get('description') || '',
                                                         requirements: (formData.get('requirements') || '').split('\n').filter(r => r.trim()),
-                                                        vacancies: Number(formData.get('vacancies')) || 1
+                                                        vacancies: Number(formData.get('vacancies')) || 1,
+                                                        education: formData.get('education') || '',
+                                                        experience: formData.get('experience') || ''
                                                     };
 
                                                     const response = await fetch('http://localhost:5000/api/job-requests', {
@@ -506,6 +508,17 @@ const RecruiterDashboard = () => {
                                                     <div className="space-y-2">
                                                         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Vacancies (Default: 1)</label>
                                                         <input name="vacancies" type="number" min="1" defaultValue="1" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Education</label>
+                                                        <input name="education" type="text" placeholder="e.g. Bachelor's Degree in Culinary Arts" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Experience</label>
+                                                        <input name="experience" type="text" placeholder="e.g. 3-5 Years" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
                                                     </div>
                                                 </div>
 

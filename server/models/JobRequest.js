@@ -58,6 +58,14 @@ const jobRequestSchema = new mongoose.Schema({
         type: Number,
         default: 1
     },
+    education: {
+        type: String,
+        required: false
+    },
+    experience: {
+        type: String,
+        required: false
+    },
     // Request Status
     status: {
         type: String,
