@@ -178,8 +178,8 @@ const HomePage = () => {
 
                <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 lg:gap-6">
                   {categories.map((cat, idx) => (
-                     <div key={idx} className="group p-6 rounded-[2rem] bg-slate-50 border border-slate-100 hover:bg-white hover:border-teal-100 hover:shadow-xl hover:shadow-teal-900/5 transition-all duration-300 cursor-pointer text-center">
-                        <div className={`w-14 h-14 mx-auto rounded-2xl ${cat.bg} ${cat.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                     <div key={idx} className="group p-6 rounded-[2rem] bg-slate-50 border border-slate-100 transition-all duration-300 cursor-pointer text-center">
+                        <div className={`w-14 h-14 mx-auto rounded-2xl ${cat.bg} ${cat.color} flex items-center justify-center mb-4 transition-transform`}>
                            <cat.icon className="w-7 h-7" />
                         </div>
                         <h3 className="font-bold text-slate-900 mb-1">{cat.name}</h3>
