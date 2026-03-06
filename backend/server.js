@@ -120,7 +120,7 @@ app.use('/api', notificationRoutes);
 app.post('/api/auth/register', authLimiter, async (req, res) => {
     try {
         let { email, password, role, name, agencyName, skills, contact, phone } = req.body;
-        
+
         // Normalize email
         if (email) {
             email = email.toLowerCase().trim();
@@ -154,7 +154,7 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
 app.post('/api/auth/login', authLimiter, async (req, res) => {
     try {
         let { email, password, role } = req.body;
-        
+
         // Normalize email
         if (email) {
             email = email.toLowerCase().trim();
@@ -290,7 +290,7 @@ app.post('/api/auth/google', authLimiter, async (req, res) => {
 
         // ── Look up account by googleId first, then by email ─────────────────────
         const profileByGoogleId = await Profile.findOne({ googleId: googleSub });
-        const profileByEmail    = await Profile.findOne({ email: { $regex: new RegExp(`^${escapeRegex(googleEmail)}$`, 'i') } });
+        const profileByEmail = await Profile.findOne({ email: { $regex: new RegExp(`^${escapeRegex(googleEmail)}$`, 'i') } });
 
         // ── Requirement 3: Prevent one Google identity linking to multiple accounts ─
         // If a record exists with this googleId AND a different record exists with
@@ -320,9 +320,9 @@ app.post('/api/auth/google', authLimiter, async (req, res) => {
             const allowedStatuses = ['ACTIVE'];
             if (!allowedStatuses.includes(profile.status)) {
                 const statusMessages = {
-                    BANNED:   'Your account has been suspended. Please contact support.',
+                    BANNED: 'Your account has been suspended. Please contact support.',
                     INACTIVE: 'Your account is inactive. Please contact support to reactivate it.',
-                    PENDING:  'Your account is pending approval. Please wait for admin confirmation.',
+                    PENDING: 'Your account is pending approval. Please wait for admin confirmation.',
                 };
                 const message = statusMessages[profile.status] || 'Your account is not active. Please contact support.';
                 return res.status(403).json({ message });
@@ -402,7 +402,7 @@ app.post('/api/auth/google', authLimiter, async (req, res) => {
 app.post('/api/auth/reset-password', async (req, res) => {
     try {
         let { email, oldPassword, newPassword } = req.body;
-        
+
         // Normalize email
         if (email) {
             email = email.toLowerCase().trim();
@@ -759,7 +759,7 @@ app.post('/api/profile/:id/save-job', async (req, res) => {
         if (!profile) profile = await Profile.findOne({ id: req.params.id });
 
         if (!profile) return res.status(404).json({ message: 'User not found' });
-        
+
         // Ensure user is candidate
         if (profile.role?.toLowerCase() !== 'candidate') return res.status(403).json({ message: 'Only candidates can save jobs' });
 
@@ -790,7 +790,7 @@ app.get('/api/profile/:id/saved-jobs', async (req, res) => {
 
         const savedJobsIds = profile.savedJobs || [];
         const validMongoIds = savedJobsIds.filter(id => /^[0-9a-fA-F]{24}$/.test(id));
-        
+
         const jobs = await Job.find({
             $or: [
                 { id: { $in: savedJobsIds } },
@@ -1019,7 +1019,7 @@ app.post('/api/jobs', async (req, res) => {
     try {
         const {
             title, company, location, category, salary_range,
-            description, requirements, headcount
+            description, requirements, headcount, education, experience
         } = req.body;
 
         // Validation
@@ -1041,6 +1041,8 @@ app.post('/api/jobs', async (req, res) => {
             description,
             requirements: Array.isArray(requirements) ? requirements : requirements.split(',').map(r => r.trim()),
             vacancies: headcount || 1,
+            education,
+            experience,
             posted_date: new Date(),
             status: 'OPEN'
         });
@@ -1257,7 +1259,7 @@ app.post('/api/job-requests', async (req, res) => {
         const {
             agent_id, agent_name, agent_email, agency_name,
             title, company, location, category, salary_range,
-            description, requirements, vacancies
+            description, requirements, vacancies, education, experience
         } = req.body;
 
         // ========== SECURITY: Server-side Sanitization ==========
@@ -1332,6 +1334,8 @@ app.post('/api/job-requests', async (req, res) => {
             description: sanitizeInput(description),
             requirements: sanitizedRequirements,
             vacancies: vacancyNum,
+            education: sanitizeInput(education),
+            experience: sanitizeInput(experience),
             status: 'PENDING'
         });
 
@@ -1403,6 +1407,8 @@ app.put('/api/admin/job-requests/:id/approve', async (req, res) => {
             salary_range: jobRequest.salary_range,
             description: jobRequest.description,
             requirements: jobRequest.requirements,
+            education: jobRequest.education,
+            experience: jobRequest.experience,
             status: 'OPEN'
         });
 
