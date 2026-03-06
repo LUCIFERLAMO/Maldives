@@ -485,7 +485,7 @@ const RecruiterDashboard = () => {
                                             </div>
                                         </div>
 
-                                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
+                                        <div className="bg-white rounded-2xl border border-slate-300 shadow-md ring-1 ring-slate-200 p-8">
                                             <form className="space-y-8" onSubmit={async (e) => {
                                                 e.preventDefault();
                                                 if (!user?.id) {
@@ -549,9 +549,15 @@ const RecruiterDashboard = () => {
                                                     <div className="space-y-2">
                                                         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Category <span className="text-red-500">*</span></label>
                                                         <div className="relative">
-                                                            <select name="category" required className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all appearance-none">
+                                                            <select
+                                                                name="category"
+                                                                required
+                                                                defaultValue=""
+                                                                className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all appearance-none invalid:text-slate-400"
+                                                            >
+                                                                <option value="" disabled className="text-slate-400">-- Select Category --</option>
                                                                 {['Hospitality', 'Construction', 'Healthcare', 'IT', 'Education', 'Retail', 'Manufacturing', 'Tourism', 'Fishing', 'Agriculture', 'Other'].map(cat => (
-                                                                    <option key={cat} value={cat}>{cat}</option>
+                                                                    <option key={cat} value={cat} className="text-slate-700">{cat}</option>
                                                                 ))}
                                                             </select>
                                                             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -559,7 +565,20 @@ const RecruiterDashboard = () => {
                                                     </div>
                                                     <div className="space-y-2">
                                                         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Location <span className="text-red-500">*</span></label>
-                                                        <input name="location" required type="text" placeholder="e.g. Male, Maldives" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
+                                                        <div className="relative">
+                                                            <select
+                                                                name="location"
+                                                                required
+                                                                defaultValue=""
+                                                                className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all appearance-none invalid:text-slate-400"
+                                                            >
+                                                                <option value="" disabled className="text-slate-400">-- Select Location --</option>
+                                                                {['Malé', 'Hulhumalé', 'Villingili', 'Haa Alif', 'Haa Dhaalu', 'Shaviyani', 'Noonu', 'Raa', 'Baa', 'Lhaviyani', 'Kaafu', 'Alif Alif', 'Alif Dhaalu', 'Vaavu', 'Meemu', 'Faafu', 'Dhaalu', 'Thaa', 'Laamu', 'Gaafu Alif', 'Gaafu Dhaalu', 'Gnaviyani', 'Seenu'].map(loc => (
+                                                                    <option key={loc} value={loc} className="text-slate-700">{loc}</option>
+                                                                ))}
+                                                            </select>
+                                                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                                        </div>
                                                     </div>
                                                 </div>
 
@@ -569,19 +588,45 @@ const RecruiterDashboard = () => {
                                                         <input name="salary_range" type="text" placeholder="e.g. $2000 - $3000/month" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Vacancies (Default: 1)</label>
-                                                        <input name="vacancies" type="number" min="1" defaultValue="1" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Vacancies</label>
+                                                        <input name="vacancies" type="number" min="1" placeholder="e.g. 1" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
                                                     </div>
                                                 </div>
 
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     <div className="space-y-2">
                                                         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Education</label>
-                                                        <input name="education" type="text" placeholder="e.g. Bachelor's Degree in Culinary Arts" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
+                                                        <div className="relative">
+                                                            <select
+                                                                name="education"
+                                                                required
+                                                                defaultValue=""
+                                                                className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all appearance-none invalid:text-slate-400"
+                                                            >
+                                                                <option value="" disabled className="text-slate-400">-- Select Education --</option>
+                                                                {['O-Level / Secondary School', 'A-Level / Higher Secondary', 'Certificate', 'Diploma', 'Advanced Diploma', 'Bachelor’s Degree', 'Master’s Degree', 'Doctorate / PhD'].map(edu => (
+                                                                    <option key={edu} value={edu} className="text-slate-700">{edu}</option>
+                                                                ))}
+                                                            </select>
+                                                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                                        </div>
                                                     </div>
                                                     <div className="space-y-2">
                                                         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Experience</label>
-                                                        <input name="experience" type="text" placeholder="e.g. 3-5 Years" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
+                                                        <div className="relative">
+                                                            <select
+                                                                name="experience"
+                                                                required
+                                                                defaultValue=""
+                                                                className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all appearance-none invalid:text-slate-400"
+                                                            >
+                                                                <option value="" disabled className="text-slate-400">-- Select Experience --</option>
+                                                                {['Any Experience', 'No Experience', '1 – 2 Years', '3 – 5 Years', '6 – 10 Years', '10+ Years'].map(exp => (
+                                                                    <option key={exp} value={exp} className="text-slate-700">{exp}</option>
+                                                                ))}
+                                                            </select>
+                                                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                                        </div>
                                                     </div>
                                                 </div>
 
