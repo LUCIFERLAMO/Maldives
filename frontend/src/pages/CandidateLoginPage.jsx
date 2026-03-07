@@ -9,7 +9,9 @@ import {
     ArrowLeft,
     CheckCircle2,
     Phone,
-    Loader2
+    Loader2,
+    Eye,
+    EyeOff
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -35,6 +37,8 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
         password: '',
         phone: ''
     });
+    const [showLoginPassword, setShowLoginPassword] = useState(false);
+    const [showSignupPassword, setShowSignupPassword] = useState(false);
 
     useEffect(() => {
         setMode(initialMode);
@@ -294,7 +298,10 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
                                 </div>
                                 <div className="relative group">
                                     <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
-                                    <input type="password" required placeholder="Password" className="w-full pl-14 pr-6 py-5 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-slate-700 placeholder:text-slate-400" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
+                                    <input type={showLoginPassword ? "text" : "password"} required placeholder="Password" className="w-full pl-14 pr-14 py-5 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-slate-700 placeholder:text-slate-400" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
+                                    <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors">
+                                        {showLoginPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    </button>
                                 </div>
                                 <div className="text-right">
                                     <button type="button" onClick={() => { setForgotMode(true); setForgotMessage(null); setForgotEmail(''); }} className="text-teal-600 hover:text-teal-800 text-xs font-bold transition-colors">
@@ -392,7 +399,10 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
                                     <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-2 block">Password</label>
                                     <div className="relative group">
                                         <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
-                                        <input type="password" required className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-500/10 outline-none font-bold text-slate-700 transition-all placeholder:text-slate-400" placeholder="Min 6 characters" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
+                                        <input type={showSignupPassword ? "text" : "password"} required className="w-full pl-14 pr-14 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-500/10 outline-none font-bold text-slate-700 transition-all placeholder:text-slate-400" placeholder="Min 6 characters" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
+                                        <button type="button" onClick={() => setShowSignupPassword(!showSignupPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors">
+                                            {showSignupPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                        </button>
                                     </div>
                                 </div>
                                 <button type="submit" disabled={isLoading} className="w-full bg-teal-600 text-white py-5 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-teal-700 transition-all shadow-xl shadow-teal-600/20 hover:shadow-2xl hover:shadow-teal-600/30 hover:-translate-y-0.5 mt-6 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed">
