@@ -36,6 +36,8 @@ import { DashboardSidebar } from '../components/DashboardSidebar';
 import { DashboardHeader } from '../components/DashboardHeader';
 import { MOCK_JOBS, MOCK_APPLICATIONS, INDUSTRIES, REQUIRED_DOCUMENT_OPTIONS } from '../constants';
 
+const MALDIVES_LOCATIONS = ['All Locations', 'Male', 'Hulhumale', 'Villingili', 'Haa Alif', 'Haa Dhaalu', 'Shaviyani', 'Noonu', 'Raa', 'Baa', 'Lhaviyani', 'Kaafu', 'Alif Alif', 'Alif Dhaalu', 'Vaavu', 'Meemu', 'Faafu', 'Dhaalu', 'Thaa', 'Laamu', 'Gaafu Alif', 'Gaafu Dhaalu', 'Gnaviyani', 'Seenu'];
+
 const MOCK_AGENT_RESUMES = [
    {
       id: 1,
@@ -1087,7 +1089,8 @@ const AdminDashboard = () => {
    const [auditFilters, setAuditFilters] = useState({
       status: [],
       source: 'All',
-      duration: 'All'
+      duration: 'All',
+      location: 'All Locations'
    });
 
    const toggleAuditStatusFilter = (status) => {
@@ -1107,7 +1110,8 @@ const AdminDashboard = () => {
    const [candidateFilters, setCandidateFilters] = useState({
       status: [],
       source: 'All',
-      duration: 'All'
+      duration: 'All',
+      location: 'All Locations'
    });
 
    const toggleCandidateFilter = (filterType, value) => {
@@ -1275,7 +1279,8 @@ const AdminDashboard = () => {
    const [isAgentBlacklistFilterOpen, setIsAgentBlacklistFilterOpen] = useState(false);
    const [agentBlacklistFilters, setAgentBlacklistFilters] = useState({
       source: 'All', // 'Agency' or others if applicable
-      duration: 'All'
+      duration: 'All',
+      location: 'All Locations'
    });
 
    const handleAgentBlacklistSearch = () => setAgentBlacklistSearchQuery(agentBlacklistSearchInput);
@@ -1545,13 +1550,13 @@ const AdminDashboard = () => {
    const handleBlacklistSearch = () => setBlacklistSearchQuery(blacklistSearchInput);
 
    const [isBlacklistFilterOpen, setIsBlacklistFilterOpen] = useState(false);
-   const [blacklistFilters, setBlacklistFilters] = useState({ source: 'All', duration: 'All' });
+   const [blacklistFilters, setBlacklistFilters] = useState({ source: 'All', duration: 'All', location: 'All Locations' });
 
    // --- AGENT ECOSYSTEM FILTERS ---
 
    // 1. VACANCIES FILTER
    const [isVacancyFilterOpen, setIsVacancyFilterOpen] = useState(false);
-   const [vacancyFilters, setVacancyFilters] = useState({ status: [], duration: 'All' });
+   const [vacancyFilters, setVacancyFilters] = useState({ status: [], duration: 'All', location: 'All Locations' });
 
    const filteredAgentVacancies = agentVacancies.filter(job => {
       // Search Filter
@@ -1571,7 +1576,7 @@ const AdminDashboard = () => {
 
    // 2. RESUMES FILTER
    const [isResumeFilterOpen, setIsResumeFilterOpen] = useState(false);
-   const [resumeFilters, setResumeFilters] = useState({ status: [], duration: 'All' });
+   const [resumeFilters, setResumeFilters] = useState({ status: [], duration: 'All', location: 'All Locations' });
    const filteredAgentResumes = agentResumes.filter(resume => {
       // Exclude REJECTED (Moved to Blacklist)
       if (resume.status === 'REJECTED' || resume.status === 'Rejected') return false;
@@ -1590,7 +1595,7 @@ const AdminDashboard = () => {
 
    // 3. APPLICATIONS FILTER
    const [isAppFilterOpen, setIsAppFilterOpen] = useState(false);
-   const [appFilters, setAppFilters] = useState({ status: [], duration: 'All' });
+   const [appFilters, setAppFilters] = useState({ status: [], duration: 'All', location: 'All Locations' });
 
 
    const filteredPartnerApplications = partnerApplications.filter(app => {
@@ -2285,11 +2290,23 @@ const AdminDashboard = () => {
                                                          ))}
                                                       </div>
                                                    </div>
+                                                   <div className="space-y-3">
+                                                      <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">3. Location</h4>
+                                                      <select
+                                                         value={auditFilters.location}
+                                                         onChange={(e) => setAuditFilters({ ...auditFilters, location: e.target.value })}
+                                                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-teal-500 transition-colors"
+                                                      >
+                                                         {MALDIVES_LOCATIONS.map(loc => (
+                                                            <option key={loc} value={loc}>{loc}</option>
+                                                         ))}
+                                                      </select>
+                                                   </div>
                                                 </div>
 
                                                 <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
                                                    <button
-                                                      onClick={() => setAuditFilters({ status: [], source: 'All', duration: 'All' })}
+                                                      onClick={() => setAuditFilters({ status: [], source: 'All', duration: 'All', location: 'All Locations' })}
                                                       className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors"
                                                    >
                                                       Clear
@@ -2684,12 +2701,24 @@ const AdminDashboard = () => {
                                                             ))}
                                                          </div>
                                                       </div>
+                                                      <div className="space-y-3">
+                                                         <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">3. Location</h4>
+                                                         <select
+                                                            value={candidateFilters.location}
+                                                            onChange={(e) => setCandidateFilters({ ...candidateFilters, location: e.target.value })}
+                                                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-teal-500 transition-colors"
+                                                         >
+                                                            {MALDIVES_LOCATIONS.map(loc => (
+                                                               <option key={loc} value={loc}>{loc}</option>
+                                                            ))}
+                                                         </select>
+                                                      </div>
                                                    </div>
 
                                                    <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3 relative z-10">
                                                       <button
                                                          onClick={() => {
-                                                            setCandidateFilters({ status: [], source: 'All', duration: 'All' });
+                                                            setCandidateFilters({ status: [], source: 'All', duration: 'All', location: 'All Locations' });
                                                             setIsCandidateFilterOpen(false);
                                                          }}
                                                          className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors"
@@ -2947,9 +2976,21 @@ const AdminDashboard = () => {
                                                                ))}
                                                             </div>
                                                          </div>
+                                                         <div className="space-y-3">
+                                                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">3. Location</h4>
+                                                            <select
+                                                               value={vacancyFilters.location}
+                                                               onChange={(e) => setVacancyFilters({ ...vacancyFilters, location: e.target.value })}
+                                                               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-teal-500 transition-colors"
+                                                            >
+                                                               {MALDIVES_LOCATIONS.map(loc => (
+                                                                  <option key={loc} value={loc}>{loc}</option>
+                                                               ))}
+                                                            </select>
+                                                         </div>
                                                       </div>
                                                       <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
-                                                         <button onClick={() => setVacancyFilters({ status: [], duration: 'All' })} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">Clear</button>
+                                                         <button onClick={() => setVacancyFilters({ status: [], duration: 'All', location: 'All Locations' })} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">Clear</button>
                                                          <button onClick={() => setIsVacancyFilterOpen(false)} className="flex-1 py-2 rounded-lg bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20">Apply</button>
                                                       </div>
                                                    </div>
@@ -3081,9 +3122,21 @@ const AdminDashboard = () => {
                                                                ))}
                                                             </div>
                                                          </div>
+                                                         <div className="space-y-3">
+                                                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">3. Location</h4>
+                                                            <select
+                                                               value={resumeFilters.location}
+                                                               onChange={(e) => setResumeFilters({ ...resumeFilters, location: e.target.value })}
+                                                               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-teal-500 transition-colors"
+                                                            >
+                                                               {MALDIVES_LOCATIONS.map(loc => (
+                                                                  <option key={loc} value={loc}>{loc}</option>
+                                                               ))}
+                                                            </select>
+                                                         </div>
                                                       </div>
                                                       <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
-                                                         <button onClick={() => setResumeFilters({ status: [], duration: 'All' })} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">Clear</button>
+                                                         <button onClick={() => setResumeFilters({ status: [], duration: 'All', location: 'All Locations' })} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">Clear</button>
                                                          <button onClick={() => setIsResumeFilterOpen(false)} className="flex-1 py-2 rounded-lg bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20">Apply</button>
                                                       </div>
                                                    </div>
@@ -3210,9 +3263,21 @@ const AdminDashboard = () => {
                                                                ))}
                                                             </div>
                                                          </div>
+                                                         <div className="space-y-3">
+                                                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">3. Location</h4>
+                                                            <select
+                                                               value={appFilters.location}
+                                                               onChange={(e) => setAppFilters({ ...appFilters, location: e.target.value })}
+                                                               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-teal-500 transition-colors"
+                                                            >
+                                                               {MALDIVES_LOCATIONS.map(loc => (
+                                                                  <option key={loc} value={loc}>{loc}</option>
+                                                               ))}
+                                                            </select>
+                                                         </div>
                                                       </div>
                                                       <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
-                                                         <button onClick={() => setAppFilters({ status: [], duration: 'All' })} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">Clear</button>
+                                                         <button onClick={() => setAppFilters({ status: [], duration: 'All', location: 'All Locations' })} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">Clear</button>
                                                          <button onClick={() => setIsAppFilterOpen(false)} className="flex-1 py-2 rounded-lg bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20">Apply</button>
                                                       </div>
                                                    </div>
