@@ -889,6 +889,20 @@ app.get('/api/profile/:id/saved-jobs', async (req, res) => {
     }
 });
 
+// DELETE: Agent self-deletes their own account permanently
+app.delete('/api/profile/:id/delete-account', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const agent = await Profile.findByIdAndDelete(id);
+        if (!agent) {
+            return res.status(404).json({ message: 'Account not found' });
+        }
+        res.json({ message: 'Account permanently deleted' });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to delete account', error: err.message });
+    }
+});
+
 // ADMIN AGENT ROUTES (From Profile model - for agents registered via agent-registration page)
 
 // GET: Fetch pending agents (from Profile model)

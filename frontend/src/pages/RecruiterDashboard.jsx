@@ -1,4 +1,4 @@
-import API_BASE_URL from '../api/config.js';
+﻿import API_BASE_URL from '../api/config.js';
 import { usePopup } from '../context/PopupContext';
 import React, { useState, useMemo, useEffect } from 'react';
 import { ApplicationStatus, JobStatus } from '../types';
@@ -11,7 +11,7 @@ import {
     MapPin, Award, User,
     AlignLeft, ChevronDown, ShieldCheck,
     FilePlus, Clock, Settings, Key, Eye, EyeOff,
-    Camera, Pencil, Phone, Save
+    Camera, Pencil, Phone, Save, Trash2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -24,8 +24,24 @@ const RecruiterDashboard = () => {
 
     const [activeTab, setActiveTab] = useState('overview');
     const [applications, setApplications] = useState(MOCK_APPLICATIONS || []);
+    // Delete Account State
+    const [showDeleteAccountModal, setShowDeleteAccountModal] = React.useState(false);
+    const [deleteConfirmInput, setDeleteConfirmInput] = React.useState('');
+    const [isDeletingAccount, setIsDeletingAccount] = React.useState(false);
 
-    // FIXED: Form State for Candidate Submission
+    const handleDeleteOwnAccount = async () => {
+        if (!user?.id || deleteConfirmInput !== user?.email) return;
+        setIsDeletingAccount(true);
+        try {
+            await fetch(`${API_BASE_URL}/api/profile/${user.id}/delete-account`, { method: 'DELETE' });
+            logout();
+            navigate('/agent-login');
+        } catch (err) {
+            console.error('Delete account failed:', err);
+            setIsDeletingAccount(false);
+        }
+    };
+
     const [submissionData, setSubmissionData] = useState({
         name: '',
         email: '',
@@ -1169,6 +1185,34 @@ const RecruiterDashboard = () => {
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* DANGER ZONE */}
+                                <div className="max-w-xl">
+                                    <div className="bg-white rounded-2xl border-2 border-red-200 shadow-sm overflow-hidden">
+                                        <div className="px-8 py-5 border-b border-red-100 bg-gradient-to-r from-red-50 to-rose-50">
+                                            <h3 className="text-base font-bold text-red-700 flex items-center gap-2">
+                                                <Trash2 className="w-4 h-4" /> Danger Zone
+                                            </h3>
+                                            <p className="text-red-400 text-xs mt-0.5">Irreversible and destructive actions</p>
+                                        </div>
+                                        <div className="p-8">
+                                            <div className="flex items-start justify-between gap-6">
+                                                <div className="flex-1">
+                                                    <p className="font-bold text-slate-900 text-sm mb-1">Delete this account</p>
+                                                    <p className="text-slate-500 text-xs leading-relaxed">
+                                                        Once you delete your account, all your data, applications, and profile will be <span className="font-bold text-red-600">permanently removed</span>. You must register again and get admin approval to regain access.
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    onClick={() => setShowDeleteAccountModal(true)}
+                                                    className="shrink-0 px-5 py-2.5 bg-white border-2 border-red-500 text-red-600 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-red-50 transition-colors whitespace-nowrap"
+                                                >
+                                                    Delete Account
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         ) : activeTab === 'blocked' ? (
                             /* PIPELINE TRACKING (REFINED) */
@@ -1438,4 +1482,61 @@ const RecruiterDashboard = () => {
     );
 };
 
-export default RecruiterDashboard;
+
+            {/* DELETE ACCOUNT CONFIRMATION MODAL */}
+            {showDeleteAccountModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[300] animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-in zoom-in-95 duration-300">
+                        <div className="bg-red-600 px-8 py-6 text-white text-center">
+                            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                                <Trash2 className="w-8 h-8 text-white" />
+                            </div>
+                            <h2 className="text-xl font-black uppercase tracking-widest">Delete Account</h2>
+                            <p className="text-red-100 text-xs mt-1">This action cannot be undone</p>
+                        </div>
+                        <div className="p-8 space-y-5">
+                            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                                <p className="font-bold text-red-700 text-sm mb-2">⚠ What will be deleted</p>
+                                <ul className="text-xs space-y-1 text-red-600 list-disc list-inside">
+                                    <li>Your profile data and documents</li>
+                                    <li>All submitted job requests</li>
+                                    <li>Your pipeline and candidate history</li>
+                                    <li>Your login credentials</li>
+                                </ul>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block">
+                                    Type your email to confirm
+                                </label>
+                                <input
+                                    type="text"
+                                    value={deleteConfirmInput}
+                                    onChange={(e) => setDeleteConfirmInput(e.target.value)}
+                                    placeholder={user?.email || 'your@email.com'}
+                                    className="w-full border-2 border-slate-200 focus:border-red-400 rounded-xl py-3 px-4 text-sm font-medium text-slate-700 outline-none transition-all"
+                                />
+                                <p className="text-xs text-slate-400">Enter <span className="font-bold text-slate-600">{user?.email}</span> to enable deletion</p>
+                            </div>
+                        </div>
+                        <div className="px-8 pb-8 flex gap-3">
+                            <button
+                                onClick={() => { setShowDeleteAccountModal(false); setDeleteConfirmInput(''); }}
+                                className="flex-1 py-3 bg-slate-100 text-slate-600 text-xs font-bold uppercase tracking-wider rounded-xl hover:bg-slate-200 transition-colors"
+                            >
+                                Cancel — Keep Account
+                            </button>
+                            <button
+                                onClick={handleDeleteOwnAccount}
+                                disabled={deleteConfirmInput !== user?.email || isDeletingAccount}
+                                className="flex-1 py-3 bg-red-600 text-white text-xs font-black uppercase tracking-wider rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-600/20 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                {isDeletingAccount ? (
+                                    <><div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Deleting...</>
+                                ) : (
+                                    <><Trash2 className="w-3.5 h-3.5" />Delete Forever</>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}export default RecruiterDashboard;
