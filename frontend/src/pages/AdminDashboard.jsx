@@ -3254,21 +3254,21 @@ const AdminDashboard = () => {
                                              <tbody className="divide-y divide-slate-50">
                                                 {filteredPartnerApplications.length > 0 ? (
                                                    filteredPartnerApplications.map((app) => (
-                                                      <tr key={app.id} className="group hover:bg-slate-50 transition-colors">
+                                                      <tr key={app._id || app.id} className="group hover:bg-slate-50 transition-colors">
                                                          <td className="px-6 py-8 align-middle">
                                                             <div>
-                                                               <h4 className="font-bold text-slate-900 text-base mb-1">{app.applicant}</h4>
-                                                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{app.agency}</p>
+                                                               <h4 className="font-bold text-slate-900 text-base mb-1">{app.full_name || app.applicant}</h4>
+                                                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{app.agency_name || app.agency}</p>
                                                             </div>
                                                          </td>
                                                          <td className="px-6 py-8 align-middle">
                                                             <div className="flex items-center gap-2 text-slate-500 text-xs font-bold">
                                                                <MapPin className="w-4 h-4 text-slate-300" />
-                                                               {app.region}
+                                                               {app.location || app.region || 'Not Specified'}
                                                             </div>
                                                          </td>
                                                          <td className="px-6 py-8 text-center align-middle">
-                                                            <div className={`inline-flex px-4 py-2 rounded-full border ${app.status === 'REJECTED' ? 'bg-red-50 text-red-600 border-red-100' : app.statusColor} text-[10px] font-black uppercase tracking-widest`}>
+                                                            <div className={`inline-flex px-4 py-2 rounded-full border ${app.status === 'REJECTED' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-slate-50 text-slate-600 border-slate-200'} text-[10px] font-black uppercase tracking-widest`}>
                                                                {app.status}
                                                             </div>
                                                          </td>
