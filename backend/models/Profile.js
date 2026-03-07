@@ -61,6 +61,24 @@ const profileSchema = new mongoose.Schema({
         type: [String], // Array of Job IDs (custom string IDs or ObjectIds as strings)
         default: []
     },
+    // Agent Application Documents
+    documents: {
+        identity: {
+            filename: String,
+            contentType: String,
+            data: String
+        },
+        license: {
+            filename: String,
+            contentType: String,
+            data: String
+        },
+        profile: {
+            filename: String,
+            contentType: String,
+            data: String
+        }
+    },
     // Status
     status: {
         type: String,

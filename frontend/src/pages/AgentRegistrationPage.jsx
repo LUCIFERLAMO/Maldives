@@ -15,7 +15,8 @@ import {
     Eye,
     EyeOff,
     Loader2,
-    Lock
+    Lock,
+    FileText
 } from 'lucide-react';
 import { validatePassword } from '../utils/passwordValidation';
 
@@ -36,6 +37,44 @@ const AgentRegistrationPage = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [errors, setErrors] = useState({});
+    
+    // File upload states
+    const [identityProof, setIdentityProof] = useState(null);
+    const [businessLicense, setBusinessLicense] = useState(null);
+    const [agencyProfile, setAgencyProfile] = useState(null);
+
+    // File Upload Component
+    const FileUpload = ({ label, id, onChange, file, accept = ".pdf,.doc,.docx" }) => (
+        <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">{label}</label>
+            <div className="relative group cursor-pointer">
+                <input
+                    type="file"
+                    id={id}
+                    accept={accept}
+                    onChange={onChange}
+                    className="hidden"
+                />
+                <label 
+                    htmlFor={id} 
+                    className={`flex items-center gap-3 w-full p-4 bg-slate-50 border rounded-xl hover:bg-slate-100 transition-colors cursor-pointer ${file ? 'border-teal-500 bg-teal-50/30' : 'border-slate-100 focus-within:border-teal-600'}`}
+                >
+                    <div className={`p-2 rounded-lg ${file ? 'bg-teal-100 text-teal-600' : 'bg-white text-slate-400 border border-slate-200'} transition-colors`}>
+                        <FileText className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 overflow-hidden pointer-events-none">
+                        <p className={`text-sm font-bold truncate ${file ? 'text-teal-700' : 'text-slate-500'}`}>
+                            {file ? file.name : 'Choose File'}
+                        </p>
+                        <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                            {file ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : 'PDF/DOCX'}
+                        </p>
+                    </div>
+                </label>
+            </div>
+            {errors[id] && <p className="text-red-500 text-xs mt-1 ml-1">{errors[id]}</p>}
+        </div>
+    );
 
     // ===== INPUT VALIDATION FUNCTIONS =====
 
@@ -153,25 +192,33 @@ const AgentRegistrationPage = () => {
             validationErrors.experienceRegion = 'Region must contain only letters';
         }
 
+        if (!identityProof) validationErrors.identityProof = 'Identity proof is required';
+        if (!businessLicense) validationErrors.businessLicense = 'Business license is required';
+        if (!agencyProfile) validationErrors.agencyProfile = 'Agency profile is required';
+
         if (Object.keys(validationErrors).length > 0) {
             setErrors(validationErrors);
-            popup.warning("Please fix the validation errors before submitting.");
+            popup.warning("Please fix the validation errors and upload all required documents before submitting.");
             return;
         }
 
         setIsLoading(true);
         try {
+            const submitData = new FormData();
+            submitData.append('email', sanitizeInput(formData.workEmail));
+            submitData.append('password', sanitizeInput(formData.password));
+            submitData.append('name', sanitizeInput(formData.fullName));
+            submitData.append('role', 'AGENT');
+            submitData.append('agencyName', sanitizeInput(formData.companyName));
+            submitData.append('contact', formData.phone);
+            submitData.append('identityProof', identityProof);
+            submitData.append('businessLicense', businessLicense);
+            submitData.append('agencyProfile', agencyProfile);
+
             const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: sanitizeInput(formData.workEmail),
-                    password: sanitizeInput(formData.password),
-                    name: sanitizeInput(formData.fullName),
-                    role: 'AGENT',
-                    agencyName: sanitizeInput(formData.companyName),
-                    contact: formData.phone
-                })
+                // Content-Type is determined automatically by the browser when using FormData
+                body: submitData
             });
 
             const data = await response.json();
@@ -404,6 +451,30 @@ const AgentRegistrationPage = () => {
                                         />
                                     </div>
                                     {errors.experienceRegion && <p className="text-red-500 text-xs mt-1 ml-1">{errors.experienceRegion}</p>}
+                                </div>
+                            </div>
+
+                            <div className="pt-4 border-t border-slate-100">
+                                <h3 className="text-sm font-black text-slate-900 mb-4 tracking-tight">Required Documents</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <FileUpload 
+                                        label="Identity Proof *" 
+                                        id="identityProof" 
+                                        onChange={(e) => setIdentityProof(e.target.files[0])} 
+                                        file={identityProof} 
+                                    />
+                                    <FileUpload 
+                                        label="Business License *" 
+                                        id="businessLicense" 
+                                        onChange={(e) => setBusinessLicense(e.target.files[0])} 
+                                        file={businessLicense} 
+                                    />
+                                    <FileUpload 
+                                        label="Agency Profile *" 
+                                        id="agencyProfile" 
+                                        onChange={(e) => setAgencyProfile(e.target.files[0])} 
+                                        file={agencyProfile} 
+                                    />
                                 </div>
                             </div>
 

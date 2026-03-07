@@ -237,23 +237,45 @@ const MOCK_NEW_PARTNER_APPS = [
 
 
 
-const DocumentCard = ({ label, filename }) => (
-   <div className="flex items-center p-4 border border-slate-200 rounded-2xl bg-white hover:border-teal-500 hover:shadow-md transition-all group">
-      <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mr-4 group-hover:bg-teal-50 group-hover:text-teal-600 transition-colors">
-         <FileText className="w-6 h-6" />
+const DocumentCard = ({ label, filename, fileObj }) => {
+   const handleViewDocument = () => {
+      if (fileObj && fileObj.data) {
+         try {
+            const byteCharacters = atob(fileObj.data);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+               byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: fileObj.contentType || 'application/pdf' });
+            const blobUrl = URL.createObjectURL(blob);
+            window.open(blobUrl, '_blank');
+         } catch (e) {
+            console.error('Failed to decode document', e);
+         }
+      } else if (filename && filename !== '#') {
+         window.open(filename, '_blank');
+      }
+   };
+
+   return (
+      <div className="flex items-center p-4 border border-slate-200 rounded-2xl bg-white hover:border-teal-500 hover:shadow-md transition-all group">
+         <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mr-4 group-hover:bg-teal-50 group-hover:text-teal-600 transition-colors">
+            <FileText className="w-6 h-6" />
+         </div>
+         <div className="flex-1 overflow-hidden">
+            <p className="text-slate-900 font-bold text-sm mb-0.5 truncate pr-2">{filename || 'Document'}</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</p>
+         </div>
+         <button
+            onClick={handleViewDocument}
+            className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-teal-50 hover:text-teal-600 transition-colors ml-4 shrink-0"
+         >
+            <Eye className="w-4 h-4" />
+         </button>
       </div>
-      <div className="flex-1">
-         <p className="text-slate-900 font-bold text-sm mb-0.5">{filename}</p>
-         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</p>
-      </div>
-      <button
-         onClick={() => window.open('#', '_blank')}
-         className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-teal-50 hover:text-teal-600 transition-colors ml-4"
-      >
-         <Eye className="w-4 h-4" />
-      </button>
-   </div>
-);
+   );
+};
 
 const AdminDashboard = () => {
    const popup = usePopup();
@@ -1251,21 +1273,7 @@ const AdminDashboard = () => {
       popup.success(`Candidate status updated to ${status}`);
    };
 
-   const [partnerApplications, setPartnerApplications] = useState(() => {
-      const storedApps = JSON.parse(localStorage.getItem('maldives_agent_applications') || '[]');
-      const apps = [...storedApps, ...MOCK_NEW_PARTNER_APPS];
-      // Apply correct colors AND normalize text
-      return apps.map(app => {
-         let normalizedStatus = app.status;
-         if (app.status === 'YET TO BE CHECKED') normalizedStatus = 'PROCESSING';
-
-         return {
-            ...app,
-            status: normalizedStatus,
-            statusColor: getStatusColor(normalizedStatus)
-         };
-      });
-   });
+   const [partnerApplications, setPartnerApplications] = useState([]);
 
 
 
@@ -1285,7 +1293,7 @@ const AdminDashboard = () => {
    const [selectedApplication, setSelectedApplication] = useState(null);
    const [approvalStep, setApprovalStep] = useState('NONE');
 
-   const handleApplicationStatusChange = (status) => {
+   const handleApplicationStatusChange = async (status) => {
       if (!selectedApplication) return;
 
       if (status === 'SELECTED' && approvalStep === 'NONE') {
@@ -1293,24 +1301,30 @@ const AdminDashboard = () => {
          return;
       }
 
-      const updatedApps = partnerApplications.map(app => {
-         if (app.id === selectedApplication.id) {
-            let displayStatus = status;
-            if (status === 'ON HOLD') {
-               displayStatus = 'ON HOLD';
-            }
-            return { ...app, status: displayStatus, statusColor: getStatusColor(displayStatus) };
+      try {
+         const id = selectedApplication._id || selectedApplication.id;
+         
+         if (status === 'SELECTED') {
+            await fetch(`${API_BASE_URL}/api/admin/agents/${id}/approve`, { method: 'PUT' });
+            popup.success('Agent approved successfully!');
+         } else if (status === 'REJECTED') {
+            await fetch(`${API_BASE_URL}/api/admin/agents/${id}/reject`, { method: 'PUT' });
+            popup.success('Agent rejected successfully.');
+         } else if (status === 'ON HOLD') {
+            // Profile doesn't have native ON HOLD endpoint currently
+            popup.warning('ON HOLD is not currently supported natively by API.');
          }
-         return app;
-      });
 
-      setPartnerApplications(updatedApps);
-      // FIX: Persist to Local Storage
-      localStorage.setItem('maldives_agent_applications', JSON.stringify(updatedApps));
+         // Refresh the agents list
+         fetchPendingAgents();
 
-      if (status !== 'SELECTED' || approvalStep === 'SUCCESS') {
-         setSelectedApplication(null);
-         setApprovalStep('NONE');
+         if (status !== 'SELECTED' || approvalStep === 'SUCCESS') {
+            setSelectedApplication(null);
+            setApprovalStep('NONE');
+         }
+      } catch (err) {
+         console.error('Error updating status:', err);
+         popup.error('Failed to update agent status');
       }
    };
 
@@ -1595,15 +1609,18 @@ const AdminDashboard = () => {
    const [appFilters, setAppFilters] = useState({ status: [], duration: 'All' });
 
 
-   const filteredPartnerApplications = partnerApplications.filter(app => {
-      // Exclude REJECTED (Moved to Blacklist)
-      if (app.status === 'REJECTED') return false;
+   const filteredPartnerApplications = pendingAgencies.filter(app => {
+      // Exclude REJECTED or BANNED 
+      if (app.status === 'REJECTED' || app.status === 'BANNED') return false;
 
       // Search Filter
       if (appSearchQuery) {
          const q = appSearchQuery.toLowerCase();
-         // Match Applicant, Agency, Email, Region
-         const matches = app.applicant.toLowerCase().includes(q) || app.agency.toLowerCase().includes(q) || app.email.toLowerCase().includes(q) || app.region.toLowerCase().includes(q);
+         // Match Applicant, Agency, Email
+         const applicant = app.full_name || '';
+         const agency = app.agency_name || '';
+         const email = app.email || '';
+         const matches = applicant.toLowerCase().includes(q) || agency.toLowerCase().includes(q) || email.toLowerCase().includes(q);
          if (!matches) return false;
       }
       // Status Filter
@@ -1789,19 +1806,22 @@ const AdminDashboard = () => {
    });
 
    // Filtering logic for Agent Rejections
-   const filteredAgentRejections = partnerApplications
+   const filteredAgentRejections = pendingAgencies
       .filter((app, index, self) =>
          index === self.findIndex(t => (t.id || t._id) === (app.id || app._id))
       )
       .filter(app => {
-         // Must be REJECTED
-         if (app.status !== 'REJECTED') return false;
+         // Must be REJECTED or BANNED
+         if (app.status !== 'REJECTED' && app.status !== 'BANNED') return false;
 
          // Search Filter
          if (agentBlacklistSearchQuery) {
             const q = agentBlacklistSearchQuery.toLowerCase();
             // Match Name, Agency, Region
-            const matches = app.applicant.toLowerCase().includes(q) || app.agency.toLowerCase().includes(q) || app.region.toLowerCase().includes(q);
+            const applicant = app.full_name || '';
+            const agency = app.agency_name || '';
+            const email = app.email || '';
+            const matches = applicant.toLowerCase().includes(q) || agency.toLowerCase().includes(q) || email.toLowerCase().includes(q);
             if (!matches) return false;
          }
 
@@ -2116,7 +2136,7 @@ const AdminDashboard = () => {
                            ...agentVacancies.map(v => v._id || v.id),
                            ...agentResumes.map(r => r._id || r.id),
                            ...pendingAgencies.map(p => p._id || p.id),
-                           ...partnerApplications.filter(a => a.status === 'YET TO BE CHECKED').map(a => a._id || a.id)
+                           ...pendingAgencies.filter(a => a.status === 'PENDING').map(a => a._id || a.id)
                         ];
                         if (agentIds.length > 0) markApplicationsViewed(agentIds);
                      }
@@ -2126,7 +2146,7 @@ const AdminDashboard = () => {
                   notificationCounts={{
                      audit: auditQueue.filter(i => (i.status === 'PROCESSING' || i.status === 'Processing') && isAppUnviewed(i)).length,
                      vacancies: allApplications.filter(a => (a.status === 'APPLIED' || a.status === 'Applied') && isAppUnviewed(a)).length,
-                     agents: agentVacancies.filter(v => isAppUnviewed(v)).length + agentResumes.filter(r => isAppUnviewed(r)).length + pendingAgencies.filter(p => isAppUnviewed(p)).length + partnerApplications.filter(a => a.status === 'YET TO BE CHECKED' && isAppUnviewed(a)).length
+                     agents: agentVacancies.filter(v => isAppUnviewed(v)).length + agentResumes.filter(r => isAppUnviewed(r)).length + pendingAgencies.filter(p => p.status === 'PENDING' && isAppUnviewed(p)).length
                   }}
                />
 
@@ -2879,9 +2899,9 @@ const AdminDashboard = () => {
                                           }`}
                                     >
                                        <UserPlus className="w-4 h-4" /> New Agents Applications
-                                       {(pendingAgencies.length + partnerApplications.filter(a => a.status === 'YET TO BE CHECKED').length) > 0 && (
+                                       {pendingAgencies.filter(a => a.status === 'PENDING').length > 0 && (
                                           <span className="ml-2 bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center shadow-sm">
-                                             {(pendingAgencies.length + partnerApplications.filter(a => a.status === 'YET TO BE CHECKED').length) > 99 ? '99+' : (pendingAgencies.length + partnerApplications.filter(a => a.status === 'YET TO BE CHECKED').length)}
+                                             {pendingAgencies.filter(a => a.status === 'PENDING').length > 99 ? '99+' : pendingAgencies.filter(a => a.status === 'PENDING').length}
                                           </span>
                                        )}
                                     </button>
@@ -3612,27 +3632,27 @@ const AdminDashboard = () => {
                                           <tbody className="divide-y divide-slate-50">
                                              {filteredAgentRejections.length > 0 ? (
                                                 filteredAgentRejections.map((app) => (
-                                                   <tr key={app.id} className="hover:bg-slate-50/50 transition-colors">
+                                                   <tr key={app.id || app._id} className="hover:bg-slate-50/50 transition-colors">
                                                       <td className="px-6 py-4">
                                                          <div>
-                                                            <p className="text-sm font-bold text-slate-900">{app.applicant}</p>
+                                                            <p className="text-sm font-bold text-slate-900">{app.full_name}</p>
                                                             <p className="text-xs text-slate-400 font-medium">{app.email}</p>
                                                          </div>
                                                       </td>
                                                       <td className="px-6 py-4">
                                                          <span className="text-sm font-bold text-slate-700">
-                                                            {app.agency}
+                                                            {app.agency_name}
                                                          </span>
                                                       </td>
                                                       <td className="px-6 py-4">
                                                          <div className="flex items-center gap-2 text-slate-500 text-xs font-bold">
                                                             <MapPin className="w-4 h-4 text-slate-300" />
-                                                            {app.region}
+                                                            {app.location || 'Not Specified'}
                                                          </div>
                                                       </td>
                                                       <td className="px-6 py-4">
                                                          <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border bg-red-50 text-red-600 border-red-100">
-                                                            REJECTED
+                                                            {app.status}
                                                          </span>
                                                       </td>
                                                       <td className="px-6 py-4 text-right">
@@ -4223,14 +4243,14 @@ const AdminDashboard = () => {
                                  <UserPlus className="w-10 h-10" />
                               </div>
                               <div>
-                                 <h2 className="text-3xl font-black text-slate-900 mb-2">{selectedApplication.agency}</h2>
+                                 <h2 className="text-3xl font-black text-slate-900 mb-2">{selectedApplication.agency_name}</h2>
                                  <div className="flex items-center gap-3">
                                     <span className="px-3 py-1 bg-slate-900 text-white text-[10px] font-bold uppercase tracking-widest rounded-full">
-                                       Contact: {selectedApplication.applicant}
+                                       Contact: {selectedApplication.full_name}
                                     </span>
                                     <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
                                     <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                       Submitted: {selectedApplication.submittedDate}
+                                       Submitted: {new Date(selectedApplication.createdAt).toLocaleDateString()}
                                     </span>
                                  </div>
                               </div>
@@ -4316,7 +4336,7 @@ const AdminDashboard = () => {
                                     <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2 flex items-center gap-2">
                                        <MapPin className="w-3 h-3" /> Targeted Region
                                     </p>
-                                    <p className="text-lg font-bold text-slate-900">{selectedApplication.region}</p>
+                                    <p className="text-lg font-bold text-slate-900">{selectedApplication.location || 'Not Specified'}</p>
                                  </div>
                                  <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
                                     <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2 flex items-center gap-2">
@@ -4332,9 +4352,9 @@ const AdminDashboard = () => {
                                     <ShieldCheck className="w-4 h-4" /> Submitted Documents
                                  </h3>
                                  <div className="grid grid-cols-2 gap-6">
-                                    <DocumentCard label="Identity Proof" filename={selectedApplication.documents.identity} />
-                                    <DocumentCard label="Business License" filename={selectedApplication.documents.license} />
-                                    <DocumentCard label="Agency Profile" filename={selectedApplication.documents.profile} />
+                                    <DocumentCard label="Identity Proof" filename={selectedApplication.documents?.identity?.filename || 'Not Uploaded'} fileObj={selectedApplication.documents?.identity} />
+                                    <DocumentCard label="Business License" filename={selectedApplication.documents?.license?.filename || 'Not Uploaded'} fileObj={selectedApplication.documents?.license} />
+                                    <DocumentCard label="Agency Profile" filename={selectedApplication.documents?.profile?.filename || 'Not Uploaded'} fileObj={selectedApplication.documents?.profile} />
                                  </div>
                               </section>
                            </div>

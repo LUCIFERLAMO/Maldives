@@ -128,7 +128,11 @@ app.get('/api/health', (req, res) => {
 app.use('/api', notificationRoutes);
 
 // AUTH ROUTES
-app.post('/api/auth/register', authLimiter, async (req, res) => {
+app.post('/api/auth/register', authLimiter, upload.fields([
+    { name: 'identityProof', maxCount: 1 },
+    { name: 'businessLicense', maxCount: 1 },
+    { name: 'agencyProfile', maxCount: 1 }
+]), async (req, res) => {
     try {
         let { email, password, role, name, agencyName, skills, contact, phone } = req.body;
 
@@ -150,6 +154,37 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
             return res.status(400).json({ message: 'User already exists' });
         }
 
+        // Handle Agent Documents if role is AGENT
+        let documents = undefined;
+        if (role === 'AGENT' && req.files) {
+            const identityFile = req.files.identityProof ? req.files.identityProof[0] : null;
+            const licenseFile = req.files.businessLicense ? req.files.businessLicense[0] : null;
+            const profileFile = req.files.agencyProfile ? req.files.agencyProfile[0] : null;
+
+            documents = {};
+            if (identityFile) {
+                documents.identity = {
+                    filename: identityFile.originalname,
+                    contentType: identityFile.mimetype,
+                    data: identityFile.buffer.toString('base64')
+                };
+            }
+            if (licenseFile) {
+                documents.license = {
+                    filename: licenseFile.originalname,
+                    contentType: licenseFile.mimetype,
+                    data: licenseFile.buffer.toString('base64')
+                };
+            }
+            if (profileFile) {
+                documents.profile = {
+                    filename: profileFile.originalname,
+                    contentType: profileFile.mimetype,
+                    data: profileFile.buffer.toString('base64')
+                };
+            }
+        }
+
         const hashedPassword = await bcrypt.hash(password, 12);
         const newProfile = new Profile({
             full_name: name,
@@ -159,7 +194,8 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
             contact_number: contact || phone,
             agency_name: role === 'AGENT' ? agencyName : undefined,
             skills: role === 'CANDIDATE' ? skills : undefined,
-            status: role === 'AGENT' ? 'PENDING' : 'ACTIVE' // Agents need admin approval
+            status: role === 'AGENT' ? 'PENDING' : 'ACTIVE', // Agents need admin approval
+            documents: role === 'AGENT' ? documents : undefined
         });
 
         await newProfile.save();
