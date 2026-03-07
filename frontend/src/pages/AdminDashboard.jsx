@@ -2167,8 +2167,9 @@ const AdminDashboard = () => {
                   <DashboardHeader
                      onMenuClick={() => setIsSidebarOpen(true)}
                      title={getPageTitle()}
-                  />
-
+                       onRefresh={() => { fetchAllData(true); fetchPendingAgents(true); fetchApplicationCounts(); }}
+                       isRefreshing={isLoadingJobs || isRefreshingAgents}
+                   />
                   {/* CONTENT SCROLL AREA */}
                   <div className="flex-1 p-4 md:p-8 overflow-visible">
                      <div className="max-w-6xl mx-auto space-y-8">

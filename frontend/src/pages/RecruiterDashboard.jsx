@@ -776,81 +776,166 @@ const RecruiterDashboard = () => {
                                 )}
                             </div>
                         ) : activeTab === 'vacancies' ? (
-                            /* TAB CONTENT: ACTIVE VACANCIES (EXISTING) */
-                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                                    <div>
-                                        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Open Vacancies</h2>
-                                        <p className="text-slate-500 font-medium text-sm mt-1">Accepting submissions from verified partners</p>
-                                    </div>
-
-                                    <div className="relative group">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-teal-600 transition-colors" />
-                                        <input
-                                            type="text"
-                                            placeholder="Filter by role or company..."
-                                            className="bg-white border border-slate-200 rounded-lg py-2.5 pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all w-full md:w-[320px] font-medium shadow-sm"
-                                            value={searchTerm}
-                                            onChange={(e) => setSearchTerm(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-
-                                {filteredJobs.length === 0 ? (
-                                    <div className="col-span-full flex flex-col items-center justify-center py-16 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-                                        <Briefcase className="w-12 h-12 text-slate-300 mb-4" />
-                                        <h3 className="text-slate-900 font-bold text-lg">No Active Vacancies</h3>
-                                        <p className="text-slate-500 text-sm mt-1">Check back later for new opportunities.</p>
-                                    </div>
-                                ) : (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                                        {filteredJobs.map((job) => (
-                                            <div
-                                                key={job.id || job._id}
-                                                className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 hover:shadow-md hover:border-teal-200 transition-all group flex flex-col relative overflow-hidden"
-                                            >
-                                                {/* Status Stripe */}
-                                                <div className="absolute top-0 left-0 w-1 h-full bg-teal-500"></div>
-
-                                                <div className="flex justify-between items-start mb-4 pl-2">
-                                                    <div>
-                                                        <h3 className="font-bold text-slate-900 text-lg leading-tight group-hover:text-teal-700 transition-colors">{job.title || 'Untitled Position'}</h3>
-                                                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-1">{job.company || 'Unknown Company'}</p>
-                                                    </div>
-                                                    <div className="bg-slate-50 p-2 rounded-lg border border-slate-100 group-hover:bg-teal-50 group-hover:border-teal-100 transition-colors">
-                                                        <BriefcaseIcon className="w-5 h-5 text-slate-400 group-hover:text-teal-600" />
-                                                    </div>
-                                                </div>
-
-                                                <div className="grid grid-cols-2 gap-y-3 gap-x-4 mb-6 pl-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                                                        <span className="text-xs font-medium text-slate-600">{job.location || 'Location not specified'}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <Award className="w-3.5 h-3.5 text-slate-400" />
-                                                        <span className="text-xs font-medium text-slate-600">{job.experience || 'N/A'} Exp</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2 col-span-2">
-                                                        <Users className="w-3.5 h-3.5 text-slate-400" />
-                                                        <span className="text-xs font-medium text-slate-600">Immediate Requirement</span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="mt-auto pl-2">
-                                                    <button
-                                                        onClick={() => handleOpenSubmission(job)}
-                                                        className="w-full bg-slate-900 text-white py-3 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-teal-700 hover:shadow-lg hover:shadow-teal-900/10 transition-all"
-                                                    >
-                                                        <UserPlus className="w-4 h-4" /> Submit Candidate
-                                                    </button>
-                                                </div>
+                            /* TAB CONTENT: ACTIVE VACANCIES - CATEGORIZED VIEW */
+                            (() => {
+                                const INDUSTRY_ICONS = {
+                                    Hospitality: '??', Construction: '???', Healthcare: '??',
+                                    IT: '??', Education: '??', Retail: '???',
+                                    Manufacturing: '??', Tourism: '??', Fishing: '??',
+                                    Agriculture: '??', Other: '??'
+                                };
+                                const allCats = ['Hospitality', 'Construction', 'Healthcare', 'IT', 'Education', 'Retail', 'Manufacturing', 'Tourism', 'Fishing', 'Agriculture', 'Other'];
+                                const jobsByCategory = {};
+                                allCats.forEach(cat => {
+                                    jobsByCategory[cat] = (Array.isArray(jobs) ? jobs : []).filter(j =>
+                                        (j.industry || j.category || 'Other') === cat
+                                    );
+                                });
+                                const catSearch = searchTerm?.startsWith('__cat__') ? searchTerm.replace('__cat__', '') : null;
+                                const isCatView = !searchTerm;
+                                const isSearchView = searchTerm && !catSearch;
+                                return (
+                                    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                            <div>
+                                                {catSearch ? (
+                                                    <><button onClick={() => setSearchTerm('')} className="text-xs font-bold text-teal-600 hover:text-teal-800 mb-1 flex items-center gap-1"><ArrowLeft className="w-3 h-3" /> All Categories</button>
+                                                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{catSearch}</h2>
+                                                    <p className="text-slate-500 font-medium text-sm mt-1">{jobsByCategory[catSearch]?.length || 0} open positions</p></>
+                                                ) : (
+                                                    <><h2 className="text-2xl font-bold text-slate-900 tracking-tight">Active Vacancies</h2>
+                                                    <p className="text-slate-500 font-medium text-sm mt-1">Browse open positions by industry</p></>
+                                                )}
                                             </div>
-                                        ))}
+                                            <div className="flex items-center gap-3">
+                                                <button
+                                                    onClick={async () => {
+                                                        try {
+                                                            const res = await fetch(`${API_BASE_URL}/api/jobs`);
+                                                            const data = await res.json();
+                                                            const openJobs = (Array.isArray(data) ? data : []).filter(j => j?.status === 'OPEN');
+                                                            setJobs(openJobs);
+                                                            popup.success(`Refreshed! ${openJobs.length} open positions available.`);
+                                                        } catch (err) { popup.error('Failed to refresh jobs.'); }
+                                                    }}
+                                                    className="flex items-center gap-2 px-4 py-2.5 bg-teal-600 text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-teal-700 transition-all shadow-lg shadow-teal-600/20"
+                                                >
+                                                    <RefreshCw className="w-4 h-4" /> Refresh
+                                                </button>
+                                                {!catSearch && (
+                                                    <div className="relative group">
+                                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-teal-600 transition-colors" />
+                                                        <input type="text" placeholder="Search vacancies..." className="bg-white border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all w-full md:w-[240px] font-medium shadow-sm" value={isSearchView ? searchTerm : ''} onChange={(e) => setSearchTerm(e.target.value)} />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                        {catSearch ? (
+                                            /* CATEGORY DRILL DOWN - list all jobs in this category */
+                                            jobsByCategory[catSearch]?.length === 0 ? (
+                                                <div className="flex flex-col items-center justify-center py-20 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                                                    <Briefcase className="w-12 h-12 text-slate-300 mb-4" />
+                                                    <h3 className="text-slate-900 font-bold text-lg">No {catSearch} Jobs Available</h3>
+                                                    <p className="text-slate-500 text-sm mt-1">Check back later or refresh for updates.</p>
+                                                </div>
+                                            ) : (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                                                    {(jobsByCategory[catSearch] || []).map((job) => (
+                                                        <div key={job.id || job._id} className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 hover:shadow-md hover:border-teal-200 transition-all group flex flex-col relative overflow-hidden">
+                                                            <div className="absolute top-0 left-0 w-1 h-full bg-teal-500"></div>
+                                                            <div className="flex justify-between items-start mb-4 pl-2">
+                                                                <div>
+                                                                    <h3 className="font-bold text-slate-900 text-base leading-tight group-hover:text-teal-700 transition-colors">{job.title || 'Untitled'}</h3>
+                                                                    <p className="text-xs font-semibold text-teal-600 uppercase tracking-wider mt-1">{job.company || 'Unknown Company'}</p>
+                                                                </div>
+                                                                <div className="text-2xl">{INDUSTRY_ICONS[job.industry] || '??'}</div>
+                                                            </div>
+                                                            <div className="grid grid-cols-2 gap-y-2 gap-x-4 mb-5 pl-2">
+                                                                <div className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-slate-400" /><span className="text-xs font-medium text-slate-600">{job.location || 'Maldives'}</span></div>
+                                                                <div className="flex items-center gap-1.5"><Award className="w-3.5 h-3.5 text-slate-400" /><span className="text-xs font-medium text-slate-600">{job.experience || 'N/A'} Exp</span></div>
+                                                            </div>
+                                                            <div className="mt-auto pl-2">
+                                                                <button onClick={() => handleOpenSubmission(job)} className="w-full bg-slate-900 text-white py-3 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-teal-700 transition-all">
+                                                                    <UserPlus className="w-4 h-4" /> Submit Candidate
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )
+                                        ) : isSearchView ? (
+                                            /* KEYWORD SEARCH MODE */
+                                            filteredJobs.length === 0 ? (
+                                                <div className="flex flex-col items-center justify-center py-20 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                                                    <Briefcase className="w-12 h-12 text-slate-300 mb-4" />
+                                                    <h3 className="text-slate-900 font-bold text-lg">No results for "{searchTerm}"</h3>
+                                                    <button onClick={() => setSearchTerm('')} className="mt-4 text-sm text-teal-600 hover:text-teal-800 font-semibold">Clear search</button>
+                                                </div>
+                                            ) : (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                                                    {filteredJobs.map((job) => (
+                                                        <div key={job.id || job._id} className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 hover:shadow-md hover:border-teal-200 transition-all group flex flex-col relative overflow-hidden">
+                                                            <div className="absolute top-0 left-0 w-1 h-full bg-teal-500"></div>
+                                                            <div className="flex justify-between items-start mb-4 pl-2">
+                                                                <div>
+                                                                    <h3 className="font-bold text-slate-900 text-base leading-tight group-hover:text-teal-700 transition-colors">{job.title || 'Untitled'}</h3>
+                                                                    <p className="text-xs font-semibold text-teal-600 uppercase tracking-wider mt-1">{job.company || 'Unknown Company'}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="grid grid-cols-2 gap-y-2 gap-x-4 mb-5 pl-2">
+                                                                <div className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-slate-400" /><span className="text-xs font-medium text-slate-600">{job.location || 'Maldives'}</span></div>
+                                                                <div className="flex items-center gap-1.5"><Award className="w-3.5 h-3.5 text-slate-400" /><span className="text-xs font-medium text-slate-600">{job.experience || 'N/A'} Exp</span></div>
+                                                            </div>
+                                                            <div className="mt-auto pl-2">
+                                                                <button onClick={() => handleOpenSubmission(job)} className="w-full bg-slate-900 text-white py-3 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-teal-700 transition-all">
+                                                                    <UserPlus className="w-4 h-4" /> Submit Candidate
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )
+                                        ) : (
+                                            /* CATEGORY TILE VIEW - main view */
+                                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                                                {allCats.map(cat => {
+                                                    const catJobs = jobsByCategory[cat] || [];
+                                                    return (
+                                                        <div key={cat} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-teal-200 transition-all overflow-hidden group cursor-pointer" onClick={() => setSearchTerm(`__cat__${cat}`)}>
+                                                            <div className="p-6 flex items-start justify-between">
+                                                                <div>
+                                                                    <div className="text-3xl mb-3">{INDUSTRY_ICONS[cat]}</div>
+                                                                    <h3 className="font-bold text-slate-800 text-lg group-hover:text-teal-700 transition-colors">{cat}</h3>
+                                                                    <p className={`text-sm font-semibold mt-1 ${catJobs.length > 0 ? 'text-teal-600' : 'text-slate-400'}`}>{catJobs.length} Active Job{catJobs.length !== 1 ? 's' : ''}</p>
+                                                                </div>
+                                                                <div className={`p-3 rounded-xl transition-colors ${catJobs.length > 0 ? 'bg-teal-50 text-teal-600 group-hover:bg-teal-100' : 'bg-slate-50 text-slate-300'}`}>
+                                                                    <Briefcase className="w-6 h-6" />
+                                                                </div>
+                                                            </div>
+                                                            {catJobs.length > 0 && (
+                                                                <div className="border-t border-slate-100 divide-y divide-slate-50">
+                                                                    {catJobs.slice(0, 2).map(job => (
+                                                                        <div key={job.id || job._id} className="px-6 py-3 flex items-center justify-between hover:bg-teal-50/50 transition-colors" onClick={(e) => { e.stopPropagation(); handleOpenSubmission(job); }}>
+                                                                            <div className="min-w-0 pr-2">
+                                                                                <p className="text-sm font-semibold text-slate-800 truncate">{job.title}</p>
+                                                                                <p className="text-xs text-slate-400 truncate">{job.company} · {job.location}</p>
+                                                                            </div>
+                                                                            <button className="flex-shrink-0 px-3 py-1.5 bg-slate-900 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-teal-600 transition-colors">Submit</button>
+                                                                        </div>
+                                                                    ))}
+                                                                    {catJobs.length > 2 && (
+                                                                        <div className="px-6 py-3 text-xs font-bold text-teal-600">+{catJobs.length - 2} more ?</div>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
                                     </div>
-                                )}
-                            </div>
-
+                                );
+                            })()
                         ) : activeTab === 'overview' ? (
                             /* PARTNER OVERVIEW (EXISTING) */
                             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
