@@ -1090,9 +1090,9 @@ const AdminDashboard = () => {
       status: [],
       source: 'All',
       duration: 'All',
-      location: 'All Locations'
-      ,
-      education: 'Any Education Level'
+      location: 'All Locations',
+      education: 'Any Education Level',
+      experience: 'No Experience'
    });
 
    const toggleAuditStatusFilter = (status) => {
@@ -1558,7 +1558,7 @@ const AdminDashboard = () => {
 
    // 1. VACANCIES FILTER
    const [isVacancyFilterOpen, setIsVacancyFilterOpen] = useState(false);
-   const [vacancyFilters, setVacancyFilters] = useState({ status: [], duration: 'All', location: 'All Locations', education: 'Any Education Level' });
+   const [vacancyFilters, setVacancyFilters] = useState({ status: [], duration: 'All', location: 'All Locations', education: 'Any Education Level', experience: 'No Experience' });
 
    const filteredAgentVacancies = agentVacancies.filter(job => {
       // Search Filter
@@ -1578,7 +1578,7 @@ const AdminDashboard = () => {
 
    // 2. RESUMES FILTER
    const [isResumeFilterOpen, setIsResumeFilterOpen] = useState(false);
-   const [resumeFilters, setResumeFilters] = useState({ status: [], duration: 'All', location: 'All Locations', education: 'Any Education Level' });
+   const [resumeFilters, setResumeFilters] = useState({ status: [], duration: 'All', location: 'All Locations', education: 'Any Education Level', experience: 'No Experience' });
    const filteredAgentResumes = agentResumes.filter(resume => {
       // Exclude REJECTED (Moved to Blacklist)
       if (resume.status === 'REJECTED' || resume.status === 'Rejected') return false;
@@ -1597,7 +1597,7 @@ const AdminDashboard = () => {
 
    // 3. APPLICATIONS FILTER
    const [isAppFilterOpen, setIsAppFilterOpen] = useState(false);
-   const [appFilters, setAppFilters] = useState({ status: [], duration: 'All', location: 'All Locations', education: 'Any Education Level' });
+   const [appFilters, setAppFilters] = useState({ status: [], duration: 'All', location: 'All Locations', education: 'Any Education Level', experience: 'No Experience' });
 
 
    const filteredPartnerApplications = partnerApplications.filter(app => {
@@ -2311,11 +2311,26 @@ const AdminDashboard = () => {
                                                             </label>
                                                          ))}
                                                       </div>
-                                                   </div>
-                                                   <div className="space-y-3">
-                                                      <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">5. Location</h4>
-                                                      <select
-                                                         value={auditFilters.location}
+                                                    </div>
+                                                    {/* 5. Experience */}
+                                                    <div className="space-y-2 mt-4">
+                                                       <h4 className="text-[9px] font-black uppercase text-black font-bold tracking-widest">5. Experience</h4>
+                                                       <div className="space-y-1.5">
+                                                          {['No Experience', '1 \u2013 2 Years', '3 \u2013 5 Years', '6 \u2013 10 Years', '10+ Years'].map(exp => (
+                                                             <label key={exp} className="flex items-center gap-2 cursor-pointer group">
+                                                                <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${auditFilters.experience === exp ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                   {auditFilters.experience === exp && <div className="w-1.5 h-1.5 rounded-full bg-teal-600" />}
+                                                                </div>
+                                                                <input type="radio" className="hidden" checked={auditFilters.experience === exp} onChange={() => setAuditFilters({ ...auditFilters, experience: exp })} />
+                                                                <span className="text-xs font-bold text-slate-700">{exp}</span>
+                                                             </label>
+                                                          ))}
+                                                       </div>
+                                                    </div>
+                                                    <div className="space-y-3">
+                                                       <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">6. Location</h4>
+                                                       <select
+                                                          value={auditFilters.location}
                                                          onChange={(e) => setAuditFilters({ ...auditFilters, location: e.target.value })}
                                                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-teal-500 transition-colors"
                                                       >
@@ -2739,11 +2754,26 @@ const AdminDashboard = () => {
                                                                </label>
                                                             ))}
                                                          </div>
-                                                      </div>
-                                                      <div className="space-y-3">
-                                                         <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">5. Location</h4>
-                                                         <select
-                                                            value={candidateFilters.location}
+                                                       </div>
+                                                       {/* 5. Experience */}
+                                                       <div className="space-y-2 mt-4">
+                                                          <h4 className="text-[9px] font-black uppercase text-black font-bold tracking-widest">5. Experience</h4>
+                                                          <div className="space-y-1.5">
+                                                             {['No Experience', '1 \u2013 2 Years', '3 \u2013 5 Years', '6 \u2013 10 Years', '10+ Years'].map(exp => (
+                                                                <label key={exp} className="flex items-center gap-2 cursor-pointer group">
+                                                                   <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${auditFilters.experience === exp ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                      {auditFilters.experience === exp && <div className="w-1.5 h-1.5 rounded-full bg-teal-600" />}
+                                                                   </div>
+                                                                   <input type="radio" className="hidden" checked={auditFilters.experience === exp} onChange={() => setAuditFilters({ ...auditFilters, experience: exp })} />
+                                                                   <span className="text-xs font-bold text-slate-700">{exp}</span>
+                                                                </label>
+                                                             ))}
+                                                          </div>
+                                                       </div>
+                                                       <div className="space-y-3">
+                                                          <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">6. Location</h4>
+                                                          <select
+                                                             value={candidateFilters.location}
                                                             onChange={(e) => setCandidateFilters({ ...candidateFilters, location: e.target.value })}
                                                             className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-teal-500 transition-colors"
                                                          >
@@ -3028,11 +3058,25 @@ const AdminDashboard = () => {
                                                                   </label>
                                                                ))}
                                                             </div>
-                                                         </div>
-                                                         <div className="space-y-3">
-                                                            <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">4. Location</h4>
-                                                            <select
-                                                               value={vacancyFilters.location}
+                                                          </div>
+                                                          <div className="space-y-3">
+                                                             <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">4. Experience</h4>
+                                                             <div className="space-y-2">
+                                                                {['No Experience', '1 \u2013 2 Years', '3 \u2013 5 Years', '6 \u2013 10 Years', '10+ Years'].map(exp => (
+                                                                   <label key={exp} className="flex items-center gap-3 cursor-pointer group">
+                                                                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${vacancyFilters.experience === exp ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                         {vacancyFilters.experience === exp && <div className="w-2 h-2 rounded-full bg-teal-600" />}
+                                                                      </div>
+                                                                      <input type="radio" className="hidden" checked={vacancyFilters.experience === exp} onChange={() => setVacancyFilters({ ...vacancyFilters, experience: exp })} />
+                                                                      <span className="text-xs font-bold text-slate-700">{exp}</span>
+                                                                   </label>
+                                                                ))}
+                                                             </div>
+                                                          </div>
+                                                          <div className="space-y-3">
+                                                             <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">5. Location</h4>
+                                                             <select
+                                                                value={vacancyFilters.location}
                                                                onChange={(e) => setVacancyFilters({ ...vacancyFilters, location: e.target.value })}
                                                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-teal-500 transition-colors"
                                                             >
@@ -3043,7 +3087,7 @@ const AdminDashboard = () => {
                                                          </div>
                                                       </div>
                                                       <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
-                                                         <button onClick={() => setVacancyFilters({ status: [], duration: 'All', location: 'All Locations', education: 'Any Education Level' })} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">Clear</button>
+                                                         <button onClick={() => setVacancyFilters({ status: [], duration: 'All', location: 'All Locations', education: 'Any Education Level', experience: 'No Experience' })} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">Clear</button>
                                                          <button onClick={() => setIsVacancyFilterOpen(false)} className="flex-1 py-2 rounded-lg bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20">Apply</button>
                                                       </div>
                                                    </div>
@@ -3188,11 +3232,25 @@ const AdminDashboard = () => {
                                                                   </label>
                                                                ))}
                                                             </div>
-                                                         </div>
-                                                         <div className="space-y-3">
-                                                            <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">4. Location</h4>
-                                                            <select
-                                                               value={resumeFilters.location}
+                                                          </div>
+                                                          <div className="space-y-3">
+                                                             <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">4. Experience</h4>
+                                                             <div className="space-y-2">
+                                                                {['No Experience', '1 \u2013 2 Years', '3 \u2013 5 Years', '6 \u2013 10 Years', '10+ Years'].map(exp => (
+                                                                   <label key={exp} className="flex items-center gap-3 cursor-pointer group">
+                                                                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${resumeFilters.experience === exp ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                         {resumeFilters.experience === exp && <div className="w-2 h-2 rounded-full bg-teal-600" />}
+                                                                      </div>
+                                                                      <input type="radio" className="hidden" checked={resumeFilters.experience === exp} onChange={() => setResumeFilters({ ...resumeFilters, experience: exp })} />
+                                                                      <span className="text-xs font-bold text-slate-700">{exp}</span>
+                                                                   </label>
+                                                                ))}
+                                                             </div>
+                                                          </div>
+                                                          <div className="space-y-3">
+                                                             <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">5. Location</h4>
+                                                             <select
+                                                                value={resumeFilters.location}
                                                                onChange={(e) => setResumeFilters({ ...resumeFilters, location: e.target.value })}
                                                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-teal-500 transition-colors"
                                                             >
@@ -3203,7 +3261,7 @@ const AdminDashboard = () => {
                                                          </div>
                                                       </div>
                                                       <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
-                                                         <button onClick={() => setResumeFilters({ status: [], duration: 'All', location: 'All Locations', education: 'Any Education Level' })} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">Clear</button>
+                                                         <button onClick={() => setResumeFilters({ status: [], duration: 'All', location: 'All Locations', education: 'Any Education Level', experience: 'No Experience' })} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">Clear</button>
                                                          <button onClick={() => setIsResumeFilterOpen(false)} className="flex-1 py-2 rounded-lg bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20">Apply</button>
                                                       </div>
                                                    </div>
@@ -3343,11 +3401,25 @@ const AdminDashboard = () => {
                                                                   </label>
                                                                ))}
                                                             </div>
-                                                         </div>
-                                                         <div className="space-y-3">
-                                                            <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">4. Location</h4>
-                                                            <select
-                                                               value={appFilters.location}
+                                                          </div>
+                                                          <div className="space-y-3">
+                                                             <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">4. Experience</h4>
+                                                             <div className="space-y-2">
+                                                                {['No Experience', '1 \u2013 2 Years', '3 \u2013 5 Years', '6 \u2013 10 Years', '10+ Years'].map(exp => (
+                                                                   <label key={exp} className="flex items-center gap-3 cursor-pointer group">
+                                                                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${appFilters.experience === exp ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                         {appFilters.experience === exp && <div className="w-2 h-2 rounded-full bg-teal-600" />}
+                                                                      </div>
+                                                                      <input type="radio" className="hidden" checked={appFilters.experience === exp} onChange={() => setAppFilters({ ...appFilters, experience: exp })} />
+                                                                      <span className="text-xs font-bold text-slate-700">{exp}</span>
+                                                                   </label>
+                                                                ))}
+                                                             </div>
+                                                          </div>
+                                                          <div className="space-y-3">
+                                                             <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">5. Location</h4>
+                                                             <select
+                                                                value={appFilters.location}
                                                                onChange={(e) => setAppFilters({ ...appFilters, location: e.target.value })}
                                                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-teal-500 transition-colors"
                                                             >
@@ -3358,7 +3430,7 @@ const AdminDashboard = () => {
                                                          </div>
                                                       </div>
                                                       <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
-                                                         <button onClick={() => setAppFilters({ status: [], duration: 'All', location: 'All Locations', education: 'Any Education Level' })} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">Clear</button>
+                                                         <button onClick={() => setAppFilters({ status: [], duration: 'All', location: 'All Locations', education: 'Any Education Level', experience: 'No Experience' })} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">Clear</button>
                                                          <button onClick={() => setIsAppFilterOpen(false)} className="flex-1 py-2 rounded-lg bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20">Apply</button>
                                                       </div>
                                                    </div>
