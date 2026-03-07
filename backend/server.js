@@ -23,6 +23,17 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Central Password Validation Logic (Backend)
+const validatePassword = (password) => {
+    if (!password) return false;
+    const minLength = 8;
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSymbol = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    return password.length >= minLength && hasUpperCase && hasLowerCase && hasNumber && hasSymbol;
+};
+
 // CORS — allow local dev origins + any production origins set in ALLOWED_ORIGINS env var
 const allowedOrigins = [
     'http://localhost:3000',
@@ -120,6 +131,13 @@ app.use('/api', notificationRoutes);
 app.post('/api/auth/register', authLimiter, async (req, res) => {
     try {
         let { email, password, role, name, agencyName, skills, contact, phone } = req.body;
+
+        // Backend Password Validation
+        if (!validatePassword(password)) {
+            return res.status(400).json({ 
+                message: 'Password does not meet security requirements: Minimum 8 characters, at least one uppercase, one lowercase, one digit, and one special character.' 
+            });
+        }
 
         // Normalize email
         if (email) {
@@ -423,6 +441,13 @@ app.post('/api/auth/reset-password', async (req, res) => {
             return res.status(400).json({ message: 'Current password is incorrect' });
         }
 
+        // Backend Password Validation for new password
+        if (!validatePassword(newPassword)) {
+            return res.status(400).json({ 
+                message: 'New password does not meet security requirements.' 
+            });
+        }
+
         // Update to new password — hashed
         user.password = await bcrypt.hash(newPassword, 12);
         user.temporaryPassword = undefined; // Clear any temp password
@@ -451,6 +476,13 @@ app.put('/api/auth/change-password', async (req, res) => {
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Backend Password Validation
+        if (!validatePassword(newPassword)) {
+            return res.status(400).json({ 
+                message: 'New password does not meet security requirements.' 
+            });
         }
 
         // Update password and clear the flag — hashed
@@ -647,6 +679,13 @@ app.put('/api/auth/password', async (req, res) => {
         }
         if (!isMatch) {
             return res.status(400).json({ message: 'Current password is incorrect' });
+        }
+
+        // Backend Password Validation
+        if (!validatePassword(newPassword)) {
+            return res.status(400).json({ 
+                message: 'New password does not meet security requirements.' 
+            });
         }
 
         // Update password — hashed
@@ -905,8 +944,26 @@ app.put('/api/admin/agencies/:id/approve', async (req, res) => {
         agency.status = 'Active';
         await agency.save();
 
-        // Generate temporary password
-        const tempPassword = 'Temp@' + Math.random().toString(36).slice(-6).toUpperCase();
+        // Generate stronger temporary password
+        const generateStrongTempPassword = () => {
+            const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            const lower = "abcdefghijklmnopqrstuvwxyz";
+            const digits = "01234567819";
+            const symbols = "!@#$%^&*";
+            const all = upper + lower + digits + symbols;
+            
+            let password = "";
+            password += upper[Math.floor(Math.random() * upper.length)];
+            password += lower[Math.floor(Math.random() * lower.length)];
+            password += digits[Math.floor(Math.random() * digits.length)];
+            password += symbols[Math.floor(Math.random() * symbols.length)];
+            
+            for (let i = 0; i < 4; i++) {
+                password += all[Math.floor(Math.random() * all.length)];
+            }
+            return password.split('').sort(() => 0.5 - Math.random()).join('');
+        };
+        const tempPassword = generateStrongTempPassword();
 
         // Check if agent profile already exists
         let agentProfile = await Profile.findOne({ email: agency.email });

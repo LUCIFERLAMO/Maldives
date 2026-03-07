@@ -24,7 +24,7 @@ const AdminLoginPage = () => {
 
         // DEVELOPER ACCESS (Temporary Header)
         // Kept for dev team access as requested. Remove in production.
-        if (email === 'admin@globalakjobs.com' && password === 'admin123') {
+        if (email === 'admin@globalakjobs.com' && password === 'Admin@GlobalAK124!') {
             mockLogin({
                 id: 'dev-admin',
                 email: 'admin@globalakjobs.com',
@@ -226,7 +226,7 @@ const AdminLoginPage = () => {
                             </button>
                         </form>
                         <p className="mt-8 text-center text-xs text-slate-400">
-                            Use <span className="font-mono font-bold text-slate-800">admin@globalakjobs.com</span> / <span className="font-mono font-bold text-slate-800">admin123</span>
+                            Use <span className="font-mono font-bold text-slate-800">admin@globalakjobs.com</span> / <span className="font-mono font-bold text-slate-800">Admin@GlobalAK124!</span>
                         </p>
                     </div>
                 </div>
