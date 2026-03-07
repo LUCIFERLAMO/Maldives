@@ -244,6 +244,16 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
             return res.status(403).json({ message: 'Your account has been blocked. Please contact support.' });
         }
 
+        // Block agents who are awaiting admin approval
+        if (user.role === 'AGENT' && (user.status === 'PENDING' || user.status === 'INACTIVE')) {
+            return res.status(403).json({ message: 'Your account is awaiting admin approval. Please wait.' });
+        }
+
+        // Block agents who are placed on hold
+        if (user.role === 'AGENT' && user.status === 'ON_HOLD') {
+            return res.status(403).json({ message: 'Your account is currently on hold. Please wait for admin review.' });
+        }
+
         // Check if agent needs to change password (first login)
         const requiresPasswordChange = user.requiresPasswordChange || false;
 
@@ -886,7 +896,7 @@ app.get('/api/admin/pending-agents', async (req, res) => {
     try {
         const pendingAgents = await Profile.find({
             role: 'AGENT',
-            status: 'PENDING'
+            status: { $in: ['PENDING', 'ON_HOLD'] }
         }).sort({ createdAt: -1 });
         res.json(pendingAgents);
     } catch (err) {
@@ -951,7 +961,36 @@ app.put('/api/admin/agents/:id/reject', async (req, res) => {
     }
 });
 
-// ADMIN AGENCY ROUTES (Legacy - from Agency model)
+// PUT: Place agent on hold (status = ON_HOLD)
+app.put('/api/admin/agents/:id/hold', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const agent = await Profile.findById(id);
+        if (!agent) {
+            return res.status(404).json({ message: 'Agent not found' });
+        }
+        agent.status = 'ON_HOLD';
+        await agent.save();
+        res.json({ message: 'Agent placed on hold', agent: { name: agent.full_name, email: agent.email, status: agent.status } });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to place agent on hold', error: err.message });
+    }
+});
+
+// DELETE: Permanently delete agent from database
+app.delete('/api/admin/agents/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const agent = await Profile.findByIdAndDelete(id);
+        if (!agent) {
+            return res.status(404).json({ message: 'Agent not found' });
+        }
+        res.json({ message: 'Agent permanently deleted' });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to delete agent', error: err.message });
+    }
+});
+
 
 // GET: Fetch agencies (with optional status filter)
 app.get('/api/admin/agencies', async (req, res) => {

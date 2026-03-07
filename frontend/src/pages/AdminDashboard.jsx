@@ -1296,40 +1296,44 @@ const AdminDashboard = () => {
    const handleApplicationStatusChange = async (status) => {
       if (!selectedApplication) return;
 
-      if (status === 'SELECTED' && approvalStep === 'NONE') {
-         setApprovalStep('CONFIRM');
-         return;
-      }
-
       try {
          const id = selectedApplication._id || selectedApplication.id;
-         
+
          if (status === 'SELECTED') {
             await fetch(`${API_BASE_URL}/api/admin/agents/${id}/approve`, { method: 'PUT' });
-            popup.success('Agent approved successfully!');
+            popup.success('Agent approved! They can now log in with their own credentials.');
          } else if (status === 'REJECTED') {
             await fetch(`${API_BASE_URL}/api/admin/agents/${id}/reject`, { method: 'PUT' });
-            popup.success('Agent rejected successfully.');
+            popup.success('Agent application rejected.');
          } else if (status === 'ON HOLD') {
-            // Profile doesn't have native ON HOLD endpoint currently
-            popup.warning('ON HOLD is not currently supported natively by API.');
+            await fetch(`${API_BASE_URL}/api/admin/agents/${id}/hold`, { method: 'PUT' });
+            popup.info('Agent placed on hold. They will still appear in this list.');
          }
 
          // Refresh the agents list
          fetchPendingAgents();
-
-         if (status !== 'SELECTED' || approvalStep === 'SUCCESS') {
-            setSelectedApplication(null);
-            setApprovalStep('NONE');
-         }
+         setSelectedApplication(null);
+         setApprovalStep('NONE');
       } catch (err) {
          console.error('Error updating status:', err);
          popup.error('Failed to update agent status');
       }
    };
 
-
-
+   const handleDeleteAgent = async () => {
+      if (!selectedApplication) return;
+      try {
+         const id = selectedApplication._id || selectedApplication.id;
+         await fetch(`${API_BASE_URL}/api/admin/agents/${id}`, { method: 'DELETE' });
+         popup.success('Agent permanently deleted from the system.');
+         fetchPendingAgents();
+         setSelectedApplication(null);
+         setApprovalStep('NONE');
+      } catch (err) {
+         console.error('Error deleting agent:', err);
+         popup.error('Failed to delete agent');
+      }
+   };
 
    const handleAddVacancy = (e) => {
       e.preventDefault();
@@ -4269,97 +4273,62 @@ const AdminDashboard = () => {
                         </button>
                      </div>
 
-                     {/* Step 1: CONFIRMATION */}
-                     {approvalStep === 'CONFIRM' && (
-                        <div className="p-16 flex flex-col items-center justify-center text-center">
-                           <div className="w-24 h-24 bg-teal-50 rounded-full flex items-center justify-center mb-8 animate-in zoom-in duration-300">
-                              <ShieldCheck className="w-10 h-10 text-teal-600" />
-                           </div>
-                           <h2 className="text-3xl font-black text-slate-900 mb-4">Application Verified</h2>
-                           <p className="text-slate-500 font-medium mb-10 max-w-md">
-                              Proceed to generate secure portal credentials for this partner?
-                           </p>
-                           <div className="flex items-center gap-4">
-                              <button
-                                 onClick={() => setApprovalStep('NONE')}
-                                 className="px-8 py-4 rounded-xl bg-slate-50 text-slate-500 text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-colors"
-                              >
-                                 Cancel
-                              </button>
-                              <button
-                                 onClick={handleGenerateCredentials}
-                                 className="px-8 py-4 rounded-xl bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-all shadow-lg shadow-teal-600/20"
-                              >
-                                 Generate Username & Password
-                              </button>
-                           </div>
-                        </div>
-                     )}
-
-                     {/* Step 2: GENERATING */}
-                     {approvalStep === 'GENERATING' && (
-                        <div className="p-20 flex flex-col items-center justify-center text-center">
-                           <Loader2 className="w-16 h-16 text-teal-600 animate-spin mb-8" />
-                           <h2 className="text-xl font-black text-slate-900 mb-2 uppercase tracking-widest">Encrypting Access...</h2>
-                           <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Provisioning Secure Node</p>
-                        </div>
-                     )}
-
-                     {/* Step 3: SUCCESS */}
-                     {approvalStep === 'SUCCESS' && (
-                        <div className="p-16 flex flex-col items-center justify-center text-center">
-                           <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center mb-8 animate-in zoom-in duration-300">
-                              <CheckCircle2 className="w-10 h-10 text-emerald-500" />
-                           </div>
-                           <h2 className="text-3xl font-black text-slate-900 mb-2 uppercase tracking-widest">Created</h2>
-                           <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-10">
-                              The username and password is sent to the agent
-                           </p>
-                           <button
-                              onClick={() => {
-                                 setSelectedApplication(null);
-                                 setApprovalStep('NONE');
-                              }}
-                              className="px-10 py-4 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl"
-                           >
-                              Close Record
-                           </button>
-                        </div>
-                     )}
-
-                     {approvalStep === 'NONE' && (
-                        <>
-                           <div className="p-8 space-y-10">
-                              {/* Info Cards */}
-                              <div className="grid grid-cols-2 gap-6">
-                                 <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2 flex items-center gap-2">
-                                       <MapPin className="w-3 h-3" /> Targeted Region
-                                    </p>
-                                    <p className="text-lg font-bold text-slate-900">{selectedApplication.location || 'Not Specified'}</p>
-                                 </div>
-                                 <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2 flex items-center gap-2">
-                                       <Globe2 className="w-3 h-3" /> Communication Node
-                                    </p>
-                                    <p className="text-lg font-bold text-slate-900">{selectedApplication.email}</p>
-                                 </div>
+                     {/* Agent Details View */}
+                     <>
+                        <div className="p-8 space-y-10">
+                           {/* Info Cards */}
+                           <div className="grid grid-cols-2 gap-6">
+                              <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                                 <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2 flex items-center gap-2">
+                                    <MapPin className="w-3 h-3" /> Targeted Region
+                                 </p>
+                                 <p className="text-lg font-bold text-slate-900">{selectedApplication.location || 'Not Specified'}</p>
                               </div>
-
-                              {/* Documents */}
-                              <section>
-                                 <h3 className="text-xs font-black text-teal-600 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                                    <ShieldCheck className="w-4 h-4" /> Submitted Documents
-                                 </h3>
-                                 <div className="grid grid-cols-2 gap-6">
-                                    <DocumentCard label="Identity Proof" filename={selectedApplication.documents?.identity?.filename || 'Not Uploaded'} fileObj={selectedApplication.documents?.identity} />
-                                    <DocumentCard label="Business License" filename={selectedApplication.documents?.license?.filename || 'Not Uploaded'} fileObj={selectedApplication.documents?.license} />
-                                    <DocumentCard label="Agency Profile" filename={selectedApplication.documents?.profile?.filename || 'Not Uploaded'} fileObj={selectedApplication.documents?.profile} />
-                                 </div>
-                              </section>
+                              <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                                 <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2 flex items-center gap-2">
+                                    <Globe2 className="w-3 h-3" /> Communication Node
+                                 </p>
+                                 <p className="text-lg font-bold text-slate-900">{selectedApplication.email}</p>
+                              </div>
                            </div>
 
-                           {/* Actions Footer */}
+                           {/* Documents */}
+                           <section>
+                              <h3 className="text-xs font-black text-teal-600 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                                 <ShieldCheck className="w-4 h-4" /> Submitted Documents
+                              </h3>
+                              <div className="grid grid-cols-2 gap-6">
+                                 <DocumentCard label="Identity Proof" filename={selectedApplication.documents?.identity?.filename || 'Not Uploaded'} fileObj={selectedApplication.documents?.identity} />
+                                 <DocumentCard label="Business License" filename={selectedApplication.documents?.license?.filename || 'Not Uploaded'} fileObj={selectedApplication.documents?.license} />
+                                 <DocumentCard label="Agency Profile" filename={selectedApplication.documents?.profile?.filename || 'Not Uploaded'} fileObj={selectedApplication.documents?.profile} />
+                              </div>
+                           </section>
+                        </div>
+
+                        {/* Actions Footer — varies by status */}
+                        {selectedApplication.status === 'ON_HOLD' ? (
+                           /* ON HOLD agents: Delete or Approve only */
+                           <div className="p-8 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between gap-4">
+                              <div className="flex items-center gap-3 text-amber-600 bg-amber-50 px-4 py-2 rounded-xl border border-amber-100 text-xs font-bold uppercase tracking-widest">
+                                 ⏸ Agent is on hold
+                              </div>
+                              <div className="flex items-center gap-4">
+                                 <button
+                                    onClick={handleDeleteAgent}
+                                    className="px-8 py-4 rounded-xl bg-red-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-red-700 transition-colors shadow-lg shadow-red-600/20 flex items-center gap-2"
+                                 >
+                                    Delete Permanently
+                                 </button>
+                                 <button
+                                    onClick={() => handleApplicationStatusChange('SELECTED')}
+                                    className="px-8 py-4 rounded-xl bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-all flex items-center gap-2 shadow-lg shadow-teal-600/20"
+                                 >
+                                    Approve Partner <ShieldCheck className="w-4 h-4" />
+                                 </button>
+                              </div>
+                           </div>
+                        ) : (
+                           /* PENDING agents: Reject, Place on Hold, Approve */
                            <div className="p-8 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between gap-4">
                               <button
                                  onClick={() => handleApplicationStatusChange('REJECTED')}
@@ -4383,8 +4352,9 @@ const AdminDashboard = () => {
                                  </button>
                               </div>
                            </div>
-                        </>
-                     )}
+                        )}
+                     </>
+
                   </div>
                </div>
             )

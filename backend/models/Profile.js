@@ -82,7 +82,7 @@ const profileSchema = new mongoose.Schema({
     // Status
     status: {
         type: String,
-        enum: ['ACTIVE', 'INACTIVE', 'BANNED', 'PENDING'],
+        enum: ['ACTIVE', 'INACTIVE', 'BANNED', 'PENDING', 'ON_HOLD'],
         default: 'ACTIVE'
     },
     // First Login Detection (for agents with temp password)
