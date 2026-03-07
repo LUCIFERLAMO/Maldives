@@ -6,7 +6,7 @@ import { MOCK_APPLICATIONS, MOCK_JOBS } from '../constants';
 import {
     Search, LayoutDashboard, Users, Briefcase,
     X, Shield, LogOut, Briefcase as BriefcaseIcon,
-    Ban, PlusCircle, CheckCircle,
+    Ban, PlusCircle, CheckCircle, RefreshCw, ArrowLeft,
     AlertTriangle, Globe, ArrowRight, UserPlus,
     MapPin, Award, User,
     AlignLeft, ChevronDown, ShieldCheck,
