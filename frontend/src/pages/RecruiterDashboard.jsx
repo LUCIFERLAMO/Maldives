@@ -778,12 +778,6 @@ const RecruiterDashboard = () => {
                         ) : activeTab === 'vacancies' ? (
                             /* TAB CONTENT: ACTIVE VACANCIES - CATEGORIZED VIEW */
                             (() => {
-                                const INDUSTRY_ICONS = {
-                                    Hospitality: '??', Construction: '???', Healthcare: '??',
-                                    IT: '??', Education: '??', Retail: '???',
-                                    Manufacturing: '??', Tourism: '??', Fishing: '??',
-                                    Agriculture: '??', Other: '??'
-                                };
                                 const allCats = ['Hospitality', 'Construction', 'Healthcare', 'IT', 'Education', 'Retail', 'Manufacturing', 'Tourism', 'Fishing', 'Agriculture', 'Other'];
                                 const jobsByCategory = {};
                                 allCats.forEach(cat => {
@@ -847,9 +841,7 @@ const RecruiterDashboard = () => {
                                                                 <div>
                                                                     <h3 className="font-bold text-slate-900 text-base leading-tight group-hover:text-teal-700 transition-colors">{job.title || 'Untitled'}</h3>
                                                                     <p className="text-xs font-semibold text-teal-600 uppercase tracking-wider mt-1">{job.company || 'Unknown Company'}</p>
-                                                                </div>
-                                                                <div className="text-2xl">{INDUSTRY_ICONS[job.industry] || '??'}</div>
-                                                            </div>
+                                                                </div>                                                            </div>
                                                             <div className="grid grid-cols-2 gap-y-2 gap-x-4 mb-5 pl-2">
                                                                 <div className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-slate-400" /><span className="text-xs font-medium text-slate-600">{job.location || 'Maldives'}</span></div>
                                                                 <div className="flex items-center gap-1.5"><Award className="w-3.5 h-3.5 text-slate-400" /><span className="text-xs font-medium text-slate-600">{job.experience || 'N/A'} Exp</span></div>
@@ -903,9 +895,7 @@ const RecruiterDashboard = () => {
                                                     return (
                                                         <div key={cat} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-teal-200 transition-all overflow-hidden group cursor-pointer" onClick={() => setSearchTerm(`__cat__${cat}`)}>
                                                             <div className="p-6 flex items-start justify-between">
-                                                                <div>
-                                                                    <div className="text-3xl mb-3">{INDUSTRY_ICONS[cat]}</div>
-                                                                    <h3 className="font-bold text-slate-800 text-lg group-hover:text-teal-700 transition-colors">{cat}</h3>
+                                                                <div>                                                                    <h3 className="font-bold text-slate-800 text-lg group-hover:text-teal-700 transition-colors">{cat}</h3>
                                                                     <p className={`text-sm font-semibold mt-1 ${catJobs.length > 0 ? 'text-teal-600' : 'text-slate-400'}`}>{catJobs.length} Active Job{catJobs.length !== 1 ? 's' : ''}</p>
                                                                 </div>
                                                                 <div className={`p-3 rounded-xl transition-colors ${catJobs.length > 0 ? 'bg-teal-50 text-teal-600 group-hover:bg-teal-100' : 'bg-slate-50 text-slate-300'}`}>
