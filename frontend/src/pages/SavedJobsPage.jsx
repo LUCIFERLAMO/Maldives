@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { usePopup } from '../context/PopupContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Clock, 
@@ -19,6 +20,7 @@ import Navbar from '../components/Navbar';
 import { fetchSavedJobs, toggleSavedJob } from '../api/api';
 
 const SavedJobsPage = () => {
+    const popup = usePopup();
     const [savedJobs, setSavedJobs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -79,7 +81,7 @@ const SavedJobsPage = () => {
             // if we are keeping it in sync there, but we are fetching directly via API here.
         } catch (err) {
             console.error('Failed to unsave job:', err);
-            alert('Failed to remove job from saved list. Please try again.');
+            popup.success('Failed to remove job from saved list. Please try again.');
         }
     };
 

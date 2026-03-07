@@ -1,4 +1,5 @@
 import API_BASE_URL from '../api/config.js';
+import { usePopup } from '../context/PopupContext';
 import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
 import {
     Search,
@@ -25,6 +26,7 @@ import { fetchSavedJobs, toggleSavedJob } from '../api/api';
 import { JobStatus } from '../types';
 
 const BrowseJobsPage = () => {
+    const popup = usePopup();
     const [searchParams, setSearchParams] = useSearchParams();
     const [searchTerm, setSearchTerm] = useState('');
     const [viewType, setViewType] = useState('list');
@@ -313,7 +315,7 @@ const BrowseJobsPage = () => {
                 document.body.removeChild(textArea);
                 if (!successful) throw new Error('execCommand copy failed');
             }
-            alert('Job link copied to clipboard!');
+            popup.success('Job link copied to clipboard!');
         } catch (err) {
             console.error('Copy failed:', err);
         }

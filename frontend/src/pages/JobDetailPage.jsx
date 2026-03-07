@@ -1,4 +1,5 @@
 import API_BASE_URL from '../api/config.js';
+import { usePopup } from '../context/PopupContext';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MOCK_JOBS } from '../constants';
@@ -9,6 +10,7 @@ import { useAuth } from '../context/AuthContext';
 import { fetchSavedJobs, toggleSavedJob } from '../api/api';
 
 const JobDetailPage = () => {
+    const popup = usePopup();
     const { id } = useParams();
     const navigate = useNavigate();
     const { user, isAuthenticated } = useAuth();
@@ -171,7 +173,7 @@ const JobDetailPage = () => {
             if (files.resume) {
                 formDataPayload.append('resume', files.resume);
             } else {
-                alert('Please upload a resume');
+                popup.warning('Please upload a resume');
                 setIsSubmitting(false);
                 return;
             }
@@ -203,10 +205,10 @@ const JobDetailPage = () => {
             console.error('Application error:', error);
             // Fallback for demo if backend is dead
             if (job && MOCK_JOBS.find(j => j.id === job.id)) {
-                alert('Simulation: Application Submitted Successfully! (Backend Offline)');
+                popup.success('Simulation: Application Submitted Successfully! (Backend Offline)');
                 navigate('/jobs');
             } else {
-                alert(`Failed to submit application: ${error.message}`);
+                popup.error(`Failed to submit application: ${error.message}`);
             }
         } finally {
             setIsSubmitting(false);
@@ -399,7 +401,7 @@ const JobDetailPage = () => {
                                                             const hasPhone = !!(user.phone || user.contact_number);
                                                             const hasLocation = !!user.location;
                                                             if (!hasName || !hasPhone || !hasLocation) {
-                                                                alert('Please complete your profile (name, phone, location) before applying. You will be redirected to your profile page.');
+                                                                popup.warning('Please complete your profile (name, phone, location) before applying. You will be redirected to your profile page.');
                                                                 navigate('/profile');
                                                                 return;
                                                             }

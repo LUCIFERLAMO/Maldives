@@ -1,4 +1,5 @@
 import API_BASE_URL from '../api/config.js';
+import { usePopup } from '../context/PopupContext';
 import React, { useState, useRef, useEffect } from 'react';
 import {
    Users,
@@ -255,7 +256,8 @@ const DocumentCard = ({ label, filename }) => (
 );
 
 const AdminDashboard = () => {
-   const [activeTab, setActiveTab] = useState('overview');
+   const popup = usePopup();
+    const [activeTab, setActiveTab] = useState('overview');
    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
    // Hierarchical Vacancy Management View State
@@ -495,7 +497,7 @@ const AdminDashboard = () => {
    const handleDeleteJobFromList = async (jobId) => {
       const appCount = applicationCounts[jobId] || 0;
       if (appCount > 0) {
-         alert(`Cannot delete this job because it has ${appCount} active application(s).`);
+         popup.error(`Cannot delete this job because it has ${appCount} active application(s).`);
          return;
       }
       if (!window.confirm("Are you sure you want to delete this job? This action cannot be undone.")) return;
@@ -864,7 +866,7 @@ const AdminDashboard = () => {
 
       // Check if there are applications
       if (jobApplications.length > 0) {
-         alert(`Cannot delete this job because it has ${jobApplications.length} active application(s).`);
+         popup.error(`Cannot delete this job because it has ${jobApplications.length} active application(s).`);
          return;
       }
 
@@ -887,7 +889,7 @@ const AdminDashboard = () => {
          setCategoryJobs(prev => prev.filter(j => j.id !== deletedId && j._id !== deletedId));
          setSelectedJob(null);
          setJobApplications([]);
-         alert('Job deleted successfully.');
+         popup.success('Job deleted successfully.');
       }
    };
 
@@ -919,15 +921,15 @@ const AdminDashboard = () => {
          });
 
          if (response.ok) {
-            alert('G�� Visibility request approved!');
+            popup.success('G�� Visibility request approved!');
             fetchVisibilityRequests(); // Refresh the list
          } else {
             const data = await response.json();
-            alert(`G�� Failed: ${data.message}`);
+            popup.error(`G�� Failed: ${data.message}`);
          }
       } catch (error) {
          console.error('Error approving visibility request:', error);
-         alert('Error approving request.');
+         popup.error('Error approving request.');
       }
    };
 
@@ -948,15 +950,15 @@ const AdminDashboard = () => {
          });
 
          if (response.ok) {
-            alert('Visibility request rejected.');
+            popup.error('Visibility request rejected.');
             fetchVisibilityRequests(); // Refresh the list
          } else {
             const data = await response.json();
-            alert(`Failed: ${data.message}`);
+            popup.error(`Failed: ${data.message}`);
          }
       } catch (error) {
          console.error('Error rejecting visibility request:', error);
-         alert('Error rejecting request.');
+         popup.error('Error rejecting request.');
       }
    };
 
@@ -980,7 +982,7 @@ const AdminDashboard = () => {
       } catch (error) {
          console.error('Error holding visibility request:', error);
       }
-      alert('Request placed on hold.');
+      popup.success('Request placed on hold.');
    };
 
    // Fetch visibility requests when audit tab is selected
@@ -1011,16 +1013,16 @@ const AdminDashboard = () => {
          });
          const data = await response.json();
          if (response.ok) {
-            alert(`G�� Job request approved! "${request.title}" is now live.`);
+            popup.success(`G�� Job request approved! "${request.title}" is now live.`);
             setPendingJobRequests(prev => prev.filter(r => r._id !== request._id));
             setPendingJobRequestsCount(prev => prev - 1);
             fetchJobsByCategory(selectedCategory);
          } else {
-            alert('Failed to approve: ' + data.message);
+            popup.error('Failed to approve: ' + data.message);
          }
       } catch (error) {
          console.error('Error approving job request:', error);
-         alert('Error approving job request');
+         popup.error('Error approving job request');
       } finally {
          setIsApprovingJob(false);
       }
@@ -1041,18 +1043,18 @@ const AdminDashboard = () => {
          });
          const data = await response.json();
          if (response.ok) {
-            alert(`G�� Job request "${selectedJobRequest.title}" has been rejected.`);
+            popup.error(`G�� Job request "${selectedJobRequest.title}" has been rejected.`);
             setPendingJobRequests(prev => prev.filter(r => r._id !== selectedJobRequest._id));
             setPendingJobRequestsCount(prev => prev - 1);
             setShowRejectModal(false);
             setSelectedJobRequest(null);
             setRejectReason('');
          } else {
-            alert('Failed to reject: ' + data.message);
+            popup.error('Failed to reject: ' + data.message);
          }
       } catch (error) {
          console.error('Error rejecting job request:', error);
-         alert('Error rejecting job request');
+         popup.error('Error rejecting job request');
       } finally {
          setIsRejectingJob(false);
       }
@@ -1246,7 +1248,7 @@ const AdminDashboard = () => {
 
       setSelectedResume(null);
       setIsBlacklistReview(false);
-      alert(`Candidate status updated to ${status}`);
+      popup.success(`Candidate status updated to ${status}`);
    };
 
    const [partnerApplications, setPartnerApplications] = useState(() => {
@@ -1360,14 +1362,14 @@ const AdminDashboard = () => {
          const data = await response.json();
          if (response.ok) {
             // Show success message (agent already has password from registration)
-            alert(`Agent "${agent.full_name}" approved successfully!\nThey can now login with their registered email: ${agent.email}`);
+            popup.success(`Agent "${agent.full_name}" approved successfully!\nThey can now login with their registered email: ${agent.email}`);
             setPendingAgencies(prev => prev.filter(a => a._id !== agent._id));
          } else {
-            alert('Failed to approve agent: ' + data.message);
+            popup.error('Failed to approve agent: ' + data.message);
          }
       } catch (error) {
          console.error('Error approving agent:', error);
-         alert('Error approving agent');
+         popup.error('Error approving agent');
       }
    };
 
@@ -1379,14 +1381,14 @@ const AdminDashboard = () => {
          });
          if (response.ok) {
             setPendingAgencies(prev => prev.filter(a => a._id !== agent._id));
-            alert('Agent rejected and blocked.');
+            popup.error('Agent rejected and blocked.');
          } else {
             const data = await response.json();
-            alert('Failed to reject agent: ' + data.message);
+            popup.error('Failed to reject agent: ' + data.message);
          }
       } catch (error) {
          console.error('Error rejecting agent:', error);
-         alert('Error rejecting agent');
+         popup.error('Error rejecting agent');
       }
    };
 
@@ -1451,7 +1453,7 @@ const AdminDashboard = () => {
       // Check if there are any jobs in this category first
       const jobCount = jobs.filter(j => j.industry === catName || j.category === catName).length;
       if (jobCount > 0) {
-         alert(`Cannot delete category "${catName}" because it contains ${jobCount} jobs. Delete the jobs first.`);
+         popup.error(`Cannot delete category "${catName}" because it contains ${jobCount} jobs. Delete the jobs first.`);
          return;
       }
 
@@ -1464,14 +1466,14 @@ const AdminDashboard = () => {
 
          if (res.ok) {
             await fetchCategories();
-            alert("Category deleted successfully.");
+            popup.success("Category deleted successfully.");
          } else {
             const data = await res.json();
-            alert(data.message || "Failed to delete category");
+            popup.error(data.message || "Failed to delete category");
          }
       } catch (err) {
          console.error("Error deleting category:", err);
-         alert("Error deleting category");
+         popup.error("Error deleting category");
       }
    };
    const handleVacancyStateChange = (state) => {
@@ -1509,7 +1511,7 @@ const AdminDashboard = () => {
 
    const handleProvisionAccount = (e) => {
       e.preventDefault();
-      alert(`Account for ${provisioningType === 'candidate' ? profileForm.name : profileForm.company} successfully provisioned.`);
+      popup.success(`Account for ${provisioningType === 'candidate' ? profileForm.name : profileForm.company} successfully provisioned.`);
       setProfileForm({ name: '', email: '', sector: 'Hospitality', location: '', company: '', website: '', phone: '' });
    };
 

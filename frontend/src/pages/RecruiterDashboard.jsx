@@ -1,4 +1,5 @@
 import API_BASE_URL from '../api/config.js';
+import { usePopup } from '../context/PopupContext';
 import React, { useState, useMemo, useEffect } from 'react';
 import { ApplicationStatus, JobStatus } from '../types';
 import { MOCK_APPLICATIONS, MOCK_JOBS } from '../constants';
@@ -17,6 +18,7 @@ import { useAuth } from '../context/AuthContext';
 import FileUpload from '../components/FileUpload';
 
 const RecruiterDashboard = () => {
+    const popup = usePopup();
     const navigate = useNavigate();
     const { user, login, logout, updateUser, mockLogin } = useAuth();
 
@@ -136,8 +138,8 @@ const RecruiterDashboard = () => {
         const file = e.target.files[0];
         if (!file || !user?.id) return;
         const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-        if (!allowedTypes.includes(file.type)) { alert('Please select a JPG, PNG, or WEBP image.'); return; }
-        if (file.size > 5 * 1024 * 1024) { alert('Image must be smaller than 5MB.'); return; }
+        if (!allowedTypes.includes(file.type)) { popup.warning('Please select a JPG, PNG, or WEBP image.'); return; }
+        if (file.size > 5 * 1024 * 1024) { popup.warning('Image must be smaller than 5MB.'); return; }
         const formData = new FormData();
         formData.append('avatar', file);
         try {
@@ -149,7 +151,7 @@ const RecruiterDashboard = () => {
             if (updateUser) updateUser({ avatar: data.avatar });
         } catch (err) {
             console.error('Avatar upload error:', err);
-            alert(`Failed to update photo: ${err.message}`);
+            popup.error(`Failed to update photo: ${err.message}`);
         } finally {
             setIsUploadingAgentAvatar(false);
             if (agentAvatarInputRef.current) agentAvatarInputRef.current.value = '';
@@ -171,7 +173,7 @@ const RecruiterDashboard = () => {
             setIsEditingPhone(false);
         } catch (err) {
             console.error('Phone save error:', err);
-            alert(`Failed to save phone: ${err.message}`);
+            popup.error(`Failed to save phone: ${err.message}`);
         } finally {
             setIsSavingPhone(false);
         }
@@ -262,22 +264,22 @@ const RecruiterDashboard = () => {
 
     const handleConfirmSubmission = async () => {
         if (!selectedJobForSubmission) {
-            alert("No job selected for submission.");
+            popup.warning("No job selected for submission.");
             return;
         }
 
         if (!submissionFiles.resume || !submissionFiles.identity || !submissionFiles.certs) {
-            alert("Please upload all mandatory documents (Resume, ID/Passport, Certificates).");
+            popup.warning("Please upload all mandatory documents (Resume, ID/Passport, Certificates).");
             return;
         }
 
         if (!submissionData.name || !submissionData.email || !submissionData.whatsapp || !submissionData.nationality) {
-            alert("Please fill in all identity details (Name, Email, Phone, Nationality).");
+            popup.warning("Please fill in all identity details (Name, Email, Phone, Nationality).");
             return;
         }
 
         if (!user?.id) {
-            alert("User not authenticated. Please log in again.");
+            popup.error("User not authenticated. Please log in again.");
             return;
         }
 
@@ -302,7 +304,7 @@ const RecruiterDashboard = () => {
                 throw new Error(errorData.message || 'Submission failed');
             }
 
-            alert("Success! Candidate Submitted to Database.");
+            popup.success("Success! Candidate Submitted to Database.");
             setSelectedJobForSubmission(null);
 
             // Refresh Pipeline
@@ -312,7 +314,7 @@ const RecruiterDashboard = () => {
 
         } catch (err) {
             console.error("Submission Error:", err);
-            alert("Error: " + (err.message || 'An error occurred during submission'));
+            popup.error("Error: " + (err.message || 'An error occurred during submission'));
         }
     };
 
@@ -489,7 +491,7 @@ const RecruiterDashboard = () => {
                                             <form className="space-y-8" onSubmit={async (e) => {
                                                 e.preventDefault();
                                                 if (!user?.id) {
-                                                    alert("Session expired. Please log in again.");
+                                                    popup.error("Session expired. Please log in again.");
                                                     return;
                                                 }
                                                 try {
@@ -521,7 +523,7 @@ const RecruiterDashboard = () => {
 
                                                     if (!response.ok) throw new Error(resData.message || 'Failed to submit request');
 
-                                                    alert("Job Request Submitted to Admin! Status: Waiting approval.");
+                                                    popup.success("Job Request Submitted to Admin! Status: Waiting approval.");
                                                     setShowJobRequestForm(false);
 
                                                     // Refresh list
@@ -531,7 +533,7 @@ const RecruiterDashboard = () => {
 
                                                 } catch (err) {
                                                     console.error("Submission Error:", err);
-                                                    alert("Error submitting request: " + (err.message || 'An error occurred'));
+                                                    popup.error("Error submitting request: " + (err.message || 'An error occurred'));
                                                 }
                                             }}>
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
