@@ -211,6 +211,7 @@ const AgentRegistrationPage = () => {
             submitData.append('role', 'AGENT');
             submitData.append('agencyName', sanitizeInput(formData.companyName));
             submitData.append('contact', formData.phone);
+            submitData.append('location', sanitizeInput(formData.experienceRegion));
             submitData.append('identityProof', identityProof);
             submitData.append('businessLicense', businessLicense);
             submitData.append('agencyProfile', agencyProfile);

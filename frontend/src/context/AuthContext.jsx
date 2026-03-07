@@ -5,7 +5,7 @@ const AuthContext = createContext(undefined);
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(false); // No initial loading needed as we don't check session
+    const [loading, setLoading] = useState(true); // Wait for localStorage check
 
     // Helper: save user to localStorage WITHOUT the avatar (base64 avatars are too large and blow the quota)
     const saveToStorage = (userData) => {
