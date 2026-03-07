@@ -35,7 +35,7 @@ import {
 
 import { DashboardSidebar } from '../components/DashboardSidebar';
 import { DashboardHeader } from '../components/DashboardHeader';
-import { MOCK_JOBS, MOCK_APPLICATIONS, INDUSTRIES, REQUIRED_DOCUMENT_OPTIONS } from '../constants';
+import { INDUSTRIES, REQUIRED_DOCUMENT_OPTIONS } from '../constants';
 
 const MALDIVES_LOCATIONS = ['All Locations', 'Male', 'Hulhumale', 'Villingili', 'Haa Alif', 'Haa Dhaalu', 'Shaviyani', 'Noonu', 'Raa', 'Baa', 'Lhaviyani', 'Kaafu', 'Alif Alif', 'Alif Dhaalu', 'Vaavu', 'Meemu', 'Faafu', 'Dhaalu', 'Thaa', 'Laamu', 'Gaafu Alif', 'Gaafu Dhaalu', 'Gnaviyani', 'Seenu'];
 
@@ -286,42 +286,14 @@ const AdminDashboard = () => {
 
    // Hierarchical Vacancy Management View State
    const [vacancyViewMode, setVacancyViewMode] = useState('CATEGORIES'); // 'CATEGORIES', 'JOBS', 'CANDIDATES'
-   const [jobs, setJobs] = useState(MOCK_JOBS);
+   const [jobs, setJobs] = useState([]);
    const [categories, setCategories] = useState(INDUSTRIES);
    const [selectedCategory, setSelectedCategory] = useState(null);
    const [selectedJobId, setSelectedJobId] = useState(null);
    const [selectedJobTitle, setSelectedJobTitle] = useState('');
    const [categoryJobs, setCategoryJobs] = useState([]);
-   const [agentVacancies, setAgentVacancies] = useState([
-      {
-         id: 1,
-         title: "Island Liaison",
-         ref: "REF: AV-1",
-         date: "2024-05-20",
-         agency: "Global Talent Ltd",
-         openings: 2,
-         state: "HIDDEN",
-         stateColor: "text-slate-300",
-         region: "Kerala, India",
-         sector: "Hospitality",
-         description: "The Island Liaison will act as the primary point of contact between candidates and the resort management. Responsibilities include local vetting and travel arrangement coordination.",
-         requirements: ["Fluent in English & Malayalam", "2+ years in hospitality", "Valid driver's license"]
-      },
-      {
-         id: 2,
-         title: "Diving Instructor",
-         ref: "REF: AV-2",
-         date: "2024-05-22",
-         agency: "ISLAND RECRUITERS",
-         openings: 1,
-         state: "HIDDEN",
-         stateColor: "text-slate-300",
-         region: "Mal+�, Maldives",
-         sector: "Tourism",
-         description: "Responsible for leading diving excursions and ensuring safety protocols for all guests. Must be certified and experienced in open water diving.",
-         requirements: ["PADI CERTIFICATION", "FIRST AID CERTIFIED", "3 YEARS EXPERIENCE"]
-      }
-   ]);
+   const [agentVacancies, setAgentVacancies] = useState([]);
+
    // Removed duplicate jobApplications declaration
    const [isLoadingJobs, setIsLoadingJobs] = useState(false);
    const [isLoadingApplications, setIsLoadingApplications] = useState(false);
@@ -425,8 +397,8 @@ const AdminDashboard = () => {
    };
 
    const [agentResumes, setAgentResumes] = useState([]);
-   const [auditQueue, setAuditQueue] = useState(getMergedAuditQueue());
-   const [jobApplications, setJobApplications] = useState(getMergedApplications());
+   const [auditQueue, setAuditQueue] = useState([]);
+   const [jobApplications, setJobApplications] = useState([]);
 
    // Sync Agent Resumes with All Applications
    useEffect(() => {
@@ -480,39 +452,45 @@ const AdminDashboard = () => {
 
    const fetchApplicationCounts = async () => {
       try {
-         const response = await fetch(`${API_BASE_URL}/api/admin/applications`);
+         const response = await fetch(`${API_BASE_URL}/api/applications`);
+         if (!response.ok) return;
          const data = await response.json();
          const counts = {};
          const formattedApps = [];
 
-         data.forEach(app => {
-            const jid = app.job_id;
+         (Array.isArray(data) ? data : []).forEach(app => {
+            const jid = app.job_id || app.jobId;
             counts[jid] = (counts[jid] || 0) + 1;
 
-            // Format for Job Applications State
-            const job = MOCK_JOBS.find(j => j.id == jid);
             formattedApps.push({
                id: app._id || app.id,
                jobId: jid,
                candidateName: app.candidate_name || app.name || 'Unknown',
                email: app.email || '',
-               contactNumber: app.contact_number || app.phone || '',
-               status: app.status || 'Applied',
-               appliedDate: app.applied_date || app.createdAt,
-               source: app.source || 'Direct',
-               agentName: app.agent_name || app.agency,
-               hasResume: !!(app.resume || app.hasResume),
-               hasCerts: !!(app.certs || app.hasCerts),
-               hasPassport: !!(app.passport || app.hasPassport),
-               role: job ? job.title : 'Unknown Job',
-               category: job ? (job.industry || job.category) : 'Other'
+               contactNumber: app.contact_number || '',
+               nationality: app.nationality || '',
+               status: app.status || 'PENDING',
+               appliedDate: app.applied_at || app.createdAt,
+               source: app.agent_id ? 'Agency' : 'Direct',
+               agentName: app.agent_id || '',
+               hasResume: !!(app.resume && app.resume.data),
+               hasCerts: !!(app.certificates && app.certificates.data),
+               hasPassport: !!(app.identity && app.identity.data),
+               hasPCC: !!(app.pcc && app.pcc.data),
+               hasGoodStanding: !!(app.goodStanding && app.goodStanding.data),
+               documents: {
+                  resume: app.resume || null,
+                  identity: app.identity || null,
+                  certificates: app.certificates || null,
+                  pcc: app.pcc || null,
+                  goodStanding: app.goodStanding || null
+               }
             });
          });
 
          setApplicationCounts(counts);
-         if (formattedApps.length > 0) {
-            setJobApplications(formattedApps);
-         }
+         setJobApplications(formattedApps);
+         setAllApplications(formattedApps);
       } catch (error) {
          console.error('Error fetching application counts:', error);
       }
@@ -609,64 +587,70 @@ const AdminDashboard = () => {
          const catRes = await fetch(`${API_BASE_URL}/api/jobs/categories`);
          if (catRes.ok) {
             const catData = await catRes.json();
-            setCategories(catData || []);
+            if (Array.isArray(catData) && catData.length > 0) setCategories(catData);
          }
 
-         // 2. Fetch Jobs
+         // 2. Fetch Jobs — always overwrite, even if empty
          const jobRes = await fetch(`${API_BASE_URL}/api/jobs`);
          if (jobRes.ok) {
             const jobData = await jobRes.json();
-            const mappedJobs = (jobData || []).map(j => ({
+            const mappedJobs = (Array.isArray(jobData) ? jobData : []).map(j => ({
                ...j,
                postedDate: j.posted_date || j.postedDate,
                salaryRange: j.salary_range || j.salaryRange,
                industry: j.category || j.industry,
                id: j._id || j.id
             }));
-            if (mappedJobs.length > 0) setJobs(mappedJobs);
+            setJobs(mappedJobs); // Always overwrite — no mock fallback
          }
 
-         // 3. Fetch Applications
-         const appRes = await fetch(`${API_BASE_URL}/api/admin/applications`);
+         // 3. Fetch Applications — always overwrite from DB
+         const appRes = await fetch(`${API_BASE_URL}/api/applications`);
          if (appRes.ok) {
             const appData = await appRes.json();
-            if (appData && appData.length > 0) {
-               const mappedApps = appData.map(app => ({
+            const mappedApps = (Array.isArray(appData) ? appData : []).map(app => ({
+               id: app._id || app.id,
+               jobId: app.job_id || app.jobId,
+               candidateName: app.candidate_name || 'Unknown',
+               email: app.email || '',
+               contactNumber: app.contact_number || '',
+               nationality: app.nationality || '',
+               status: app.status || 'PENDING',
+               appliedDate: app.applied_at || app.createdAt,
+               source: app.agent_id ? 'Agency' : 'Direct',
+               agentName: app.agent_id || '',
+               hasResume: !!(app.resume && app.resume.data),
+               hasCerts: !!(app.certificates && app.certificates.data),
+               hasPassport: !!(app.identity && app.identity.data),
+               hasPCC: !!(app.pcc && app.pcc.data),
+               hasGoodStanding: !!(app.goodStanding && app.goodStanding.data),
+               documents: {
+                  resume: app.resume || null,
+                  identity: app.identity || null,
+                  certificates: app.certificates || null,
+                  pcc: app.pcc || null,
+                  goodStanding: app.goodStanding || null
+               }
+            }));
+
+            setAllApplications(mappedApps);
+            setJobApplications(mappedApps);
+
+            // Populate Audit Queue with REJECTED applications only
+            const rejectedApps = mappedApps
+               .filter(app => app.status === 'REJECTED')
+               .map(app => ({
                   ...app,
-                  appliedDate: app.applied_date || app.appliedDate,
-                  candidateName: app.candidateName || app.candidate_name,
-                  jobId: app.job_id || app.jobId,
-                  id: app._id || app.id
+                  role: 'Applicant',
+                  statusColor: 'bg-red-50 text-red-600 border-red-100'
                }));
-               setAllApplications(mappedApps);
-
-               setAllApplications(mappedApps);
-
-               // FIX: Populate Audit Queue from Fetched Applications (Persist Rejections)
-               setAuditQueue(prev => {
-                  const existingIds = new Set(prev.map(p => p.id || p._id));
-                  const rejectedAppsFromDB = mappedApps.filter(app =>
-                     (app.status === 'Rejected' || app.status === 'REJECTED') &&
-                     !existingIds.has(app.id || app._id)
-                  ).map(app => ({
-                     ...app,
-                     role: app.jobTitle || 'Applicant', // Ensure role fallback
-                     status: 'REJECTED',
-                     statusColor: 'bg-red-50 text-red-600 border-red-100'
-                  }));
-
-                  if (rejectedAppsFromDB.length > 0) {
-                     return [...prev, ...rejectedAppsFromDB];
-                  }
-                  return prev;
-               });
-            }
+            setAuditQueue(rejectedApps);
          }
       } catch (error) {
          console.error('Error fetching all admin data:', error);
       } finally {
          if (showLoading) setIsLoadingJobs(false);
-
+         fetchApplicationCounts();
       }
    };
 
@@ -1087,7 +1071,7 @@ const AdminDashboard = () => {
 
    const [selectedResume, setSelectedResume] = useState(null);
    const [isBlacklistReview, setIsBlacklistReview] = useState(false);
-   const [allApplications, setAllApplications] = useState(MOCK_APPLICATIONS);
+   const [allApplications, setAllApplications] = useState([]);
    const [industries, setIndustries] = useState(INDUSTRIES);
    const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
    // jobs moved to top
