@@ -76,24 +76,9 @@ const RecruiterDashboard = () => {
     const [jobs, setJobs] = useState([]);
 
     // FETCH REAL JOBS
-    useEffect(() => {
-        const fetchJobs = async () => {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/jobs`);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
+    const fetchJobs = async () => {};
 
-                // Filter for current openings
-                const openJobs = (Array.isArray(data) ? data : []).filter(j => j?.status === 'OPEN');
-                setJobs(openJobs);
-                if (openJobs.length === 0) console.warn("Fetch successful but 0 jobs found with status 'OPEN'");
-            } catch (error) {
-                console.error("Error fetching jobs:", error);
-                setJobs([]);
-            }
-        };
+    useEffect(() => {
         fetchJobs();
     }, []);
 
@@ -309,6 +294,10 @@ const RecruiterDashboard = () => {
             formDataPayload.append('contact', submissionData.whatsapp);
             formDataPayload.append('nationality', submissionData.nationality);
             formDataPayload.append('resume', submissionFiles.resume);
+            if (submissionFiles.identity) formDataPayload.append('identity', submissionFiles.identity);
+            if (submissionFiles.certs) formDataPayload.append('certs', submissionFiles.certs);
+            if (submissionFiles.pcc) formDataPayload.append('pcc', submissionFiles.pcc);
+            if (submissionFiles.goodStanding) formDataPayload.append('goodStanding', submissionFiles.goodStanding);
 
             const response = await fetch(`${API_BASE_URL}/api/applications`, {
                 method: 'POST',
@@ -908,13 +897,13 @@ const RecruiterDashboard = () => {
                                                                         <div key={job.id || job._id} className="px-6 py-3 flex items-center justify-between hover:bg-teal-50/50 transition-colors" onClick={(e) => { e.stopPropagation(); handleOpenSubmission(job); }}>
                                                                             <div className="min-w-0 pr-2">
                                                                                 <p className="text-sm font-semibold text-slate-800 truncate">{job.title}</p>
-                                                                                <p className="text-xs text-slate-400 truncate">{job.company} · {job.location}</p>
+                                                                                <p className="text-xs text-slate-400 truncate">{job.company} â€¢ {job.location}</p>
                                                                             </div>
                                                                             <button className="flex-shrink-0 px-3 py-1.5 bg-slate-900 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-teal-600 transition-colors">Submit</button>
                                                                         </div>
                                                                     ))}
                                                                     {catJobs.length > 2 && (
-                                                                        <div className="px-6 py-3 text-xs font-bold text-teal-600">+{catJobs.length - 2} more ?</div>
+                                                                        <div className="px-6 py-3 text-xs font-bold text-teal-600">+{catJobs.length - 2} more</div>
                                                                     )}
                                                                 </div>
                                                             )}
