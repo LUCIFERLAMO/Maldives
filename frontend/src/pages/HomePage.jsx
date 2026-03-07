@@ -24,16 +24,18 @@ const HomePage = () => {
       totalJobs: 0,
       activeJobs: 0
    });
+   const [allJobs, setAllJobs] = useState([]);
 
    useEffect(() => {
       async function fetchJobStats() {
          try {
             const response = await fetch(`${API_BASE_URL}/api/jobs`);
             const jobs = await response.json();
-
+            const openJobs = Array.isArray(jobs) ? jobs.filter(j => j.status === 'OPEN') : [];
+            setAllJobs(openJobs);
             setJobStats({
                totalJobs: jobs.length || 0,
-               activeJobs: jobs.filter(j => j.status === 'OPEN').length || 0
+               activeJobs: openJobs.length || 0
             });
          } catch (error) {
             console.error('Error fetching stats:', error);
@@ -43,18 +45,44 @@ const HomePage = () => {
       fetchJobStats();
    }, []);
 
+   // Compute per-category counts from real DB jobs
+   const CATEGORY_ICONS = {
+      'Hospitality': Palmtree,
+      'Culinary & Kitchen': Utensils,
+      'Healthcare': Stethoscope,
+      'Marine & Water Sports': Ship,
+      'Construction': Building2,
+      'Education': GraduationCap,
+      'IT': Building2,
+      'Retail': Building2,
+      'Manufacturing': Building2,
+      'Tourism': Palmtree,
+      'Fishing': Ship,
+      'Agriculture': Building2,
+      'Other': Building2,
+   };
+
+   const categoryCounts = allJobs.reduce((acc, job) => {
+      const cat = job.category || 'Other';
+      acc[cat] = (acc[cat] || 0) + 1;
+      return acc;
+   }, {});
+
+   const categories = [
+      { name: 'Hospitality', icon: Palmtree, color: 'text-teal-600', bg: 'bg-teal-50' },
+      { name: 'Healthcare', icon: Stethoscope, color: 'text-teal-600', bg: 'bg-teal-50' },
+      { name: 'Construction', icon: Building2, color: 'text-teal-600', bg: 'bg-teal-50' },
+      { name: 'Education', icon: GraduationCap, color: 'text-teal-600', bg: 'bg-teal-50' },
+      { name: 'IT', icon: Building2, color: 'text-teal-600', bg: 'bg-teal-50' },
+      { name: 'Tourism', icon: Palmtree, color: 'text-teal-600', bg: 'bg-teal-50' },
+   ];
+
+   // 3 most recent open jobs
+   const recentJobs = allJobs.slice(0, 3);
+
    const handleGetStarted = () => {
       navigate('/register');
    };
-
-   const categories = [
-      { name: 'Resort & Hospitality', icon: Palmtree, count: '120+', color: 'text-teal-600', bg: 'bg-teal-50' },
-      { name: 'Culinary & Kitchen', icon: Utensils, count: '85+', color: 'text-teal-600', bg: 'bg-teal-50' },
-      { name: 'Healthcare', icon: Stethoscope, count: '45+', color: 'text-teal-600', bg: 'bg-teal-50' },
-      { name: 'Marine & Water Sports', icon: Ship, count: '30+', color: 'text-teal-600', bg: 'bg-teal-50' },
-      { name: 'Corporate & Admin', icon: Building2, count: '60+', color: 'text-teal-600', bg: 'bg-teal-50' },
-      { name: 'Education', icon: GraduationCap, count: '25+', color: 'text-teal-600', bg: 'bg-teal-50' },
-   ];
 
    return (
       <div className="min-h-screen bg-slate-50/50 font-sans text-slate-900 overflow-x-hidden selection:bg-teal-100 selection:text-teal-900">
@@ -178,18 +206,63 @@ const HomePage = () => {
                </div>
 
                <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 lg:gap-6">
-                  {categories.map((cat, idx) => (
-                     <div key={idx} className="group p-6 rounded-[2rem] bg-slate-50 border border-slate-100 transition-all duration-300 cursor-pointer text-center">
-                        <div className={`w-14 h-14 mx-auto rounded-2xl ${cat.bg} ${cat.color} flex items-center justify-center mb-4 transition-transform`}>
-                           <cat.icon className="w-7 h-7" />
+                  {categories.map((cat, idx) => {
+                     const count = categoryCounts[cat.name] || 0;
+                     return (
+                        <div key={idx} onClick={() => navigate(`/jobs?category=${cat.name}`)} className="group p-6 rounded-[2rem] bg-slate-50 border border-slate-100 hover:border-teal-200 hover:shadow-md transition-all duration-300 cursor-pointer text-center">
+                           <div className={`w-14 h-14 mx-auto rounded-2xl ${cat.bg} ${cat.color} flex items-center justify-center mb-4 transition-transform group-hover:scale-110`}>
+                              <cat.icon className="w-7 h-7" />
+                           </div>
+                           <h3 className="font-bold text-slate-900 mb-1">{cat.name}</h3>
+                           <p className={`text-xs font-bold uppercase tracking-wider ${count > 0 ? 'text-teal-600' : 'text-slate-400'}`}>
+                              {count} {count === 1 ? 'Job' : 'Jobs'}
+                           </p>
                         </div>
-                        <h3 className="font-bold text-slate-900 mb-1">{cat.name}</h3>
-                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">{cat.count} Jobs</p>
-                     </div>
-                  ))}
+                     );
+                  })}
                </div>
             </div>
          </section>
+
+         {/* 2b. RECENT OPENINGS - Real DB Jobs */}
+         {recentJobs.length > 0 && (
+            <section className="py-10 bg-slate-50">
+               <div className="container mx-auto px-5 lg:px-6">
+                  <div className="flex items-center justify-between mb-8">
+                     <div>
+                        <h2 className="text-2xl lg:text-3xl font-black text-slate-900 tracking-tight">Recent Openings</h2>
+                        <p className="text-slate-500 mt-1">Freshly posted opportunities — apply before they're gone.</p>
+                     </div>
+                     <Link to="/jobs" className="hidden sm:flex items-center gap-2 text-sm font-bold text-teal-600 hover:text-teal-800 transition-colors">
+                        View All <ArrowRight className="w-4 h-4" />
+                     </Link>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                     {recentJobs.map((job, idx) => (
+                        <Link to={`/job/${job._id || job.id}`} key={idx} className="group bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-lg hover:border-teal-200 transition-all duration-300 flex flex-col gap-4">
+                           <div className="flex items-start gap-4">
+                              <div className="w-12 h-12 rounded-xl bg-teal-600 text-white flex items-center justify-center font-black text-lg flex-shrink-0 group-hover:scale-110 transition-transform">
+                                 {(job.company || '?').charAt(0).toUpperCase()}
+                              </div>
+                              <div className="min-w-0">
+                                 <h3 className="font-bold text-slate-900 group-hover:text-teal-700 transition-colors truncate">{job.title}</h3>
+                                 <p className="text-xs text-slate-500 font-semibold mt-0.5 truncate">{job.company}</p>
+                              </div>
+                           </div>
+                           <div className="flex flex-wrap gap-2">
+                              <span className="px-2.5 py-1 bg-teal-50 text-teal-700 text-[10px] font-bold uppercase tracking-wider rounded-lg">{job.category || 'General'}</span>
+                              <span className="px-2.5 py-1 bg-slate-50 text-slate-500 text-[10px] font-bold uppercase tracking-wider rounded-lg">{job.location || 'Maldives'}</span>
+                           </div>
+                           <div className="mt-auto flex items-center justify-between">
+                              <span className="text-sm font-bold text-slate-700">{job.salary_range || 'Competitive'}</span>
+                              <span className="flex items-center gap-1 text-teal-600 text-xs font-bold group-hover:gap-2 transition-all">View Job <ArrowRight className="w-3 h-3" /></span>
+                           </div>
+                        </Link>
+                     ))}
+                  </div>
+               </div>
+            </section>
+         )}
 
          {/* 3. SERVICES SECTION */}
          <section className="py-24 bg-slate-900 text-white relative overflow-hidden">

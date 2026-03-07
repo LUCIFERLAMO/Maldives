@@ -698,7 +698,7 @@ const AdminDashboard = () => {
 
          // Simulate network delay
          setTimeout(() => {
-            const filteredJobs = jobs.filter(j => j.industry === category);
+            const filteredJobs = jobs.filter(j => j.industry === category || j.category === category);
             setCategoryJobs(filteredJobs);
             setIsLoadingJobs(false);
          }, 500);
@@ -1342,32 +1342,60 @@ const AdminDashboard = () => {
       }
    };
 
-   const handleAddVacancy = (e) => {
+   const handleAddVacancy = async (e) => {
       e.preventDefault();
-      const vacancy = {
-         id: (jobs.length + 1).toString(),
-         ...newVacancy,
-         company: newVacancy.companyName,
-         location: newVacancy.address,
-         salary_range: newVacancy.salary,
-         postedDate: new Date().toISOString().split('T')[0],
-         status: 'Current Opening',
-         isReopened: false,
-         requirements: newVacancy.requirements.split(',').map(r => r.trim())
-      };
-      setJobs([...jobs, vacancy]);
-      // Update categoryJobs if the new vacancy belongs to the current category
-      if (typeof setCategoryJobs === 'function' && (!selectedCategory || vacancy.industry === selectedCategory)) {
-         setCategoryJobs(prev => [...prev, vacancy]);
-      } else if (typeof setCategoryJobs === 'function') {
-         // Fallback if logic is different, but for now assuming industry match
-      }
+      try {
+         const payload = {
+            title: newVacancy.title,
+            company: newVacancy.companyName,
+            location: newVacancy.address,
+            category: newVacancy.industry,
+            salary_range: newVacancy.salary,
+            description: newVacancy.description,
+            requirements: newVacancy.requirements.split(',').map(r => r.trim()).filter(Boolean),
+            headcount: newVacancy.headcount || 1,
+            education: newVacancy.education || '',
+            experience: newVacancy.experience || ''
+         };
 
-      setNewVacancy({ title: '', industry: '', salary: '', headcount: '', description: '', requirements: '', companyName: '', address: '', education: '', experience: '', required_documents: [] });
-      setIsAddVacancyOpen(false);
-      setShowSuccessNotification(true);
-      setTimeout(() => setShowSuccessNotification(false), 3000);
+         const response = await fetch(`${API_BASE_URL}/api/jobs`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+         });
+
+         if (!response.ok) {
+            const errData = await response.json();
+            popup.error('Failed to create job: ' + (errData.message || 'Unknown error'));
+            return;
+         }
+
+         const savedJob = await response.json();
+         // Map saved job to frontend format
+         const mappedJob = {
+            ...savedJob,
+            id: savedJob._id || savedJob.id,
+            industry: savedJob.category,
+            postedDate: savedJob.posted_date,
+            salaryRange: savedJob.salary_range
+         };
+
+         setJobs(prev => [mappedJob, ...prev]);
+         if (typeof setCategoryJobs === 'function' && (!selectedCategory || mappedJob.industry === selectedCategory)) {
+            setCategoryJobs(prev => [mappedJob, ...prev]);
+         }
+
+         setNewVacancy({ title: '', industry: '', salary: '', headcount: '', description: '', requirements: '', companyName: '', address: '', education: '', experience: '', required_documents: [] });
+         setIsAddVacancyOpen(false);
+         setShowSuccessNotification(true);
+         setTimeout(() => setShowSuccessNotification(false), 3000);
+         popup.success(`Job "${mappedJob.title}" created successfully and is now visible to agents!`);
+      } catch (err) {
+         console.error('Error creating job:', err);
+         popup.error('Error creating job: ' + err.message);
+      }
    };
+
 
    const handleGenerateCredentials = () => {
       setApprovalStep('GENERATING');

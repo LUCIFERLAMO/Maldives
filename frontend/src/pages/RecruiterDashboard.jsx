@@ -76,7 +76,18 @@ const RecruiterDashboard = () => {
     const [jobs, setJobs] = useState([]);
 
     // FETCH REAL JOBS
-    const fetchJobs = async () => {};
+    const fetchJobs = async () => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/jobs`);
+            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+            const data = await res.json();
+            const openJobs = (Array.isArray(data) ? data : []).filter(j => j?.status === 'OPEN');
+            setJobs(openJobs);
+        } catch (err) {
+            console.error('Error fetching jobs:', err);
+            setJobs([]);
+        }
+    };
 
     useEffect(() => {
         fetchJobs();
