@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
         server: {
             port: 3001,
             host: '0.0.0.0',
-            allowedHosts: ['lili-remorseless-cicely.ngrok-free.dev'],
+            allowedHosts: ['lili-remorseless-cicely.ngrok-free.dev', 'localhost', '127.0.0.1'],
         },
         plugins: [react()],
         define: {

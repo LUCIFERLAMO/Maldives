@@ -11,6 +11,7 @@ import {
     Loader2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { validatePassword } from '../utils/passwordValidation';
 
 const CandidateLoginPage = ({ initialMode = 'login' }) => {
     const navigate = useNavigate();
@@ -70,8 +71,8 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
             return;
         }
 
-        if (formData.password.length < 6) {
-            setNotification({ type: 'error', text: 'Password must be at least 6 characters long.' });
+        if (!validatePassword(formData.password).isValid) {
+            setNotification({ type: 'error', text: 'Password does not meet security requirements.' });
             setIsLoading(false);
             return;
         }
@@ -262,10 +263,29 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
                                             type="password"
                                             required
                                             className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-teal-600 outline-none font-bold text-slate-700 transition-all"
-                                            placeholder="Min 6 characters"
+                                            placeholder="Create a strong password"
                                             value={formData.password}
                                             onChange={e => setFormData({ ...formData, password: e.target.value })}
                                         />
+                                    </div>
+                                    
+                                    {/* Password Strength Checklist */}
+                                    <div className="mt-3 grid grid-cols-2 gap-2 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                        <p className="col-span-2 text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Security Checklist</p>
+                                        {[
+                                            { label: '8+ Characters', met: validatePassword(formData.password).criteria.length },
+                                            { label: 'Uppercase', met: validatePassword(formData.password).criteria.upper },
+                                            { label: 'Lowercase', met: validatePassword(formData.password).criteria.lower },
+                                            { label: 'Number', met: validatePassword(formData.password).criteria.number },
+                                            { label: 'Special Character', met: validatePassword(formData.password).criteria.symbol }
+                                        ].map((item, i) => (
+                                            <div key={i} className={`flex items-center gap-1.5 transition-all duration-300 ${item.met ? 'text-teal-600' : 'text-slate-300'}`}>
+                                                <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center border ${item.met ? 'bg-teal-50 border-teal-200' : 'bg-slate-100 border-slate-200'}`}>
+                                                    {item.met && <CheckCircle2 className="w-2.5 h-2.5" strokeWidth={4} />}
+                                                </div>
+                                                <span className="text-[10px] font-bold uppercase tracking-tight">{item.label}</span>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
 

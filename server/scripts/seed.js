@@ -86,7 +86,7 @@ const seedProfiles = [
         role: "ADMIN",
         full_name: "System Admin",
         email: "admin@maldives.com",
-        password: "securepassword123", // In a real app, hash this!
+        password: "Admin@Maldives2024!", // Meets new strong criteria
         status: "ACTIVE"
     },
     {
