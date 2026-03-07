@@ -8,10 +8,14 @@ import {
     ArrowRight,
     ArrowLeft,
     CheckCircle2,
+    XCircle,
     Phone,
-    Loader2
+    Loader2,
+    Eye,
+    EyeOff
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { validatePassword } from '../utils/passwordValidation';
 
 const CandidateLoginPage = ({ initialMode = 'login' }) => {
     const navigate = useNavigate();
@@ -35,6 +39,8 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
         password: '',
         phone: ''
     });
+    const [showLoginPassword, setShowLoginPassword] = useState(false);
+    const [showSignupPassword, setShowSignupPassword] = useState(false);
 
     useEffect(() => {
         setMode(initialMode);
@@ -173,6 +179,14 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
             return;
         }
 
+        const pwCheck = validatePassword(formData.password);
+        if (!pwCheck.isValid) {
+            setNotification({ type: 'error', text: 'Password must meet all security requirements (8+ chars, uppercase, lowercase, number, special character).' });
+            setIsLoading(false);
+            return;
+        }
+
+
         try {
             const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
                 method: 'POST',
@@ -294,7 +308,10 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
                                 </div>
                                 <div className="relative group">
                                     <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
-                                    <input type="password" required placeholder="Password" className="w-full pl-14 pr-6 py-5 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-slate-700 placeholder:text-slate-400" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
+                                    <input type={showLoginPassword ? "text" : "password"} required placeholder="Password" className="w-full pl-14 pr-14 py-5 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-slate-700 placeholder:text-slate-400" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
+                                    <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors">
+                                        {showLoginPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    </button>
                                 </div>
                                 <div className="text-right">
                                     <button type="button" onClick={() => { setForgotMode(true); setForgotMessage(null); setForgotEmail(''); }} className="text-teal-600 hover:text-teal-800 text-xs font-bold transition-colors">
@@ -392,8 +409,31 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
                                     <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-2 block">Password</label>
                                     <div className="relative group">
                                         <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
-                                        <input type="password" required className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-500/10 outline-none font-bold text-slate-700 transition-all placeholder:text-slate-400" placeholder="Min 6 characters" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
+                                        <input type={showSignupPassword ? "text" : "password"} required className="w-full pl-14 pr-14 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-500/10 outline-none font-bold text-slate-700 transition-all placeholder:text-slate-400" placeholder="Create a strong password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
+                                        <button type="button" onClick={() => setShowSignupPassword(!showSignupPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors">
+                                            {showSignupPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                        </button>
                                     </div>
+                                    {/* Security Checklist */}
+                                    {formData.password && (
+                                        <div className="mt-3 grid grid-cols-2 gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                            <p className="col-span-2 text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">Security Checklist</p>
+                                            {[
+                                                { label: '8+ Characters', met: validatePassword(formData.password).criteria.length },
+                                                { label: 'Uppercase', met: validatePassword(formData.password).criteria.upper },
+                                                { label: 'Lowercase', met: validatePassword(formData.password).criteria.lower },
+                                                { label: 'Number', met: validatePassword(formData.password).criteria.number },
+                                                { label: 'Special Char', met: validatePassword(formData.password).criteria.symbol },
+                                            ].map((item, i) => (
+                                                <div key={i} className={`flex items-center gap-1.5 transition-all duration-200 ${item.met ? 'text-teal-600' : 'text-slate-400'}`}>
+                                                    {item.met
+                                                        ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                                                        : <XCircle className="w-3.5 h-3.5 shrink-0 text-red-400" />}
+                                                    <span className="text-[10px] font-bold uppercase tracking-tight">{item.label}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                                 <button type="submit" disabled={isLoading} className="w-full bg-teal-600 text-white py-5 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-teal-700 transition-all shadow-xl shadow-teal-600/20 hover:shadow-2xl hover:shadow-teal-600/30 hover:-translate-y-0.5 mt-6 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed">
                                     {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating Account...</> : <>Create Account <ArrowRight className="w-4 h-4" /></>}

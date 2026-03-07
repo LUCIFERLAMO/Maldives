@@ -15,7 +15,8 @@ import {
     Briefcase,
     Share2,
     Heart,
-    Bookmark
+    Bookmark,
+    GraduationCap
 } from 'lucide-react';
 import { Link, useSearchParams, useLocation } from 'react-router-dom';
 import JobCard from '../components/JobCard';
@@ -29,12 +30,15 @@ const BrowseJobsPage = () => {
     const [viewType, setViewType] = useState('list');
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [isSalaryFilterOpen, setIsSalaryFilterOpen] = useState(false);
+    const [isLocationFilterOpen, setIsLocationFilterOpen] = useState(false);
+    const [isEducationFilterOpen, setIsEducationFilterOpen] = useState(false);
+    const [isExperienceFilterOpen, setIsExperienceFilterOpen] = useState(false);
     const [sortBy, setSortBy] = useState('recent');
     const [isSortOpen, setIsSortOpen] = useState(false);
     const [expandedJobId, setExpandedJobId] = useState(null);
     const [savedJobIds, setSavedJobIds] = useState(new Set()); // IDs of jobs saved by the user
     const [toast, setToast] = useState({ show: false, message: '' });
-    
+
     // Auth info
     const location = useLocation();
     const [user, setUser] = useState(null);
@@ -46,6 +50,9 @@ const BrowseJobsPage = () => {
 
     const selectedIndustry = searchParams.get('category') || 'All';
     const selectedSalaryLabel = searchParams.get('salary') || 'All Salaries';
+    const selectedLocation = searchParams.get('location') || 'All Locations';
+    const selectedEducation = searchParams.get('education') || 'Any Education';
+    const selectedExperience = searchParams.get('experience') || 'Any Experience';
 
     const SALARY_RANGES = useMemo(() => [
         { label: 'All Salaries', min: 0, max: Infinity },
@@ -73,6 +80,15 @@ const BrowseJobsPage = () => {
             // Filter by Category check
             const matchesCategory = selectedIndustry === 'All' || (job.industry || job.category) === selectedIndustry;
 
+            // Filter by Location check
+            const matchesLocation = selectedLocation === 'All Locations' || job.location === selectedLocation;
+
+            // Filter by Education check
+            const matchesEducation = selectedEducation === 'Any Education' || job.education === selectedEducation;
+
+            // Filter by Experience check
+            const matchesExperience = selectedExperience === 'Any Experience' || job.experience === selectedExperience;
+
             // Filter by Salary check
             let matchesSalary = true;
             if (selectedSalary.label !== 'All Salaries') {
@@ -88,9 +104,9 @@ const BrowseJobsPage = () => {
                 }
             }
 
-            return matchesSearch && matchesCategory && matchesSalary;
+            return matchesSearch && matchesCategory && matchesSalary && matchesLocation && matchesEducation && matchesExperience;
         });
-    }, [searchTerm, jobs, selectedIndustry, selectedSalary]);
+    }, [searchTerm, jobs, selectedIndustry, selectedSalary, selectedLocation, selectedEducation, selectedExperience]);
 
     const formatPostedDate = (dateString) => {
         if (!dateString) return 'Recently';
@@ -165,7 +181,7 @@ const BrowseJobsPage = () => {
     const handleToggleSave = async (e, jobId) => {
         e.preventDefault();
         e.stopPropagation();
-        
+
         if (!user || user.role?.toLowerCase() !== 'candidate') return;
 
         try {
@@ -178,11 +194,11 @@ const BrowseJobsPage = () => {
                 } else {
                     next.add(jobId);
                 }
-                
+
                 // Show notification
                 setToast({ show: true, message: isNowSaved ? 'Job saved to your dashboard' : 'Job removed from your dashboard' });
                 setTimeout(() => setToast({ show: false, message: '' }), 3000);
-                
+
                 return next;
             });
         } catch (error) {
@@ -394,16 +410,15 @@ const BrowseJobsPage = () => {
                 </div>
             </div>
 
-            {/* 2. STICKY FILTER NAVIGATION */}
             <div className="sticky top-0 z-30 bg-slate-50/95 backdrop-blur-sm border-b border-slate-200/50">
                 <div className="container mx-auto max-w-7xl px-4 md:px-6">
                     <div className="flex flex-col md:flex-row items-start md:items-center justify-between py-4 gap-4 md:gap-0">
 
-                        <div className="flex flex-wrap items-center gap-3">
-                            <div className="relative">
+                        <div className="flex flex-wrap items-center gap-3 w-full max-w-full">
+                            <div className="relative shrink-0">
                                 <button
                                     onClick={() => setIsFilterOpen(!isFilterOpen)}
-                                    className={`flex items-center gap-3 px-6 py-3 rounded-xl border text-sm font-bold transition-all ${isFilterOpen || selectedIndustry !== 'All' ? 'bg-[#0B1A33] text-white border-[#0B1A33] shadow-lg' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:shadow-sm'}`}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-bold transition-all ${isFilterOpen || selectedIndustry !== 'All' ? 'bg-teal-50 text-teal-700 border-teal-300 shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:shadow-sm'}`}
                                 >
                                     <Filter className="w-4 h-4" />
                                     <span>Category: <span className="text-teal-400">{selectedIndustry}</span></span>
@@ -442,10 +457,10 @@ const BrowseJobsPage = () => {
                                 )}
                             </div>
 
-                            <div className="relative">
+                            <div className="relative shrink-0">
                                 <button
                                     onClick={() => setIsSalaryFilterOpen(!isSalaryFilterOpen)}
-                                    className={`flex items-center gap-3 px-6 py-3 rounded-xl border text-sm font-bold transition-all ${isSalaryFilterOpen || selectedSalaryLabel !== 'All Salaries' ? 'bg-[#0B1A33] text-white border-[#0B1A33] shadow-lg' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:shadow-sm'}`}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-bold transition-all ${isSalaryFilterOpen || selectedSalaryLabel !== 'All Salaries' ? 'bg-teal-50 text-teal-700 border-teal-300 shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:shadow-sm'}`}
                                 >
                                     <DollarSign className="w-4 h-4" />
                                     <span>Salary: <span className="text-teal-400">{selectedSalaryLabel}</span></span>
@@ -474,6 +489,132 @@ const BrowseJobsPage = () => {
                                     </>
                                 )}
                             </div>
+
+                            <div className="relative shrink-0">
+                                <button
+                                    onClick={() => setIsEducationFilterOpen(!isEducationFilterOpen)}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-bold transition-all ${isEducationFilterOpen || selectedEducation !== 'Any Education' ? 'bg-teal-50 text-teal-700 border-teal-300 shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:shadow-sm'}`}
+                                >
+                                    <GraduationCap className="w-4 h-4" />
+                                    <span>Education: <span className="text-teal-400">{selectedEducation}</span></span>
+                                    <ChevronDown className={`w-4 h-4 transition-transform ${isEducationFilterOpen ? 'rotate-180' : ''}`} />
+                                </button>
+
+                                {isEducationFilterOpen && (
+                                    <>
+                                        <div className="fixed inset-0 z-10" onClick={() => setIsEducationFilterOpen(false)}></div>
+                                        <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 z-20 animate-in fade-in zoom-in-95 duration-200">
+                                            <div className="max-h-[300px] overflow-y-auto no-scrollbar space-y-1">
+                                                <button
+                                                    onClick={() => {
+                                                        setSearchParams({ ...Object.fromEntries(searchParams), education: 'Any Education' });
+                                                        setIsEducationFilterOpen(false);
+                                                    }}
+                                                    className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors ${selectedEducation === 'Any Education' ? 'bg-teal-50 text-teal-700' : 'text-slate-500 hover:bg-slate-50'}`}
+                                                >
+                                                    Any Education
+                                                </button>
+                                                {['O-Level / Secondary School', 'A-Level / Higher Secondary', 'Certificate', 'Diploma', 'Advanced Diploma', 'Bachelor’s Degree', 'Master’s Degree', 'Doctorate / PhD'].map((edu) => (
+                                                    <button
+                                                        key={edu}
+                                                        onClick={() => {
+                                                            setSearchParams({ ...Object.fromEntries(searchParams), education: edu });
+                                                            setIsEducationFilterOpen(false);
+                                                        }}
+                                                        className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors ${selectedEducation === edu ? 'bg-teal-50 text-teal-700' : 'text-slate-500 hover:bg-slate-50'}`}
+                                                    >
+                                                        {edu}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+
+                            <div className="relative shrink-0">
+                                <button
+                                    onClick={() => setIsExperienceFilterOpen(!isExperienceFilterOpen)}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-bold transition-all ${isExperienceFilterOpen || selectedExperience !== 'Any Experience' ? 'bg-teal-50 text-teal-700 border-teal-300 shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:shadow-sm'}`}
+                                >
+                                    <Briefcase className="w-4 h-4" />
+                                    <span>Experience: <span className="text-teal-400">{selectedExperience}</span></span>
+                                    <ChevronDown className={`w-4 h-4 transition-transform ${isExperienceFilterOpen ? 'rotate-180' : ''}`} />
+                                </button>
+
+                                {isExperienceFilterOpen && (
+                                    <>
+                                        <div className="fixed inset-0 z-10" onClick={() => setIsExperienceFilterOpen(false)}></div>
+                                        <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 z-20 animate-in fade-in zoom-in-95 duration-200">
+                                            <div className="max-h-[300px] overflow-y-auto no-scrollbar space-y-1">
+                                                <button
+                                                    onClick={() => {
+                                                        setSearchParams({ ...Object.fromEntries(searchParams), experience: 'Any Experience' });
+                                                        setIsExperienceFilterOpen(false);
+                                                    }}
+                                                    className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors ${selectedExperience === 'Any Experience' ? 'bg-teal-50 text-teal-700' : 'text-slate-500 hover:bg-slate-50'}`}
+                                                >
+                                                    Any Experience
+                                                </button>
+                                                {['No Experience', '1 – 2 Years', '3 – 5 Years', '6 – 10 Years', '10+ Years'].map((exp) => (
+                                                    <button
+                                                        key={exp}
+                                                        onClick={() => {
+                                                            setSearchParams({ ...Object.fromEntries(searchParams), experience: exp });
+                                                            setIsExperienceFilterOpen(false);
+                                                        }}
+                                                        className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors ${selectedExperience === exp ? 'bg-teal-50 text-teal-700' : 'text-slate-500 hover:bg-slate-50'}`}
+                                                    >
+                                                        {exp}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+
+                            <div className="relative shrink-0">
+                                <button
+                                    onClick={() => setIsLocationFilterOpen(!isLocationFilterOpen)}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-bold transition-all ${isLocationFilterOpen || selectedLocation !== 'All Locations' ? 'bg-teal-50 text-teal-700 border-teal-300 shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:shadow-sm'}`}
+                                >
+                                    <MapPin className="w-4 h-4" />
+                                    <span>Location: <span className="text-teal-400">{selectedLocation}</span></span>
+                                    <ChevronDown className={`w-4 h-4 transition-transform ${isLocationFilterOpen ? 'rotate-180' : ''}`} />
+                                </button>
+
+                                {isLocationFilterOpen && (
+                                    <>
+                                        <div className="fixed inset-0 z-10" onClick={() => setIsLocationFilterOpen(false)}></div>
+                                        <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 z-20 animate-in fade-in zoom-in-95 duration-200">
+                                            <div className="max-h-[300px] overflow-y-auto no-scrollbar space-y-1">
+                                                <button
+                                                    onClick={() => {
+                                                        setSearchParams({ ...Object.fromEntries(searchParams), location: 'All Locations' });
+                                                        setIsLocationFilterOpen(false);
+                                                    }}
+                                                    className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors ${selectedLocation === 'All Locations' ? 'bg-teal-50 text-teal-700' : 'text-slate-500 hover:bg-slate-50'}`}
+                                                >
+                                                    All Locations
+                                                </button>
+                                                {['Malé', 'Hulhumalé', 'Villingili', 'Haa Alif', 'Haa Dhaalu', 'Shaviyani', 'Noonu', 'Raa', 'Baa', 'Lhaviyani', 'Kaafu', 'Alif Alif', 'Alif Dhaalu', 'Vaavu', 'Meemu', 'Faafu', 'Dhaalu', 'Thaa', 'Laamu', 'Gaafu Alif', 'Gaafu Dhaalu', 'Gnaviyani', 'Seenu'].map((loc) => (
+                                                    <button
+                                                        key={loc}
+                                                        onClick={() => {
+                                                            setSearchParams({ ...Object.fromEntries(searchParams), location: loc });
+                                                            setIsLocationFilterOpen(false);
+                                                        }}
+                                                        className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors ${selectedLocation === loc ? 'bg-teal-50 text-teal-700' : 'text-slate-500 hover:bg-slate-50'}`}
+                                                    >
+                                                        {loc}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
 
 
@@ -490,7 +631,7 @@ const BrowseJobsPage = () => {
                         <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Editor's Choice</h2>
                     </div>
                     <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 overflow-x-auto snap-x snap-mandatory pb-8 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0 no-scrollbar">
-                        {jobs.filter(j => j.status === 'Current Opening' && (selectedIndustry === 'All' || j.industry === selectedIndustry)).slice(0, 3).map((job, idx) => (
+                        {jobs.filter(j => j.status === 'OPEN' && (selectedIndustry === 'All' || j.industry === selectedIndustry)).slice(0, 3).map((job, idx) => (
                             <Link to={`/job/${job.id}`} key={idx} className="flex-shrink-0 w-[70%] md:w-auto snap-center [scroll-snap-stop:always] group bg-white rounded-[2rem] p-1 overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500 cursor-pointer">
                                 <div className="bg-slate-50 rounded-[1.8rem] p-4 md:p-8 h-full flex flex-col items-start relative overflow-hidden group-hover:bg-[#0B1A33] transition-colors duration-500">
                                     <div className="absolute -right-10 -top-10 w-32 h-32 bg-white/5 rounded-full blur-2xl group-hover:bg-white/10"></div>
@@ -607,7 +748,7 @@ const BrowseJobsPage = () => {
                                                     >
                                                         <Share2 className="w-5 h-5" />
                                                     </button>
-                                                    
+
                                                     {user?.role?.toLowerCase() === 'candidate' && (
                                                         <button
                                                             onClick={(e) => handleToggleSave(e, job.id || job._id)}
@@ -680,7 +821,7 @@ const BrowseJobsPage = () => {
                                                 >
                                                     <Share2 className="w-5 h-5" />
                                                 </button>
-                                                
+
                                                 {user?.role?.toLowerCase() === 'candidate' && (
                                                     <button
                                                         onClick={(e) => handleToggleSave(e, job.id || job._id)}

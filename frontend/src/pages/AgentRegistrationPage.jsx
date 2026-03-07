@@ -14,8 +14,10 @@ import {
     Check,
     Eye,
     EyeOff,
-    Loader2
+    Loader2,
+    Lock
 } from 'lucide-react';
+import { validatePassword } from '../utils/passwordValidation';
 
 const AgentRegistrationPage = () => {
     const navigate = useNavigate();
@@ -96,10 +98,11 @@ const AgentRegistrationPage = () => {
     };
 
     const handlePasswordChange = (e) => {
-        const value = sanitizeInput(e.target.value); // Sanitize password
+        const value = e.target.value; // Don't sanitize here to allow typing special chars
         setFormData({ ...formData, password: value });
-        if (value && value.length < 6) {
-            setErrors(prev => ({ ...prev, password: 'Minimum 6 characters' }));
+        const validation = validatePassword(value);
+        if (value && !validation.isValid) {
+            setErrors(prev => ({ ...prev, password: 'Password does not meet requirements' }));
         } else {
             setErrors(prev => ({ ...prev, password: '' }));
         }
@@ -140,8 +143,8 @@ const AgentRegistrationPage = () => {
         if (!validateEmail(formData.workEmail)) {
             validationErrors.workEmail = 'Please enter a valid email';
         }
-        if (formData.password.length < 6) {
-            validationErrors.password = 'Password must be at least 6 characters';
+        if (!validatePassword(formData.password).isValid) {
+            validationErrors.password = 'Password does not meet requirements';
         }
         if (!validateCompanyName(formData.companyName)) {
             validationErrors.companyName = 'Company name can only contain letters and numbers';
@@ -328,28 +331,47 @@ const AgentRegistrationPage = () => {
                                 {errors.workEmail && <p className="text-red-500 text-xs mt-1 ml-1">{errors.workEmail}</p>}
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Password</label>
-                                <div className="relative group">
-                                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
-                                    <input
-                                        type={showPassword ? "text" : "password"}
-                                        required
-                                        className={`w-full pl-12 pr-12 py-4 bg-slate-50 border rounded-xl focus:bg-white outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300 ${errors.password ? 'border-red-400 focus:border-red-500' : 'border-slate-100 focus:border-teal-600'}`}
-                                        placeholder="Create a password (min 6 characters)"
-                                        value={formData.password}
-                                        onChange={handlePasswordChange}
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors"
-                                    >
-                                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                                    </button>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Password</label>
+                                    <div className="relative group">
+                                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
+                                        <input
+                                            type={showPassword ? "text" : "password"}
+                                            required
+                                            className={`w-full pl-12 pr-12 py-4 bg-slate-50 border rounded-xl focus:bg-white outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300 ${errors.password ? 'border-red-400 focus:border-red-500' : 'border-slate-100 focus:border-teal-600'}`}
+                                            placeholder="Create a strong password"
+                                            value={formData.password}
+                                            onChange={handlePasswordChange}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors"
+                                        >
+                                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                        </button>
+                                    </div>
+                                    
+                                    {/* Password Strength Checklist */}
+                                    <div className="mt-3 grid grid-cols-2 gap-2 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                        <p className="col-span-2 text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Security Checklist</p>
+                                        {[
+                                            { label: '8+ Characters', met: validatePassword(formData.password).criteria.length },
+                                            { label: 'Uppercase', met: validatePassword(formData.password).criteria.upper },
+                                            { label: 'Lowercase', met: validatePassword(formData.password).criteria.lower },
+                                            { label: 'Number', met: validatePassword(formData.password).criteria.number },
+                                            { label: 'Special Character', met: validatePassword(formData.password).criteria.symbol }
+                                        ].map((item, i) => (
+                                            <div key={i} className={`flex items-center gap-1.5 transition-all duration-300 ${item.met ? 'text-teal-600' : 'text-slate-300'}`}>
+                                                <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center border ${item.met ? 'bg-teal-50 border-teal-200' : 'bg-slate-100 border-slate-200'}`}>
+                                                    {item.met && <CheckCircle2 className="w-2.5 h-2.5" strokeWidth={4} />}
+                                                </div>
+                                                <span className="text-[10px] font-bold uppercase tracking-tight">{item.label}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {errors.password && <p className="text-red-500 text-xs mt-1 ml-1">{errors.password}</p>}
                                 </div>
-                                {errors.password && <p className="text-red-500 text-xs mt-1 ml-1">{errors.password}</p>}
-                            </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">

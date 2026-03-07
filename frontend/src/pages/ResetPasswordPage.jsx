@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import API_BASE_URL from '../api/config.js';
-import { Lock, CheckCircle2, XCircle, Loader2, ArrowLeft } from 'lucide-react';
+import { Lock, CheckCircle2, XCircle, Loader2, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 
 const ResetPasswordPage = () => {
     const [searchParams] = useSearchParams();
@@ -12,6 +12,8 @@ const ResetPasswordPage = () => {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [message, setMessage] = useState('');
     const [userEmail, setUserEmail] = useState('');
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     // Validate token on mount
     useEffect(() => {
@@ -151,15 +153,18 @@ const ResetPasswordPage = () => {
                                     <div className="relative">
                                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
                                         <input
-                                            type="password"
+                                            type={showNewPassword ? "text" : "password"}
                                             required
                                             minLength={6}
                                             placeholder="Min 6 characters"
-                                            className="w-full pl-11 pr-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-xl focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-slate-700 placeholder:text-slate-400"
+                                            className="w-full pl-11 pr-12 py-4 bg-slate-50 border-2 border-slate-100 rounded-xl focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-slate-700 placeholder:text-slate-400"
                                             value={newPassword}
                                             onChange={e => setNewPassword(e.target.value)}
                                             disabled={status === 'submitting'}
                                         />
+                                        <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors">
+                                            {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        </button>
                                     </div>
                                 </div>
                                 <div>
@@ -167,15 +172,18 @@ const ResetPasswordPage = () => {
                                     <div className="relative">
                                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
                                         <input
-                                            type="password"
+                                            type={showConfirmPassword ? "text" : "password"}
                                             required
                                             minLength={6}
                                             placeholder="Re-enter password"
-                                            className="w-full pl-11 pr-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-xl focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-slate-700 placeholder:text-slate-400"
+                                            className="w-full pl-11 pr-12 py-4 bg-slate-50 border-2 border-slate-100 rounded-xl focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-slate-700 placeholder:text-slate-400"
                                             value={confirmPassword}
                                             onChange={e => setConfirmPassword(e.target.value)}
                                             disabled={status === 'submitting'}
                                         />
+                                        <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors">
+                                            {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        </button>
                                     </div>
                                 </div>
                                 <button

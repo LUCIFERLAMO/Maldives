@@ -33,7 +33,7 @@ const HomePage = () => {
 
             setJobStats({
                totalJobs: jobs.length || 0,
-               activeJobs: jobs.filter(j => j.status === 'Current Opening').length || 0
+               activeJobs: jobs.filter(j => j.status === 'OPEN').length || 0
             });
          } catch (error) {
             console.error('Error fetching stats:', error);
@@ -49,11 +49,11 @@ const HomePage = () => {
 
    const categories = [
       { name: 'Resort & Hospitality', icon: Palmtree, count: '120+', color: 'text-teal-600', bg: 'bg-teal-50' },
-      { name: 'Culinary & Kitchen', icon: Utensils, count: '85+', color: 'text-orange-600', bg: 'bg-orange-50' },
-      { name: 'Healthcare', icon: Stethoscope, count: '45+', color: 'text-blue-600', bg: 'bg-blue-50' },
-      { name: 'Marine & Water Sports', icon: Ship, count: '30+', color: 'text-cyan-600', bg: 'bg-cyan-50' },
-      { name: 'Corporate & Admin', icon: Building2, count: '60+', color: 'text-purple-600', bg: 'bg-purple-50' },
-      { name: 'Education', icon: GraduationCap, count: '25+', color: 'text-pink-600', bg: 'bg-pink-50' },
+      { name: 'Culinary & Kitchen', icon: Utensils, count: '85+', color: 'text-teal-600', bg: 'bg-teal-50' },
+      { name: 'Healthcare', icon: Stethoscope, count: '45+', color: 'text-teal-600', bg: 'bg-teal-50' },
+      { name: 'Marine & Water Sports', icon: Ship, count: '30+', color: 'text-teal-600', bg: 'bg-teal-50' },
+      { name: 'Corporate & Admin', icon: Building2, count: '60+', color: 'text-teal-600', bg: 'bg-teal-50' },
+      { name: 'Education', icon: GraduationCap, count: '25+', color: 'text-teal-600', bg: 'bg-teal-50' },
    ];
 
    return (
@@ -179,8 +179,8 @@ const HomePage = () => {
 
                <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 lg:gap-6">
                   {categories.map((cat, idx) => (
-                     <div key={idx} className="group p-6 rounded-[2rem] bg-slate-50 border border-slate-100 hover:bg-white hover:border-teal-100 hover:shadow-xl hover:shadow-teal-900/5 transition-all duration-300 cursor-pointer text-center">
-                        <div className={`w-14 h-14 mx-auto rounded-2xl ${cat.bg} ${cat.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                     <div key={idx} className="group p-6 rounded-[2rem] bg-slate-50 border border-slate-100 transition-all duration-300 cursor-pointer text-center">
+                        <div className={`w-14 h-14 mx-auto rounded-2xl ${cat.bg} ${cat.color} flex items-center justify-center mb-4 transition-transform`}>
                            <cat.icon className="w-7 h-7" />
                         </div>
                         <h3 className="font-bold text-slate-900 mb-1">{cat.name}</h3>

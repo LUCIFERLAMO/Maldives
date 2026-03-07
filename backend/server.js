@@ -8,6 +8,9 @@ import multer from 'multer';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 import dns from 'dns';
+import bcrypt from 'bcryptjs';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 
 // Force all DNS resolution to prefer IPv4 (Render free tier blocks IPv6 outbound)
 dns.setDefaultResultOrder('ipv4first');
@@ -20,6 +23,17 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Central Password Validation Logic (Backend)
+const validatePassword = (password) => {
+    if (!password) return false;
+    const minLength = 8;
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSymbol = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    return password.length >= minLength && hasUpperCase && hasLowerCase && hasNumber && hasSymbol;
+};
+
 // CORS — allow local dev origins + any production origins set in ALLOWED_ORIGINS env var
 const allowedOrigins = [
     'http://localhost:3000',
@@ -31,11 +45,43 @@ app.use(cors({
     origin: (origin, callback) => {
         // Allow requests with no origin (e.g. mobile apps, Postman, server-to-server)
         if (!origin) return callback(null, true);
+        // Allow any Vercel preview/production deployment URL automatically
+        if (origin.endsWith('.vercel.app')) return callback(null, true);
         if (allowedOrigins.includes(origin)) return callback(null, true);
         callback(new Error(`CORS: origin ${origin} not allowed`));
     },
     credentials: true
 }));
+
+// Security: set protective HTTP response headers (XSS, clickjacking, MIME sniffing, etc.)
+app.use(helmet());
+
+// Helper: escape user-supplied strings before using in regex (prevents ReDoS attacks)
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Rate limiting — protect sensitive endpoints from brute-force and abuse
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: 'Too many attempts from this IP. Please try again in 15 minutes.' }
+});
+const forgotPasswordLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: 'Too many password reset requests. Please try again in 15 minutes.' }
+});
+const globalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 300,
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+app.use('/api/', globalLimiter);
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -82,25 +128,33 @@ app.get('/api/health', (req, res) => {
 app.use('/api', notificationRoutes);
 
 // AUTH ROUTES
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', authLimiter, async (req, res) => {
     try {
         let { email, password, role, name, agencyName, skills, contact, phone } = req.body;
-        
+
+        // Backend Password Validation
+        if (!validatePassword(password)) {
+            return res.status(400).json({ 
+                message: 'Password does not meet security requirements: Minimum 8 characters, at least one uppercase, one lowercase, one digit, and one special character.' 
+            });
+        }
+
         // Normalize email
         if (email) {
             email = email.toLowerCase().trim();
         }
 
         // Check if user exists (case-insensitive)
-        const existingUser = await Profile.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
+        const existingUser = await Profile.findOne({ email: { $regex: new RegExp(`^${escapeRegex(email)}$`, 'i') } });
         if (existingUser) {
             return res.status(400).json({ message: 'User already exists' });
         }
 
+        const hashedPassword = await bcrypt.hash(password, 12);
         const newProfile = new Profile({
             full_name: name,
             email,
-            password, // NOTE: In production, hash this password with bcrypt!
+            password: hashedPassword,
             role,
             contact_number: contact || phone,
             agency_name: role === 'AGENT' ? agencyName : undefined,
@@ -115,23 +169,31 @@ app.post('/api/auth/register', async (req, res) => {
     }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', authLimiter, async (req, res) => {
     try {
         let { email, password, role } = req.body;
-        
+
         // Normalize email
         if (email) {
             email = email.toLowerCase().trim();
         }
 
         // Check user - use case-insensitive regex so emails like 'BCD@gmail.com' still match when user types 'bcd@gmail.com'
-        const user = await Profile.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
+        const user = await Profile.findOne({ email: { $regex: new RegExp(`^${escapeRegex(email)}$`, 'i') } });
         if (!user) {
             return res.status(400).json({ message: 'User not found' });
         }
 
-        // Validate password (check both regular and temporary password)
-        const isValidPassword = user.password === password || user.temporaryPassword === password;
+        // Validate password — bcrypt compare with graceful fallback for legacy plain-text accounts
+        let isValidPassword = await bcrypt.compare(password, user.password).catch(() => false);
+        if (!isValidPassword) {
+            // Fallback: support old plain-text passwords and migrate them to bcrypt silently
+            if (user.password === password) {
+                isValidPassword = true;
+                user.password = await bcrypt.hash(password, 12);
+                await user.save();
+            }
+        }
         if (!isValidPassword) {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
@@ -184,7 +246,7 @@ app.post('/api/auth/login', async (req, res) => {
 //  4. Account must be ACTIVE (not BANNED, INACTIVE, PENDING, or DELETED)
 //  5. GOOGLE_CLIENT_ID / GOOGLE_CALLBACK_URL read from env — never hardcoded
 //  6. Multiple redirect URIs supported via GOOGLE_ALLOWED_ORIGINS env var
-app.post('/api/auth/google', async (req, res) => {
+app.post('/api/auth/google', authLimiter, async (req, res) => {
     try {
         const { credential, role } = req.body;
 
@@ -246,7 +308,7 @@ app.post('/api/auth/google', async (req, res) => {
 
         // ── Look up account by googleId first, then by email ─────────────────────
         const profileByGoogleId = await Profile.findOne({ googleId: googleSub });
-        const profileByEmail    = await Profile.findOne({ email: { $regex: new RegExp(`^${googleEmail}$`, 'i') } });
+        const profileByEmail = await Profile.findOne({ email: { $regex: new RegExp(`^${escapeRegex(googleEmail)}$`, 'i') } });
 
         // ── Requirement 3: Prevent one Google identity linking to multiple accounts ─
         // If a record exists with this googleId AND a different record exists with
@@ -276,9 +338,9 @@ app.post('/api/auth/google', async (req, res) => {
             const allowedStatuses = ['ACTIVE'];
             if (!allowedStatuses.includes(profile.status)) {
                 const statusMessages = {
-                    BANNED:   'Your account has been suspended. Please contact support.',
+                    BANNED: 'Your account has been suspended. Please contact support.',
                     INACTIVE: 'Your account is inactive. Please contact support to reactivate it.',
-                    PENDING:  'Your account is pending approval. Please wait for admin confirmation.',
+                    PENDING: 'Your account is pending approval. Please wait for admin confirmation.',
                 };
                 const message = statusMessages[profile.status] || 'Your account is not active. Please contact support.';
                 return res.status(403).json({ message });
@@ -358,7 +420,7 @@ app.post('/api/auth/google', async (req, res) => {
 app.post('/api/auth/reset-password', async (req, res) => {
     try {
         let { email, oldPassword, newPassword } = req.body;
-        
+
         // Normalize email
         if (email) {
             email = email.toLowerCase().trim();
@@ -370,14 +432,24 @@ app.post('/api/auth/reset-password', async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Verify old password
-        const isValidOldPassword = user.password === oldPassword || user.temporaryPassword === oldPassword;
+        // Verify old password — bcrypt compare with plain-text fallback for legacy accounts
+        let isValidOldPassword = await bcrypt.compare(oldPassword, user.password).catch(() => false);
+        if (!isValidOldPassword) {
+            isValidOldPassword = user.password === oldPassword;
+        }
         if (!isValidOldPassword) {
             return res.status(400).json({ message: 'Current password is incorrect' });
         }
 
-        // Update to new password
-        user.password = newPassword; // NOTE: In production, hash this!
+        // Backend Password Validation for new password
+        if (!validatePassword(newPassword)) {
+            return res.status(400).json({ 
+                message: 'New password does not meet security requirements.' 
+            });
+        }
+
+        // Update to new password — hashed
+        user.password = await bcrypt.hash(newPassword, 12);
         user.temporaryPassword = undefined; // Clear any temp password
         user.requiresPasswordChange = false;
         await user.save();
@@ -406,8 +478,15 @@ app.put('/api/auth/change-password', async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Update password and clear the flag
-        user.password = newPassword; // NOTE: In production, hash this!
+        // Backend Password Validation
+        if (!validatePassword(newPassword)) {
+            return res.status(400).json({ 
+                message: 'New password does not meet security requirements.' 
+            });
+        }
+
+        // Update password and clear the flag — hashed
+        user.password = await bcrypt.hash(newPassword, 12);
         user.requiresPasswordChange = false;
         user.temporaryPassword = undefined; // Remove temp password
         await user.save();
@@ -421,7 +500,7 @@ app.put('/api/auth/change-password', async (req, res) => {
 // ── EMAIL-BASED FORGOT PASSWORD ROUTES ──────────────────────────────────────
 
 // POST /api/auth/forgot-password — generate token + send reset email
-app.post('/api/auth/forgot-password', async (req, res) => {
+app.post('/api/auth/forgot-password', forgotPasswordLimiter, async (req, res) => {
     try {
         let { email } = req.body;
         if (!email) return res.status(400).json({ message: 'Email is required.' });
@@ -434,7 +513,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
         }
 
         // ── Look up user — return real error if not found ────────────────────────
-        const user = await Profile.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
+        const user = await Profile.findOne({ email: { $regex: new RegExp(`^${escapeRegex(email)}$`, 'i') } });
         if (!user) {
             return res.status(404).json({ message: 'No account found with that email address. Please check and try again.' });
         }
@@ -563,7 +642,7 @@ app.post('/api/auth/reset-password-token', async (req, res) => {
         if (!user) {
             return res.status(400).json({ message: 'Reset link is invalid or has expired. Please request a new one.' });
         }
-        user.password = newPassword;
+        user.password = await bcrypt.hash(newPassword, 12);
         user.resetPasswordToken = null;
         user.resetPasswordExpires = null;
         user.temporaryPassword = undefined;
@@ -593,14 +672,24 @@ app.put('/api/auth/password', async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Verify current password
-        const isMatch = user.password === currentPassword || user.temporaryPassword === currentPassword;
+        // Verify current password — bcrypt compare with plain-text fallback
+        let isMatch = await bcrypt.compare(currentPassword, user.password).catch(() => false);
+        if (!isMatch) {
+            isMatch = user.password === currentPassword;
+        }
         if (!isMatch) {
             return res.status(400).json({ message: 'Current password is incorrect' });
         }
 
-        // Update password
-        user.password = newPassword;
+        // Backend Password Validation
+        if (!validatePassword(newPassword)) {
+            return res.status(400).json({ 
+                message: 'New password does not meet security requirements.' 
+            });
+        }
+
+        // Update password — hashed
+        user.password = await bcrypt.hash(newPassword, 12);
         user.temporaryPassword = undefined; // Clear temp password if any
         user.requiresPasswordChange = false;
 
@@ -709,7 +798,7 @@ app.post('/api/profile/:id/save-job', async (req, res) => {
         if (!profile) profile = await Profile.findOne({ id: req.params.id });
 
         if (!profile) return res.status(404).json({ message: 'User not found' });
-        
+
         // Ensure user is candidate
         if (profile.role?.toLowerCase() !== 'candidate') return res.status(403).json({ message: 'Only candidates can save jobs' });
 
@@ -740,7 +829,7 @@ app.get('/api/profile/:id/saved-jobs', async (req, res) => {
 
         const savedJobsIds = profile.savedJobs || [];
         const validMongoIds = savedJobsIds.filter(id => /^[0-9a-fA-F]{24}$/.test(id));
-        
+
         const jobs = await Job.find({
             $or: [
                 { id: { $in: savedJobsIds } },
@@ -855,8 +944,26 @@ app.put('/api/admin/agencies/:id/approve', async (req, res) => {
         agency.status = 'Active';
         await agency.save();
 
-        // Generate temporary password
-        const tempPassword = 'Temp@' + Math.random().toString(36).slice(-6).toUpperCase();
+        // Generate stronger temporary password
+        const generateStrongTempPassword = () => {
+            const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            const lower = "abcdefghijklmnopqrstuvwxyz";
+            const digits = "01234567819";
+            const symbols = "!@#$%^&*";
+            const all = upper + lower + digits + symbols;
+            
+            let password = "";
+            password += upper[Math.floor(Math.random() * upper.length)];
+            password += lower[Math.floor(Math.random() * lower.length)];
+            password += digits[Math.floor(Math.random() * digits.length)];
+            password += symbols[Math.floor(Math.random() * symbols.length)];
+            
+            for (let i = 0; i < 4; i++) {
+                password += all[Math.floor(Math.random() * all.length)];
+            }
+            return password.split('').sort(() => 0.5 - Math.random()).join('');
+        };
+        const tempPassword = generateStrongTempPassword();
 
         // Check if agent profile already exists
         let agentProfile = await Profile.findOne({ email: agency.email });
@@ -969,7 +1076,7 @@ app.post('/api/jobs', async (req, res) => {
     try {
         const {
             title, company, location, category, salary_range,
-            description, requirements, headcount
+            description, requirements, headcount, education, experience
         } = req.body;
 
         // Validation
@@ -991,6 +1098,8 @@ app.post('/api/jobs', async (req, res) => {
             description,
             requirements: Array.isArray(requirements) ? requirements : requirements.split(',').map(r => r.trim()),
             vacancies: headcount || 1,
+            education,
+            experience,
             posted_date: new Date(),
             status: 'OPEN'
         });
@@ -1207,7 +1316,7 @@ app.post('/api/job-requests', async (req, res) => {
         const {
             agent_id, agent_name, agent_email, agency_name,
             title, company, location, category, salary_range,
-            description, requirements, vacancies
+            description, requirements, vacancies, education, experience
         } = req.body;
 
         // ========== SECURITY: Server-side Sanitization ==========
@@ -1282,6 +1391,8 @@ app.post('/api/job-requests', async (req, res) => {
             description: sanitizeInput(description),
             requirements: sanitizedRequirements,
             vacancies: vacancyNum,
+            education: sanitizeInput(education),
+            experience: sanitizeInput(experience),
             status: 'PENDING'
         });
 
@@ -1353,6 +1464,8 @@ app.put('/api/admin/job-requests/:id/approve', async (req, res) => {
             salary_range: jobRequest.salary_range,
             description: jobRequest.description,
             requirements: jobRequest.requirements,
+            education: jobRequest.education,
+            experience: jobRequest.experience,
             status: 'OPEN'
         });
 

@@ -68,9 +68,9 @@ const RecruiterDashboard = () => {
                 const data = await response.json();
 
                 // Filter for current openings
-                const openJobs = (Array.isArray(data) ? data : []).filter(j => j?.status === 'Current Opening');
+                const openJobs = (Array.isArray(data) ? data : []).filter(j => j?.status === 'OPEN');
                 setJobs(openJobs);
-                if (openJobs.length === 0) console.warn("Fetch successful but 0 jobs found with status 'Current Opening'");
+                if (openJobs.length === 0) console.warn("Fetch successful but 0 jobs found with status 'OPEN'");
             } catch (error) {
                 console.error("Error fetching jobs:", error);
                 setJobs([]);
@@ -111,7 +111,7 @@ const RecruiterDashboard = () => {
         };
         fetchRequests();
     }, [user?.id]);
-    
+
     const [showJobRequestForm, setShowJobRequestForm] = useState(false);
     const [jobRequestSearchTerm, setJobRequestSearchTerm] = useState('');
     const [expandedJobRequestId, setExpandedJobRequestId] = useState(null);
@@ -270,7 +270,7 @@ const RecruiterDashboard = () => {
             alert("Please upload all mandatory documents (Resume, ID/Passport, Certificates).");
             return;
         }
-        
+
         if (!submissionData.name || !submissionData.email || !submissionData.whatsapp || !submissionData.nationality) {
             alert("Please fill in all identity details (Name, Email, Phone, Nationality).");
             return;
@@ -485,7 +485,7 @@ const RecruiterDashboard = () => {
                                             </div>
                                         </div>
 
-                                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
+                                        <div className="bg-white rounded-2xl border border-slate-300 shadow-md ring-1 ring-slate-200 p-8">
                                             <form className="space-y-8" onSubmit={async (e) => {
                                                 e.preventDefault();
                                                 if (!user?.id) {
@@ -506,7 +506,9 @@ const RecruiterDashboard = () => {
                                                         salary_range: formData.get('salary_range') || '',
                                                         description: formData.get('description') || '',
                                                         requirements: (formData.get('requirements') || '').split('\n').filter(r => r.trim()),
-                                                        vacancies: Number(formData.get('vacancies')) || 1
+                                                        vacancies: Number(formData.get('vacancies')) || 1,
+                                                        education: formData.get('education') || '',
+                                                        experience: formData.get('experience') || ''
                                                     };
 
                                                     const response = await fetch(`${API_BASE_URL}/api/job-requests`, {
@@ -547,9 +549,15 @@ const RecruiterDashboard = () => {
                                                     <div className="space-y-2">
                                                         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Category <span className="text-red-500">*</span></label>
                                                         <div className="relative">
-                                                            <select name="category" required className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all appearance-none">
+                                                            <select
+                                                                name="category"
+                                                                required
+                                                                defaultValue=""
+                                                                className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all appearance-none invalid:text-slate-400"
+                                                            >
+                                                                <option value="" disabled className="text-slate-400">-- Select Category --</option>
                                                                 {['Hospitality', 'Construction', 'Healthcare', 'IT', 'Education', 'Retail', 'Manufacturing', 'Tourism', 'Fishing', 'Agriculture', 'Other'].map(cat => (
-                                                                    <option key={cat} value={cat}>{cat}</option>
+                                                                    <option key={cat} value={cat} className="text-slate-700">{cat}</option>
                                                                 ))}
                                                             </select>
                                                             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -557,7 +565,20 @@ const RecruiterDashboard = () => {
                                                     </div>
                                                     <div className="space-y-2">
                                                         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Location <span className="text-red-500">*</span></label>
-                                                        <input name="location" required type="text" placeholder="e.g. Male, Maldives" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
+                                                        <div className="relative">
+                                                            <select
+                                                                name="location"
+                                                                required
+                                                                defaultValue=""
+                                                                className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all appearance-none invalid:text-slate-400"
+                                                            >
+                                                                <option value="" disabled className="text-slate-400">-- Select Location --</option>
+                                                                {['Malé', 'Hulhumalé', 'Villingili', 'Haa Alif', 'Haa Dhaalu', 'Shaviyani', 'Noonu', 'Raa', 'Baa', 'Lhaviyani', 'Kaafu', 'Alif Alif', 'Alif Dhaalu', 'Vaavu', 'Meemu', 'Faafu', 'Dhaalu', 'Thaa', 'Laamu', 'Gaafu Alif', 'Gaafu Dhaalu', 'Gnaviyani', 'Seenu'].map(loc => (
+                                                                    <option key={loc} value={loc} className="text-slate-700">{loc}</option>
+                                                                ))}
+                                                            </select>
+                                                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                                        </div>
                                                     </div>
                                                 </div>
 
@@ -567,8 +588,45 @@ const RecruiterDashboard = () => {
                                                         <input name="salary_range" type="text" placeholder="e.g. $2000 - $3000/month" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Vacancies (Default: 1)</label>
-                                                        <input name="vacancies" type="number" min="1" defaultValue="1" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Vacancies</label>
+                                                        <input name="vacancies" type="number" min="1" placeholder="e.g. 1" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all" />
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Education</label>
+                                                        <div className="relative">
+                                                            <select
+                                                                name="education"
+                                                                required
+                                                                defaultValue=""
+                                                                className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all appearance-none invalid:text-slate-400"
+                                                            >
+                                                                <option value="" disabled className="text-slate-400">-- Select Education --</option>
+                                                                {['O-Level / Secondary School', 'A-Level / Higher Secondary', 'Certificate', 'Diploma', 'Advanced Diploma', 'Bachelor’s Degree', 'Master’s Degree', 'Doctorate / PhD'].map(edu => (
+                                                                    <option key={edu} value={edu} className="text-slate-700">{edu}</option>
+                                                                ))}
+                                                            </select>
+                                                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Experience</label>
+                                                        <div className="relative">
+                                                            <select
+                                                                name="experience"
+                                                                required
+                                                                defaultValue=""
+                                                                className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all appearance-none invalid:text-slate-400"
+                                                            >
+                                                                <option value="" disabled className="text-slate-400">-- Select Experience --</option>
+                                                                {['Any Experience', 'No Experience', '1 – 2 Years', '3 – 5 Years', '6 – 10 Years', '10+ Years'].map(exp => (
+                                                                    <option key={exp} value={exp} className="text-slate-700">{exp}</option>
+                                                                ))}
+                                                            </select>
+                                                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                                        </div>
                                                     </div>
                                                 </div>
 

@@ -1,6 +1,6 @@
 export const JobStatus = {
-    OPEN: 'Current Opening',
-    CLOSED: 'Closed'
+    OPEN: 'OPEN',
+    CLOSED: 'CLOSED'
 };
 
 export const ApplicationStatus = {
