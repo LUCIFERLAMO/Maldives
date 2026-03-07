@@ -2274,6 +2274,22 @@ app.post('/api/applications', upload.fields([
 });
 
 // GET: Fetch Applications (Admin view all, Agent view own)
+app.get('/api/admin/applications', async (req, res) => {
+    try {
+        const { agent_id, job_id, status } = req.query;
+        const filter = {};
+        if (agent_id) filter.agent_id = agent_id;
+        if (job_id) filter.job_id = job_id;
+        if (status) filter.status = status;
+
+        const applications = await Application.find(filter).sort({ applied_at: -1 });
+        res.json(applications);
+    } catch (err) {
+        console.error('Error fetching admin applications:', err);
+        res.status(500).json({ message: 'Failed to fetch applications', error: err.message });
+    }
+});
+
 app.get('/api/applications', async (req, res) => {
     try {
         const { agent_id, job_id, status } = req.query;

@@ -1124,12 +1124,15 @@ const RecruiterDashboard = () => {
                                                             <td className="px-8 py-5 text-slate-600">{app.jobs?.title || 'Unknown Role'}</td>
                                                             <td className="px-8 py-5 text-right">
                                                                 <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide
-                                                   ${app.status === ApplicationStatus.SELECTED ? 'bg-teal-50 text-teal-700 border border-teal-100' :
-                                                                        app.status === ApplicationStatus.REJECTED ? 'bg-red-50 text-red-700 border border-red-100' :
-                                                                            app.status === ApplicationStatus.BLACKLISTED ? 'bg-slate-100 text-slate-500 border border-slate-200' :
-                                                                                'bg-amber-50 text-amber-700 border border-amber-100'
-                                                                    }`}>
-                                                                    {app.status || 'UNKNOWN'}
+                                                   ${app.status === 'APPROVED' ? 'bg-teal-50 text-teal-700 border border-teal-100' :
+                                                     app.status === 'REJECTED' ? 'bg-red-50 text-red-700 border border-red-100' :
+                                                     app.status === 'HOLD' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
+                                                     'bg-blue-50 text-blue-700 border border-blue-100'
+                                                   }`}>
+                                                                    {app.status === 'APPROVED' ? 'Abroad' :
+                                                                     app.status === 'HOLD' ? 'On Hold' :
+                                                                     app.status === 'REJECTED' ? 'Rejected' :
+                                                                     'Pending'}
                                                                 </span>
                                                             </td>
                                                         </tr>
@@ -1298,6 +1301,24 @@ const RecruiterDashboard = () => {
                                         <p className="text-slate-500 font-medium text-sm mt-1">Real-time updates on your submitted candidates</p>
                                     </div>
                                     <div className="flex items-center gap-4">
+                                        <button 
+                                            onClick={() => {
+                                                if (!user?.id) return;
+                                                const fetchPipeline = async () => {
+                                                    try {
+                                                        const response = await fetch(`${API_BASE_URL}/api/applications?agent_id=${user.id}`);
+                                                        if (response.ok) {
+                                                            const data = await response.json();
+                                                            setPipelineData(Array.isArray(data) ? data : []);
+                                                        }
+                                                    } catch (error) { console.error("Error fetching pipeline:", error); }
+                                                };
+                                                fetchPipeline();
+                                            }}
+                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-slate-200 hover:text-slate-900 transition-colors shadow-sm"
+                                        >
+                                            <RefreshCw className="w-4 h-4" /> Refresh
+                                        </button>
                                         <div className="relative group">
                                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-teal-600 transition-colors" />
                                             <input
@@ -1360,14 +1381,15 @@ const RecruiterDashboard = () => {
                                                                 </td>
                                                                 <td className="px-6 py-4 text-center">
                                                                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide
-                                                      ${app.status === ApplicationStatus.APPLIED ? 'bg-blue-50 text-blue-700 border border-blue-100' : ''}
-                                                      ${app.status === ApplicationStatus.PROCESSING ? 'bg-amber-50 text-amber-700 border border-amber-100' : ''}
-                                                      ${app.status === ApplicationStatus.INTERVIEW ? 'bg-purple-50 text-purple-700 border border-purple-100' : ''}
-                                                      ${app.status === ApplicationStatus.SELECTED ? 'bg-teal-50 text-teal-700 border border-teal-100' : ''}
-                                                      ${app.status === ApplicationStatus.REJECTED ? 'bg-red-50 text-red-700 border border-red-100' : ''}
-                                                      ${app.status === ApplicationStatus.BLACKLISTED ? 'bg-slate-100 text-slate-500 border border-slate-200' : ''}
-                                                   `}>
-                                                                        {app.status || 'UNKNOWN'}
+                                                      ${app.status === 'APPROVED' ? 'bg-teal-50 text-teal-700 border border-teal-100' :
+                                                        app.status === 'REJECTED' ? 'bg-red-50 text-red-700 border border-red-100' :
+                                                        app.status === 'HOLD' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
+                                                        'bg-blue-50 text-blue-700 border border-blue-100'
+                                                      }`}>
+                                                                        {app.status === 'APPROVED' ? 'Abroad' :
+                                                                         app.status === 'HOLD' ? 'On Hold' :
+                                                                         app.status === 'REJECTED' ? 'Rejected' :
+                                                                         'Pending'}
                                                                     </span>
                                                                 </td>
                                                             </tr>

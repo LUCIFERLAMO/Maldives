@@ -279,6 +279,16 @@ const DocumentCard = ({ label, filename, fileObj }) => {
    );
 };
 
+// Helper: get badge color for application status
+const getStatusColor = (status) => {
+   switch ((status || '').toUpperCase()) {
+      case 'APPROVED': return 'bg-teal-50 text-teal-700 border border-teal-100';
+      case 'REJECTED': return 'bg-red-50 text-red-700 border border-red-100';
+      case 'HOLD': return 'bg-amber-50 text-amber-700 border border-amber-100';
+      default: return 'bg-slate-50 text-slate-500 border border-slate-200';
+   }
+};
+
 const AdminDashboard = () => {
    const popup = usePopup();
     const [activeTab, setActiveTab] = useState('overview');
@@ -701,35 +711,38 @@ const AdminDashboard = () => {
          const response = await fetch(`${API_BASE_URL}/api/applications?job_id=${encodeURIComponent(jobId)}`);
          if (response.ok) {
             const data = await response.json();
-            if (data.length > 0) {
-               setJobApplications(data);
-            } else {
-               // Fallback to mock data if API returns empty
-               let filteredApps = MOCK_APPLICATIONS.filter(app => app.jobId === jobId);
-               if (filteredApps.length === 0) {
-                  // DEMO MODE: If no ID match, show the Site Manager demo candidates so the details are visible
-                  filteredApps = MOCK_APPLICATIONS.filter(app => ['6', '2'].includes(app.jobId));
+            // Map DB fields to frontend format
+            const mapped = (Array.isArray(data) ? data : []).map(app => ({
+               id: app._id || app.id,
+               jobId: app.job_id || app.jobId,
+               candidateName: app.candidate_name || 'Unknown',
+               email: app.email || '',
+               contactNumber: app.contact_number || '',
+               nationality: app.nationality || '',
+               status: app.status || 'PENDING',
+               appliedDate: app.applied_at || app.createdAt,
+               source: app.agent_id ? 'Agency' : 'Direct',
+               agentName: app.agent_id || '',
+               hasResume: !!(app.resume && app.resume.data),
+               hasCerts: !!(app.certificates && app.certificates.data),
+               hasPassport: !!(app.identity && app.identity.data),
+               hasPCC: !!(app.pcc && app.pcc.data),
+               hasGoodStanding: !!(app.goodStanding && app.goodStanding.data),
+               documents: {
+                  resume: app.resume || null,
+                  identity: app.identity || null,
+                  certificates: app.certificates || null,
+                  pcc: app.pcc || null,
+                  goodStanding: app.goodStanding || null
                }
-               setJobApplications(filteredApps);
-            }
+            }));
+            setJobApplications(mapped);
          } else {
-            // Fallback to mock data filtered by jobId
-            let filteredApps = MOCK_APPLICATIONS.filter(app => app.jobId === jobId);
-            if (filteredApps.length === 0) {
-               // DEMO MODE
-               filteredApps = MOCK_APPLICATIONS.filter(app => ['6', '2'].includes(app.jobId));
-            }
-            setJobApplications(filteredApps);
+            setJobApplications([]);
          }
       } catch (error) {
          console.error('Error fetching applications by job:', error);
-         // Fallback to mock data
-         let filteredApps = MOCK_APPLICATIONS.filter(app => app.jobId === jobId);
-         if (filteredApps.length === 0) {
-            // DEMO MODE
-            filteredApps = MOCK_APPLICATIONS.filter(app => ['6', '2'].includes(app.jobId));
-         }
-         setJobApplications(filteredApps);
+         setJobApplications([]);
       } finally {
          setIsLoadingApplications(false);
       }
@@ -770,101 +783,41 @@ const AdminDashboard = () => {
       setJobApplications([]);
    };
 
-   // Handle application status update (Approve/Reject)
+   // Handle application status update (Approve/Reject/Hold)
    const handleApplicationAction = async (appId, action) => {
+      // Map action string to DB status value
+      const statusMap = {
+         approve: 'APPROVED',
+         reject: 'REJECTED',
+         hold: 'HOLD'
+      };
+      const newStatus = statusMap[action];
+      if (!newStatus) return;
+
       try {
-         const response = await fetch(`${API_BASE_URL}/api/applications/${appId}/${action}`, {
+         const response = await fetch(`${API_BASE_URL}/api/applications/${appId}/status`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus })
          });
+
          if (response.ok) {
-            // Refresh applications list
+            popup.success(`Candidate marked as ${newStatus}.`);
+            // Optimistically update local state
+            setJobApplications(prev => prev.map(app =>
+               (app.id === appId || app._id === appId)
+                  ? { ...app, status: newStatus, statusColor: getStatusColor(newStatus) }
+                  : app
+            ));
+            // Refresh full application list from DB
             fetchApplicationsByJob(selectedJobId);
-
-            // IF REJECTED: Add to Audit Queue (Blacklist) - Sync with Backend Success
-            if (action === 'reject') {
-               const rejectedApp = jobApplications.find(app => app.id === appId || app._id === appId);
-               if (rejectedApp) {
-                  setAuditQueue(prev => {
-                     // Check if already exists
-                     if (prev.some(c => c.id === rejectedApp.id || c._id === rejectedApp.id)) {
-                        return prev.map(c => (c.id === rejectedApp.id || c._id === rejectedApp.id) ? { ...c, status: 'REJECTED' } : c);
-                     }
-                     // Add new
-                     return [...prev, {
-                        ...rejectedApp,
-                        id: rejectedApp.id || rejectedApp._id,
-                        name: rejectedApp.candidateName || rejectedApp.name,
-                        role: selectedJobTitle || rejectedApp.jobTitle || 'Applicant',
-                        status: 'REJECTED',
-                        statusColor: 'bg-red-50 text-red-600 border-red-100', // Ensure red color
-                        appliedDate: rejectedApp.appliedDate || new Date().toISOString()
-                     }];
-                  });
-               }
-            }
          } else {
-            // Local fallback update
-            setJobApplications(prev => prev.map(app => {
-               if (app.id === appId || app._id === appId) {
-                  return { ...app, status: action === 'approve' ? 'Selected' : 'Rejected' };
-               }
-               return app;
-            }));
-
-            // IF REJECTED: Add to Audit Queue (Blacklist)
-            if (action === 'reject') {
-               const rejectedApp = jobApplications.find(app => app.id === appId || app._id === appId);
-               if (rejectedApp) {
-                  setAuditQueue(prev => {
-                     // Check if already exists
-                     if (prev.some(c => c.id === rejectedApp.id || c._id === rejectedApp.id)) {
-                        return prev.map(c => (c.id === rejectedApp.id || c._id === rejectedApp.id) ? { ...c, status: 'REJECTED' } : c);
-                     }
-                     // Add new
-                     return [...prev, {
-                        ...rejectedApp,
-                        id: rejectedApp.id || rejectedApp._id,
-                        name: rejectedApp.candidateName || rejectedApp.name,
-                        role: selectedJobTitle || rejectedApp.jobTitle || 'Applicant',
-                        status: 'REJECTED',
-                        statusColor: 'bg-red-50 text-red-600 border-red-100', // Ensure red color
-                        appliedDate: rejectedApp.appliedDate || new Date().toISOString()
-                     }];
-                  });
-               }
-            }
+            const errData = await response.json().catch(() => ({}));
+            popup.error(errData.message || `Failed to update status.`);
          }
       } catch (error) {
-         console.error(`Error ${action}ing application:`, error);
-         // Fallback local update
-         setJobApplications(prev => prev.map(app => {
-            if (app.id === appId || app._id === appId) {
-               return { ...app, status: action === 'approve' ? 'Selected' : 'Rejected' };
-            }
-            return app;
-         }));
-
-         // IF REJECTED: Add to Audit Queue (Blacklist) - Fallback
-         if (action === 'reject') {
-            const rejectedApp = jobApplications.find(app => app.id === appId || app._id === appId);
-            if (rejectedApp) {
-               setAuditQueue(prev => {
-                  if (prev.some(c => c.id === rejectedApp.id || c._id === rejectedApp.id)) {
-                     return prev.map(c => (c.id === rejectedApp.id || c._id === rejectedApp.id) ? { ...c, status: 'REJECTED' } : c);
-                  }
-                  return [...prev, {
-                     ...rejectedApp,
-                     id: rejectedApp.id || rejectedApp._id,
-                     name: rejectedApp.candidateName || rejectedApp.name,
-                     role: selectedJobTitle || rejectedApp.jobTitle || 'Applicant',
-                     status: 'REJECTED',
-                     statusColor: 'bg-red-50 text-red-600 border-red-100',
-                     appliedDate: rejectedApp.appliedDate || new Date().toISOString()
-                  }];
-               });
-            }
-         }
+         console.error(`Error updating application status:`, error);
+         popup.error('Network error updating status.');
       }
    };
 
@@ -2882,21 +2835,49 @@ const AdminDashboard = () => {
                                                             </div>
                                                          </td>
                                                          <td className="px-6 py-4">
-                                                            <span className={`text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-widest border ${(app.status === 'Selected' || app.status === 'Accepted') ? 'bg-green-100 text-green-700 border-green-200' :
-                                                               app.status === 'Rejected' ? 'bg-red-50 text-red-600 border-red-100' :
-                                                                  app.status === 'On Hold' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
-                                                                     'bg-purple-100 text-purple-700 border-purple-200'
-                                                               }`}>
-                                                               {(app.status === 'APPLIED' || app.status === 'Applied' || !app.status) ? 'Processing' : app.status}
-                                                            </span>
-                                                         </td>
-                                                         <td className="px-6 py-4 text-right">
-                                                            <button
-                                                               onClick={() => handleViewApplication(app)}
-                                                               className="px-4 py-2 rounded-lg bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20 flex items-center gap-2"
-                                                            >
-                                                               <Eye className="w-3 h-3" /> VIEW DETAILS
-                                                            </button>
+                                                             <span className={`text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-widest ${getStatusColor(app.status)}`}>
+                                                                {app.status === 'APPROVED' ? 'Abroad' :
+                                                                   app.status === 'HOLD' ? 'On Hold' :
+                                                                      app.status === 'REJECTED' ? 'Rejected' : 'Pending'}
+                                                             </span>
+                                                          </td>
+                                                          <td className="px-6 py-4 text-right">
+                                                             <div className="flex items-center justify-end gap-2">
+                                                                {/* Quick action buttons */}
+                                                                {app.status !== 'APPROVED' && (
+                                                                   <button
+                                                                      onClick={() => handleApplicationAction(app.id || app._id, 'approve')}
+                                                                      title="Mark as Abroad (Approved)"
+                                                                      className="px-3 py-1.5 rounded-lg bg-teal-600 text-white text-[9px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-sm"
+                                                                   >
+                                                                      ✓ Abroad
+                                                                   </button>
+                                                                )}
+                                                                {app.status !== 'HOLD' && (
+                                                                   <button
+                                                                      onClick={() => handleApplicationAction(app.id || app._id, 'hold')}
+                                                                      title="Put On Hold"
+                                                                      className="px-3 py-1.5 rounded-lg bg-amber-500 text-white text-[9px] font-black uppercase tracking-widest hover:bg-amber-600 transition-colors shadow-sm"
+                                                                   >
+                                                                      ⏸ Hold
+                                                                   </button>
+                                                                )}
+                                                                {app.status !== 'REJECTED' && (
+                                                                   <button
+                                                                      onClick={() => handleApplicationAction(app.id || app._id, 'reject')}
+                                                                      title="Reject Candidate"
+                                                                      className="px-3 py-1.5 rounded-lg bg-red-500 text-white text-[9px] font-black uppercase tracking-widest hover:bg-red-600 transition-colors shadow-sm"
+                                                                   >
+                                                                      ✕ Reject
+                                                                   </button>
+                                                                )}
+                                                                <button
+                                                                   onClick={() => handleViewApplication(app)}
+                                                                   className="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 text-[9px] font-black uppercase tracking-widest hover:bg-slate-200 transition-colors flex items-center gap-1"
+                                                                >
+                                                                   <Eye className="w-3 h-3" /> View
+                                                                </button>
+                                                             </div>
                                                          </td>
                                                       </tr>
                                                    ))}
