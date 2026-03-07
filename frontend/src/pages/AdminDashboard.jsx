@@ -1,4 +1,4 @@
-import API_BASE_URL from '../api/config.js';
+ï»¿import API_BASE_URL from '../api/config.js';
 import React, { useState, useRef, useEffect } from 'react';
 import {
    Users,
@@ -290,7 +290,7 @@ const AdminDashboard = () => {
          openings: 1,
          state: "HIDDEN",
          stateColor: "text-slate-300",
-         region: "Mal+¬, Maldives",
+         region: "Mal+ï¿½, Maldives",
          sector: "Tourism",
          description: "Responsible for leading diving excursions and ensuring safety protocols for all guests. Must be certified and experienced in open water diving.",
          requirements: ["PADI CERTIFICATION", "FIRST AID CERTIFIED", "3 YEARS EXPERIENCE"]
@@ -919,11 +919,11 @@ const AdminDashboard = () => {
          });
 
          if (response.ok) {
-            alert('G£à Visibility request approved!');
+            alert('Gï¿½ï¿½ Visibility request approved!');
             fetchVisibilityRequests(); // Refresh the list
          } else {
             const data = await response.json();
-            alert(`G¥î Failed: ${data.message}`);
+            alert(`Gï¿½ï¿½ Failed: ${data.message}`);
          }
       } catch (error) {
          console.error('Error approving visibility request:', error);
@@ -1011,7 +1011,7 @@ const AdminDashboard = () => {
          });
          const data = await response.json();
          if (response.ok) {
-            alert(`G£à Job request approved! "${request.title}" is now live.`);
+            alert(`Gï¿½ï¿½ Job request approved! "${request.title}" is now live.`);
             setPendingJobRequests(prev => prev.filter(r => r._id !== request._id));
             setPendingJobRequestsCount(prev => prev - 1);
             fetchJobsByCategory(selectedCategory);
@@ -1041,7 +1041,7 @@ const AdminDashboard = () => {
          });
          const data = await response.json();
          if (response.ok) {
-            alert(`G¥î Job request "${selectedJobRequest.title}" has been rejected.`);
+            alert(`Gï¿½ï¿½ Job request "${selectedJobRequest.title}" has been rejected.`);
             setPendingJobRequests(prev => prev.filter(r => r._id !== selectedJobRequest._id));
             setPendingJobRequestsCount(prev => prev - 1);
             setShowRejectModal(false);
@@ -1077,6 +1077,9 @@ const AdminDashboard = () => {
       address: '',
       required_documents: []
    });
+   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
+   const [showEducationDropdown, setShowEducationDropdown] = useState(false);
+   const [showExperienceDropdown, setShowExperienceDropdown] = useState(false);
    const [showSuccessNotification, setShowSuccessNotification] = useState(false);
 
    // Audit Filter State
@@ -1333,7 +1336,7 @@ const AdminDashboard = () => {
          // Fallback if logic is different, but for now assuming industry match
       }
 
-      setNewVacancy({ title: '', industry: '', salary: '', headcount: '', description: '', requirements: '', companyName: '', address: '', required_documents: [] });
+      setNewVacancy({ title: '', industry: '', salary: '', headcount: '', description: '', requirements: '', companyName: '', address: '', education: '', experience: '', required_documents: [] });
       setIsAddVacancyOpen(false);
       setShowSuccessNotification(true);
       setTimeout(() => setShowSuccessNotification(false), 3000);
@@ -2969,7 +2972,7 @@ const AdminDashboard = () => {
                                                             <div>
                                                                <h4 className="font-bold text-slate-900 text-base mb-1">{job.title}</h4>
                                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                                                  {job.ref} <span className="mx-1">GÇó</span> {job.date}
+                                                                  {job.ref} <span className="mx-1">Gï¿½ï¿½</span> {job.date}
                                                                </p>
                                                             </div>
                                                          </td>
@@ -3867,15 +3870,85 @@ const AdminDashboard = () => {
                               />
                            </div>
                            <div className="space-y-2">
-                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Address</label>
-                              <input
-                                 required
-                                 type="text"
-                                 value={newVacancy.address}
-                                 onChange={(e) => setNewVacancy({ ...newVacancy, address: e.target.value })}
-                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all"
-                                 placeholder="e.g. Male via Ferry"
-                              />
+                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Location</label>
+                              <div className="relative">
+                                 <div
+                                    onClick={() => setShowLocationDropdown(!showLocationDropdown)}
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all cursor-pointer flex items-center justify-between"
+                                 >
+                                    <span className={newVacancy.address ? 'text-slate-900' : 'text-slate-400'}>{newVacancy.address || 'Select Location'}</span>
+                                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showLocationDropdown ? 'rotate-180' : ''}`} />
+                                 </div>
+                                 {showLocationDropdown && (
+                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-[200px] overflow-y-auto">
+                                       {['Male', 'Hulhumale', 'Villingili', 'Haa Alif', 'Haa Dhaalu', 'Shaviyani', 'Noonu', 'Raa', 'Baa', 'Lhaviyani', 'Kaafu', 'Alif Alif', 'Alif Dhaalu', 'Vaavu', 'Meemu', 'Faafu', 'Dhaalu', 'Thaa', 'Laamu', 'Gaafu Alif', 'Gaafu Dhaalu', 'Gnaviyani', 'Seenu'].map((loc) => (
+                                          <div
+                                             key={loc}
+                                             onClick={() => { setNewVacancy({ ...newVacancy, address: loc }); setShowLocationDropdown(false); }}
+                                             className="px-4 py-2.5 text-sm font-semibold text-slate-700 cursor-pointer transition-all hover:bg-emerald-50 hover:text-emerald-700"
+                                             style={{ transition: 'background 0.15s, color 0.15s' }}
+                                          >
+                                             {loc}
+                                          </div>
+                                       ))}
+                                    </div>
+                                 )}
+                              </div>
+                           </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Education</label>
+                              <div className="relative">
+                                 <div
+                                    onClick={() => setShowEducationDropdown(!showEducationDropdown)}
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all cursor-pointer flex items-center justify-between"
+                                 >
+                                    <span className={newVacancy.education ? 'text-slate-900' : 'text-slate-400'}>{newVacancy.education || 'Select Education'}</span>
+                                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showEducationDropdown ? 'rotate-180' : ''}`} />
+                                 </div>
+                                 {showEducationDropdown && (
+                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-[200px] overflow-y-auto">
+                                       {['Any Education Level', 'O-Level / Secondary School', 'A-Level / Higher Secondary', 'Certificate', 'Diploma', 'Advanced Diploma', 'Bachelorâ€™s Degree', 'Masterâ€™s Degree', 'Doctorate / PhD'].map((edu) => (
+                                          <div
+                                             key={edu}
+                                             onClick={() => { setNewVacancy({ ...newVacancy, education: edu }); setShowEducationDropdown(false); }}
+                                             className="px-4 py-2.5 text-sm font-semibold text-slate-700 cursor-pointer transition-all hover:bg-emerald-50 hover:text-emerald-700"
+                                             style={{ transition: 'background 0.15s, color 0.15s' }}
+                                          >
+                                             {edu}
+                                          </div>
+                                       ))}
+                                    </div>
+                                 )}
+                              </div>
+                           </div>
+                           <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Experience</label>
+                              <div className="relative">
+                                 <div
+                                    onClick={() => setShowExperienceDropdown(!showExperienceDropdown)}
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all cursor-pointer flex items-center justify-between"
+                                 >
+                                    <span className={newVacancy.experience ? 'text-slate-900' : 'text-slate-400'}>{newVacancy.experience || 'Select Experience'}</span>
+                                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showExperienceDropdown ? 'rotate-180' : ''}`} />
+                                 </div>
+                                 {showExperienceDropdown && (
+                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-[200px] overflow-y-auto">
+                                       {['Any Experience', 'No Experience', '1 - 2 Years', '3 - 5 Years', '6 - 10 Years', '10+ Years'].map((exp) => (
+                                          <div
+                                             key={exp}
+                                             onClick={() => { setNewVacancy({ ...newVacancy, experience: exp }); setShowExperienceDropdown(false); }}
+                                             className="px-4 py-2.5 text-sm font-semibold text-slate-700 cursor-pointer transition-all hover:bg-emerald-50 hover:text-emerald-700"
+                                             style={{ transition: 'background 0.15s, color 0.15s' }}
+                                          >
+                                             {exp}
+                                          </div>
+                                       ))}
+                                    </div>
+                                 )}
+                              </div>
                            </div>
                         </div>
 
