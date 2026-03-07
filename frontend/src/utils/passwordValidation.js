@@ -8,19 +8,31 @@
  * - At least one special character
  */
 export const validatePassword = (password) => {
-    if (!password) return { isValid: false, errors: ['Password is required'] };
+    if (!password) return {
+        isValid: false,
+        errors: ['Password is required'],
+        criteria: { length: false, upper: false, lower: false, number: false, symbol: false }
+    };
+
+    const criteria = {
+        length: password.length >= 8,
+        upper: /[A-Z]/.test(password),
+        lower: /[a-z]/.test(password),
+        number: /[0-9]/.test(password),
+        symbol: /[!@#$%^&*(),.?":{}|<>_\-+=~`[\]\\;'/]/.test(password),
+    };
 
     const errors = [];
-
-    if (password.length < 8) errors.push('At least 8 characters');
-    if (!/[A-Z]/.test(password)) errors.push('At least one uppercase letter');
-    if (!/[a-z]/.test(password)) errors.push('At least one lowercase letter');
-    if (!/[0-9]/.test(password)) errors.push('At least one number');
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) errors.push('At least one special character');
+    if (!criteria.length) errors.push('At least 8 characters');
+    if (!criteria.upper) errors.push('At least one uppercase letter');
+    if (!criteria.lower) errors.push('At least one lowercase letter');
+    if (!criteria.number) errors.push('At least one number');
+    if (!criteria.symbol) errors.push('At least one special character');
 
     return {
         isValid: errors.length === 0,
         errors,
+        criteria,
     };
 };
 
