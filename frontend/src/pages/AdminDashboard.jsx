@@ -1,4 +1,4 @@
-﻿import API_BASE_URL from '../api/config.js';
+import API_BASE_URL from '../api/config.js';
 import React, { useState, useRef, useEffect } from 'react';
 import {
    Users,
@@ -2456,7 +2456,6 @@ const AdminDashboard = () => {
                                                             salary: '',
                                                             headcount: '',
                                                             description: '',
-                                                            headcount: '',
                                                             companyName: '',
                                                             address: '',
                                                             required_documents: []
