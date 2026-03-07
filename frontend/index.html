@@ -42,8 +42,16 @@
   </head>
 
   <body class="bg-slate-50 text-slate-900">
+        <script>
+      window.addEventListener('error', function(event) {
+        var msg = event.error ? event.error.stack : event.message;
+        document.body.innerHTML += '<div id=\"app-fatal-error\" style=\"color:red;z-index:9999;position:fixed;top:0;left:0;background:black;padding:20px;width:100%;height:100%;overflow:auto;\"><pre>GLOBAL ERROR:' + msg + '</pre></div>';
+      });
+      console.log('Global error handler attached.');
+    </script>
     <div id="root"></div>
     <!-- Vite will inject the script tags automatically -->
     <script type="module" src="/src/index.jsx"></script>
   </body>
 </html>
+

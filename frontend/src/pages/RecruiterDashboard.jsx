@@ -1,4 +1,4 @@
-﻿import API_BASE_URL from '../api/config.js';
+import API_BASE_URL from '../api/config.js';
 import { usePopup } from '../context/PopupContext';
 import React, { useState, useMemo, useEffect } from 'react';
 import { ApplicationStatus, JobStatus } from '../types';
@@ -1475,13 +1475,7 @@ const RecruiterDashboard = () => {
             {/* Internal Custom Scrollbar Style */}
             <style>{`
         .custom-scrollbar::-webkit-scrollbar {
-          width: 0px;
-        }
-      `}</style>
-        </div >
-    );
-};
-
+          width:      `}</style>
 
             {/* DELETE ACCOUNT CONFIRMATION MODAL */}
             {showDeleteAccountModal && (
@@ -1539,4 +1533,12 @@ const RecruiterDashboard = () => {
                         </div>
                     </div>
                 </div>
-            )}export default RecruiterDashboard;
+            )}
+        </div>
+    );
+};
+
+
+
+
+export default RecruiterDashboard;
