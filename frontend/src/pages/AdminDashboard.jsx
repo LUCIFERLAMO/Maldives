@@ -37,6 +37,8 @@ import { DashboardSidebar } from '../components/DashboardSidebar';
 import { DashboardHeader } from '../components/DashboardHeader';
 import { MOCK_JOBS, MOCK_APPLICATIONS, INDUSTRIES, REQUIRED_DOCUMENT_OPTIONS } from '../constants';
 
+const MALDIVES_LOCATIONS = ['All Locations', 'Male', 'Hulhumale', 'Villingili', 'Haa Alif', 'Haa Dhaalu', 'Shaviyani', 'Noonu', 'Raa', 'Baa', 'Lhaviyani', 'Kaafu', 'Alif Alif', 'Alif Dhaalu', 'Vaavu', 'Meemu', 'Faafu', 'Dhaalu', 'Thaa', 'Laamu', 'Gaafu Alif', 'Gaafu Dhaalu', 'Gnaviyani', 'Seenu'];
+
 const MOCK_AGENT_RESUMES = [
    {
       id: 1,
@@ -1111,7 +1113,10 @@ const AdminDashboard = () => {
    const [auditFilters, setAuditFilters] = useState({
       status: [],
       source: 'All',
-      duration: 'All'
+      duration: 'All',
+      location: 'All Locations',
+      education: 'Any Education Level',
+      experience: 'No Experience'
    });
 
    const toggleAuditStatusFilter = (status) => {
@@ -1131,7 +1136,8 @@ const AdminDashboard = () => {
    const [candidateFilters, setCandidateFilters] = useState({
       status: [],
       source: 'All',
-      duration: 'All'
+      duration: 'All',
+      location: 'All Locations'
    });
 
    const toggleCandidateFilter = (filterType, value) => {
@@ -1285,7 +1291,8 @@ const AdminDashboard = () => {
    const [isAgentBlacklistFilterOpen, setIsAgentBlacklistFilterOpen] = useState(false);
    const [agentBlacklistFilters, setAgentBlacklistFilters] = useState({
       source: 'All', // 'Agency' or others if applicable
-      duration: 'All'
+      duration: 'All',
+      location: 'All Locations'
    });
 
    const handleAgentBlacklistSearch = () => setAgentBlacklistSearchQuery(agentBlacklistSearchInput);
@@ -1565,13 +1572,13 @@ const AdminDashboard = () => {
    const handleBlacklistSearch = () => setBlacklistSearchQuery(blacklistSearchInput);
 
    const [isBlacklistFilterOpen, setIsBlacklistFilterOpen] = useState(false);
-   const [blacklistFilters, setBlacklistFilters] = useState({ source: 'All', duration: 'All' });
+   const [blacklistFilters, setBlacklistFilters] = useState({ source: 'All', duration: 'All', location: 'All Locations' });
 
    // --- AGENT ECOSYSTEM FILTERS ---
 
    // 1. VACANCIES FILTER
    const [isVacancyFilterOpen, setIsVacancyFilterOpen] = useState(false);
-   const [vacancyFilters, setVacancyFilters] = useState({ status: [], duration: 'All' });
+   const [vacancyFilters, setVacancyFilters] = useState({ status: [], duration: 'All', location: 'All Locations', education: 'Any Education Level', experience: 'No Experience' });
 
    const filteredAgentVacancies = agentVacancies.filter(job => {
       // Search Filter
@@ -1591,7 +1598,7 @@ const AdminDashboard = () => {
 
    // 2. RESUMES FILTER
    const [isResumeFilterOpen, setIsResumeFilterOpen] = useState(false);
-   const [resumeFilters, setResumeFilters] = useState({ status: [], duration: 'All' });
+   const [resumeFilters, setResumeFilters] = useState({ status: [], duration: 'All', location: 'All Locations', education: 'Any Education Level', experience: 'No Experience' });
    const filteredAgentResumes = agentResumes.filter(resume => {
       // Exclude REJECTED (Moved to Blacklist)
       if (resume.status === 'REJECTED' || resume.status === 'Rejected') return false;
@@ -1610,7 +1617,7 @@ const AdminDashboard = () => {
 
    // 3. APPLICATIONS FILTER
    const [isAppFilterOpen, setIsAppFilterOpen] = useState(false);
-   const [appFilters, setAppFilters] = useState({ status: [], duration: 'All' });
+   const [appFilters, setAppFilters] = useState({ status: [], duration: 'All', location: 'All Locations', education: 'Any Education Level', experience: 'No Experience' });
 
 
    const filteredPartnerApplications = pendingAgencies.filter(app => {
@@ -1901,7 +1908,7 @@ const AdminDashboard = () => {
                   <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 animate-in zoom-in-95 duration-300 max-h-[80vh] flex flex-col">
                      <div className="flex items-center justify-between mb-6">
                         <h3 className="text-lg font-bold text-slate-900">Manage Categories</h3>
-                        <button onClick={() => setIsCategoryModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                        <button onClick={() => setIsCategoryModalOpen(false)} className="text-black font-bold hover:text-slate-600">
                            <X className="w-5 h-5" />
                         </button>
                      </div>
@@ -1947,7 +1954,7 @@ const AdminDashboard = () => {
                               <span className="font-bold text-sm text-slate-700">{cat}</span>
                               <button
                                  onClick={() => handleDeleteCategory(cat)}
-                                 className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                 className="p-2 text-black font-bold hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                                  title="Delete Category"
                               >
                                  <Trash2 className="w-4 h-4" />
@@ -1975,11 +1982,11 @@ const AdminDashboard = () => {
 
                         <div className="bg-slate-50 rounded-xl p-5 space-y-4 mb-6">
                            <div>
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Email</p>
+                              <p className="text-[10px] font-bold text-black font-bold uppercase tracking-wider mb-1">Email</p>
                               <p className="text-sm font-bold text-slate-900 font-mono">{approvedCredentials.email}</p>
                            </div>
                            <div>
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Temporary Password</p>
+                              <p className="text-[10px] font-bold text-black font-bold uppercase tracking-wider mb-1">Temporary Password</p>
                               <p className="text-sm font-bold text-teal-600 font-mono">{approvedCredentials.temporaryPassword}</p>
                            </div>
                         </div>
@@ -2017,7 +2024,7 @@ const AdminDashboard = () => {
                                  <p className="text-sm text-slate-500">Highlight top roles for {selectedCategory}</p>
                               </div>
                            </div>
-                           <button onClick={() => setIsPremiumModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                           <button onClick={() => setIsPremiumModalOpen(false)} className="text-black font-bold hover:text-slate-600">
                               <X className="w-5 h-5" />
                            </button>
                         </div>
@@ -2042,7 +2049,7 @@ const AdminDashboard = () => {
                                  </div>
                               ))
                            ) : (
-                              <p className="text-center text-slate-400 text-sm py-4">No jobs found in this category.</p>
+                              <p className="text-center text-black font-bold text-sm py-4">No jobs found in this category.</p>
                            )}
                         </div>
 
@@ -2074,7 +2081,7 @@ const AdminDashboard = () => {
                                  <p className="text-sm text-slate-500">Remove unused roles from {selectedCategory}</p>
                               </div>
                            </div>
-                           <button onClick={() => setIsDeleteJobsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                           <button onClick={() => setIsDeleteJobsModalOpen(false)} className="text-black font-bold hover:text-slate-600">
                               <X className="w-5 h-5" />
                            </button>
                         </div>
@@ -2107,7 +2114,7 @@ const AdminDashboard = () => {
                                  );
                               })
                            ) : (
-                              <p className="text-center text-slate-400 text-sm py-4">No jobs found in this category.</p>
+                              <p className="text-center text-black font-bold text-sm py-4">No jobs found in this category.</p>
                            )}
                         </div>
 
@@ -2197,7 +2204,7 @@ const AdminDashboard = () => {
                                        className={`bg-white rounded-3xl p-8 shadow-[0_2px_20px_rgba(0,0,0,0.02)] border border-slate-100 flex flex-col justify-center h-48 relative overflow-hidden group hover:shadow-lg ${stat.textRed ? 'hover:border-red-500' : 'hover:border-emerald-500'} cursor-pointer transition-all`}
                                     >
                                        <div className="absolute right-0 top-0 h-full w-24 bg-slate-50/50 skew-x-12 translate-x-12"></div>
-                                       <p className={`text-[10px] font-black uppercase tracking-[0.2em] mb-4 ${stat.textRed ? 'text-red-500' : 'text-slate-400'}`}>
+                                       <p className={`text-[10px] font-black uppercase tracking-[0.2em] mb-4 ${stat.textRed ? 'text-red-500' : 'text-black font-bold'}`}>
                                           {stat.label}
                                        </p>
                                        <h2 className={`text-6xl font-black tracking-tight z-10 ${stat.textRed ? 'text-red-500' : 'text-slate-900'} ${idx === 1 ? 'text-teal-600' : ''} ${idx === 2 ? 'text-amber-500' : ''}`}>
@@ -2233,7 +2240,7 @@ const AdminDashboard = () => {
                                           />
                                           <button
                                              onClick={handleAuditSearch}
-                                             className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors"
+                                             className="absolute right-3 top-1/2 -translate-y-1/2 text-black font-bold hover:text-teal-600 transition-colors"
                                           >
                                              <Search className="w-4 h-4" />
                                           </button>
@@ -2241,7 +2248,7 @@ const AdminDashboard = () => {
                                        <div className="relative">
                                           <button
                                              onClick={() => setIsAuditFilterOpen(!isAuditFilterOpen)}
-                                             className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isAuditFilterOpen ? 'bg-teal-50 text-teal-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                                             className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isAuditFilterOpen ? 'bg-teal-50 text-teal-600' : 'text-black font-bold hover:text-slate-600 hover:bg-slate-50'}`}
                                           >
                                              <Filter className="w-4 h-4" />
                                           </button>
@@ -2251,7 +2258,7 @@ const AdminDashboard = () => {
 
                                                    {/* 1. Status */}
                                                    <div className="space-y-2">
-                                                      <h4 className="text-[9px] font-black uppercase text-slate-400 tracking-widest">1. Status</h4>
+                                                      <h4 className="text-[9px] font-black uppercase text-black font-bold tracking-widest">1. Status</h4>
                                                       <div className="space-y-1.5">
                                                          {['Processing', 'On Hold', 'Selected'].map(status => (
                                                             <label key={status} className="flex items-center gap-2 cursor-pointer group">
@@ -2272,7 +2279,7 @@ const AdminDashboard = () => {
 
                                                    {/* 2. Source */}
                                                    <div className="space-y-2">
-                                                      <h4 className="text-[9px] font-black uppercase text-slate-400 tracking-widest">2. Source</h4>
+                                                      <h4 className="text-[9px] font-black uppercase text-black font-bold tracking-widest">2. Source</h4>
                                                       <div className="space-y-1.5">
                                                          {['Direct Application', 'Agency Ref'].map(source => (
                                                             <label key={source} className="flex items-center gap-2 cursor-pointer group">
@@ -2293,7 +2300,7 @@ const AdminDashboard = () => {
 
                                                    {/* 3. Duration */}
                                                    <div className="space-y-2">
-                                                      <h4 className="text-[9px] font-black uppercase text-slate-400 tracking-widest">3. Duration</h4>
+                                                      <h4 className="text-[9px] font-black uppercase text-black font-bold tracking-widest">3. Duration</h4>
                                                       <div className="space-y-1.5">
                                                          {['Since 1 hr', 'Since 1 week', 'Since 1 month', 'Since 3 months', 'All'].map(duration => (
                                                             <label key={duration} className="flex items-center gap-2 cursor-pointer group">
@@ -2311,11 +2318,58 @@ const AdminDashboard = () => {
                                                          ))}
                                                       </div>
                                                    </div>
+                                                   {/* 4. Education */}
+                                                   <div className="space-y-2 mt-4">
+                                                      <h4 className="text-[9px] font-black uppercase text-black font-bold tracking-widest">4. Education</h4>
+                                                      <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar">
+                                                         {['Any Education Level', 'O-Level / Secondary School', 'A-Level / Higher Secondary', 'Certificate', 'Diploma', 'Advanced Diploma', "Bachelor's Degree", "Master's Degree", 'Doctorate / PhD'].map(edu => (
+                                                            <label key={edu} className="flex items-center gap-2 cursor-pointer group">
+                                                               <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${auditFilters.education === edu ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                  {auditFilters.education === edu && <div className="w-1.5 h-1.5 rounded-full bg-teal-600" />}
+                                                               </div>
+                                                               <input
+                                                                  type="radio"
+                                                                  className="hidden"
+                                                                  checked={auditFilters.education === edu}
+                                                                  onChange={() => setAuditFilters({ ...auditFilters, education: edu })}
+                                                               />
+                                                               <span className="text-xs font-bold text-slate-700">{edu}</span>
+                                                            </label>
+                                                         ))}
+                                                      </div>
+                                                    </div>
+                                                    {/* 5. Experience */}
+                                                    <div className="space-y-2 mt-4">
+                                                       <h4 className="text-[9px] font-black uppercase text-black font-bold tracking-widest">5. Experience</h4>
+                                                       <div className="space-y-1.5">
+                                                          {['No Experience', '1 \u2013 2 Years', '3 \u2013 5 Years', '6 \u2013 10 Years', '10+ Years'].map(exp => (
+                                                             <label key={exp} className="flex items-center gap-2 cursor-pointer group">
+                                                                <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${auditFilters.experience === exp ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                   {auditFilters.experience === exp && <div className="w-1.5 h-1.5 rounded-full bg-teal-600" />}
+                                                                </div>
+                                                                <input type="radio" className="hidden" checked={auditFilters.experience === exp} onChange={() => setAuditFilters({ ...auditFilters, experience: exp })} />
+                                                                <span className="text-xs font-bold text-slate-700">{exp}</span>
+                                                             </label>
+                                                          ))}
+                                                       </div>
+                                                    </div>
+                                                    <div className="space-y-3">
+                                                       <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">6. Location</h4>
+                                                       <select
+                                                          value={auditFilters.location}
+                                                         onChange={(e) => setAuditFilters({ ...auditFilters, location: e.target.value })}
+                                                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-teal-500 transition-colors"
+                                                      >
+                                                         {MALDIVES_LOCATIONS.map(loc => (
+                                                            <option key={loc} value={loc}>{loc}</option>
+                                                         ))}
+                                                      </select>
+                                                   </div>
                                                 </div>
 
                                                 <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
                                                    <button
-                                                      onClick={() => setAuditFilters({ status: [], source: 'All', duration: 'All' })}
+                                                      onClick={() => setAuditFilters({ status: [], source: 'All', duration: 'All', location: 'All Locations' })}
                                                       className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors"
                                                    >
                                                       Clear
@@ -2334,19 +2388,19 @@ const AdminDashboard = () => {
                                  </div> {/* This closes the p-6 border-b div */}
                                  <div className="overflow-x-auto">
                                     {isLoadingVisibilityRequests ? (
-                                       <div className="py-12 text-center text-slate-400">
+                                       <div className="py-12 text-center text-black font-bold">
                                           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
                                           <p className="text-sm">Loading requests...</p>
                                        </div>
                                     ) : filteredAuditQueue.length > 0 ? (
                                        <table className="w-full text-left">
-                                          <thead>
+                                          <thead className="text-black font-bold">
                                              <tr className="bg-slate-50 border-b border-slate-100">
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Candidate Name</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Category</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Source</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Application Status</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Action</th>
+                                                <th className="px-6 py-4 text-[10px] uppercase tracking-widest text-black font-bold">Candidate Name</th>
+                                                <th className="px-6 py-4 text-[10px] uppercase tracking-widest text-black font-bold">Category</th>
+                                                <th className="px-6 py-4 text-[10px] uppercase tracking-widest text-black font-bold">Source</th>
+                                                <th className="px-6 py-4 text-[10px] uppercase tracking-widest text-black font-bold">Application Status</th>
+                                                <th className="px-6 py-4 text-[10px] uppercase tracking-widest text-right text-black font-bold">Action</th>
                                              </tr>
                                           </thead>
                                           <tbody className="divide-y divide-slate-50">
@@ -2355,7 +2409,7 @@ const AdminDashboard = () => {
                                                    <td className="px-6 py-4">
                                                       <div>
                                                          <p className="text-sm font-bold text-slate-900">{request.name}</p>
-                                                         <p className="text-xs text-slate-400 font-medium">{request.region || 'Unknown Location'}</p>
+                                                         <p className="text-xs text-black font-bold font-medium">{request.region || 'Unknown Location'}</p>
                                                       </div>
                                                    </td>
                                                    <td className="px-6 py-4">
@@ -2387,7 +2441,7 @@ const AdminDashboard = () => {
                                           </tbody>
                                        </table>
                                     ) : (
-                                       <div className="py-12 text-center text-slate-400">
+                                       <div className="py-12 text-center text-black font-bold">
                                           <Search className="w-8 h-8 mx-auto mb-2 opacity-20" />
                                           <p className="text-sm">No record exist !!</p>
                                        </div>
@@ -2434,7 +2488,7 @@ const AdminDashboard = () => {
                                                       {newAppCount > 99 ? '99+' : newAppCount}
                                                    </span>
                                                 )}
-                                                <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center mb-6 text-slate-400 group-hover:bg-teal-50 group-hover:text-teal-600 transition-colors">
+                                                <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center mb-6 text-black font-bold group-hover:bg-teal-50 group-hover:text-teal-600 transition-colors">
                                                    <Briefcase className="w-7 h-7" />
                                                 </div>
                                                 <h3 className="text-xl font-bold text-slate-900 mb-2">{industry}</h3>
@@ -2549,7 +2603,7 @@ const AdminDashboard = () => {
                                                             <h3 className="font-bold text-lg text-slate-900 line-clamp-1" title={job.title}>{job.title}</h3>
                                                             {job.is_premium && <Star className="w-4 h-4 text-amber-500 fill-amber-500" />}
                                                          </div>
-                                                         <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{job.industry}</p>
+                                                         <p className="text-xs font-bold text-black font-bold uppercase tracking-wider">{job.industry}</p>
                                                       </div>
                                                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${job.status === 'OPEN' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
                                                          {job.status || 'OPEN'}
@@ -2558,15 +2612,15 @@ const AdminDashboard = () => {
 
                                                    <div className="space-y-3 mb-6 flex-1">
                                                       <div className="flex items-center gap-2 text-sm text-slate-600">
-                                                         <Building2 className="w-4 h-4 text-slate-400" />
+                                                         <Building2 className="w-4 h-4 text-black font-bold" />
                                                          <span className="truncate">{job.company || 'N/A'}</span>
                                                       </div>
                                                       <div className="flex items-center gap-2 text-sm text-slate-600">
-                                                         <MapPin className="w-4 h-4 text-slate-400" />
+                                                         <MapPin className="w-4 h-4 text-black font-bold" />
                                                          <span className="truncate">{job.location || 'N/A'}</span>
                                                       </div>
                                                       <div className="flex items-center gap-2 text-sm text-slate-600">
-                                                         <DollarSign className="w-4 h-4 text-slate-400" />
+                                                         <DollarSign className="w-4 h-4 text-black font-bold" />
                                                          <span className="font-bold text-teal-600">{job.salary_range || 'N/A'}</span>
                                                       </div>
                                                    </div>
@@ -2613,7 +2667,7 @@ const AdminDashboard = () => {
                                        {/* Search and Filter Header */}
                                        <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-4">
                                           <div className="relative flex-1 max-w-md">
-                                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black font-bold" />
                                              <input
                                                 type="text"
                                                 placeholder="Search candidates..."
@@ -2635,7 +2689,7 @@ const AdminDashboard = () => {
                                                    <div className="max-h-[35vh] overflow-y-auto custom-scrollbar p-4 space-y-5">
                                                       {/* 1. STATUS */}
                                                       <div className="space-y-2">
-                                                         <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">1. Status</h4>
+                                                         <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">1. Status</h4>
                                                          <div className="space-y-2">
                                                             {['Processing', 'On Hold', 'Approved'].map(status => (
                                                                <label key={status} className="flex items-center gap-3 cursor-pointer group">
@@ -2656,7 +2710,7 @@ const AdminDashboard = () => {
 
                                                       {/* 2. SOURCE */}
                                                       <div className="space-y-2">
-                                                         <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">2. Source</h4>
+                                                         <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">2. Source</h4>
                                                          <div className="space-y-2">
                                                             {['Direct Application', 'Agency Ref'].map(source => (
                                                                <label key={source} className="flex items-center gap-3 cursor-pointer group">
@@ -2689,7 +2743,7 @@ const AdminDashboard = () => {
 
                                                       {/* 3. DURATION */}
                                                       <div className="space-y-2">
-                                                         <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">3. Duration</h4>
+                                                         <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">3. Duration</h4>
                                                          <div className="space-y-2">
                                                             {['Since 1 hr', 'Since 1 week', 'Since 1 month', 'Since 3 months', 'All'].map(duration => (
                                                                <label key={duration} className="flex items-center gap-3 cursor-pointer group">
@@ -2707,12 +2761,59 @@ const AdminDashboard = () => {
                                                             ))}
                                                          </div>
                                                       </div>
+                                                      {/* 4. Education */}
+                                                      <div className="space-y-2 mt-4">
+                                                         <h4 className="text-[9px] font-black uppercase text-black font-bold tracking-widest">4. Education</h4>
+                                                         <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar">
+                                                            {['Any Education Level', 'O-Level / Secondary School', 'A-Level / Higher Secondary', 'Certificate', 'Diploma', 'Advanced Diploma', "Bachelor's Degree", "Master's Degree", 'Doctorate / PhD'].map(edu => (
+                                                               <label key={edu} className="flex items-center gap-2 cursor-pointer group">
+                                                                  <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${auditFilters.education === edu ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                     {auditFilters.education === edu && <div className="w-1.5 h-1.5 rounded-full bg-teal-600" />}
+                                                                  </div>
+                                                                  <input
+                                                                     type="radio"
+                                                                     className="hidden"
+                                                                     checked={auditFilters.education === edu}
+                                                                     onChange={() => setAuditFilters({ ...auditFilters, education: edu })}
+                                                                  />
+                                                                  <span className="text-xs font-bold text-slate-700">{edu}</span>
+                                                               </label>
+                                                            ))}
+                                                         </div>
+                                                       </div>
+                                                       {/* 5. Experience */}
+                                                       <div className="space-y-2 mt-4">
+                                                          <h4 className="text-[9px] font-black uppercase text-black font-bold tracking-widest">5. Experience</h4>
+                                                          <div className="space-y-1.5">
+                                                             {['No Experience', '1 \u2013 2 Years', '3 \u2013 5 Years', '6 \u2013 10 Years', '10+ Years'].map(exp => (
+                                                                <label key={exp} className="flex items-center gap-2 cursor-pointer group">
+                                                                   <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${auditFilters.experience === exp ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                      {auditFilters.experience === exp && <div className="w-1.5 h-1.5 rounded-full bg-teal-600" />}
+                                                                   </div>
+                                                                   <input type="radio" className="hidden" checked={auditFilters.experience === exp} onChange={() => setAuditFilters({ ...auditFilters, experience: exp })} />
+                                                                   <span className="text-xs font-bold text-slate-700">{exp}</span>
+                                                                </label>
+                                                             ))}
+                                                          </div>
+                                                       </div>
+                                                       <div className="space-y-3">
+                                                          <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">6. Location</h4>
+                                                          <select
+                                                             value={candidateFilters.location}
+                                                            onChange={(e) => setCandidateFilters({ ...candidateFilters, location: e.target.value })}
+                                                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-teal-500 transition-colors"
+                                                         >
+                                                            {MALDIVES_LOCATIONS.map(loc => (
+                                                               <option key={loc} value={loc}>{loc}</option>
+                                                            ))}
+                                                         </select>
+                                                      </div>
                                                    </div>
 
                                                    <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3 relative z-10">
                                                       <button
                                                          onClick={() => {
-                                                            setCandidateFilters({ status: [], source: 'All', duration: 'All' });
+                                                            setCandidateFilters({ status: [], source: 'All', duration: 'All', location: 'All Locations' });
                                                             setIsCandidateFilterOpen(false);
                                                          }}
                                                          className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors"
@@ -2739,12 +2840,12 @@ const AdminDashboard = () => {
                                        ) : (
                                           filteredJobApplications.length > 0 ? (
                                              <table className="w-full text-left">
-                                                <thead>
+                                                <thead className="text-black font-bold">
                                                    <tr className="bg-slate-50 border-b border-slate-100">
-                                                      <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Candidate Name</th>
-                                                      <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Source</th>
-                                                      <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Status</th>
-                                                      <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Actions</th>
+                                                      <th className="px-6 py-4 text-[10px] uppercase tracking-widest text-black font-bold">Candidate Name</th>
+                                                      <th className="px-6 py-4 text-[10px] uppercase tracking-widest text-black font-bold">Source</th>
+                                                      <th className="px-6 py-4 text-[10px] uppercase tracking-widest text-black font-bold">Status</th>
+                                                      <th className="px-6 py-4 text-[10px] uppercase tracking-widest text-right text-black font-bold">Actions</th>
                                                    </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-slate-50">
@@ -2789,7 +2890,7 @@ const AdminDashboard = () => {
                                                 </tbody>
                                              </table>
                                           ) : (
-                                             <div className="py-12 text-center text-slate-400">
+                                             <div className="py-12 text-center text-black font-bold">
                                                 <Search className="w-8 h-8 mx-auto mb-2 opacity-20" />
                                                 <p className="text-sm">No record exist !!</p>
                                              </div>
@@ -2871,7 +2972,7 @@ const AdminDashboard = () => {
                                        onClick={() => setAgentSubTab('vacancies')}
                                        className={`flex items-center gap-2 px-6 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${agentSubTab === 'vacancies'
                                           ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/20'
-                                          : 'bg-white text-slate-400 hover:text-slate-600'
+                                          : 'bg-white text-black font-bold hover:text-slate-600'
                                           }`}
                                     >
                                        <Briefcase className="w-4 h-4" /> Agent Vacancies
@@ -2885,7 +2986,7 @@ const AdminDashboard = () => {
                                        onClick={() => setAgentSubTab('resumes')}
                                        className={`flex items-center gap-2 px-6 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${agentSubTab === 'resumes'
                                           ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/20'
-                                          : 'bg-white text-slate-400 hover:text-slate-600'
+                                          : 'bg-white text-black font-bold hover:text-slate-600'
                                           }`}
                                     >
                                        <Users className="w-4 h-4" /> Agent Resumes
@@ -2899,7 +3000,7 @@ const AdminDashboard = () => {
                                        onClick={() => setAgentSubTab('new_apps')}
                                        className={`flex items-center gap-2 px-6 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${agentSubTab === 'new_apps'
                                           ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/20'
-                                          : 'bg-white text-slate-400 hover:text-slate-600'
+                                          : 'bg-white text-black font-bold hover:text-slate-600'
                                           }`}
                                     >
                                        <UserPlus className="w-4 h-4" /> New Agents Applications
@@ -2927,7 +3028,7 @@ const AdminDashboard = () => {
                                                 />
                                                 <button
                                                    onClick={handleVacancySearch}
-                                                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors"
+                                                   className="absolute right-3 top-1/2 -translate-y-1/2 text-black font-bold hover:text-teal-600 transition-colors"
                                                 >
                                                    <Search className="w-4 h-4" />
                                                 </button>
@@ -2935,7 +3036,7 @@ const AdminDashboard = () => {
                                              <div className="relative">
                                                 <button
                                                    onClick={() => setIsVacancyFilterOpen(!isVacancyFilterOpen)}
-                                                   className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isVacancyFilterOpen ? 'bg-teal-50 text-teal-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                                                   className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isVacancyFilterOpen ? 'bg-teal-50 text-teal-600' : 'text-black font-bold hover:text-slate-600 hover:bg-slate-50'}`}
                                                 >
                                                    <Filter className="w-4 h-4" />
                                                 </button>
@@ -2943,7 +3044,7 @@ const AdminDashboard = () => {
                                                    <div className="absolute right-0 top-full mt-4 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                                                       <div className="max-h-[60vh] overflow-y-auto custom-scrollbar p-6 space-y-6">
                                                          <div className="space-y-3">
-                                                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">1. Status</h4>
+                                                            <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">1. Status</h4>
                                                             <div className="space-y-2">
                                                                {['HIDDEN', 'LIVE TO PUBLIC', 'STILL IN HOLD'].map(status => (
                                                                   <label key={status} className="flex items-center gap-3 cursor-pointer group">
@@ -2957,7 +3058,7 @@ const AdminDashboard = () => {
                                                             </div>
                                                          </div>
                                                          <div className="space-y-3">
-                                                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">2. Duration</h4>
+                                                            <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">2. Duration</h4>
                                                             <div className="space-y-2">
                                                                {['Since 1 hr', 'Since 1 week', 'Since 1 month', 'Since 3 months', 'All'].map(duration => (
                                                                   <label key={duration} className="flex items-center gap-3 cursor-pointer group">
@@ -2970,9 +3071,49 @@ const AdminDashboard = () => {
                                                                ))}
                                                             </div>
                                                          </div>
+                                                         <div className="space-y-3">
+                                                            <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">3. Education</h4>
+                                                            <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
+                                                               {['Any Education Level', 'O-Level / Secondary School', 'A-Level / Higher Secondary', 'Certificate', 'Diploma', 'Advanced Diploma', "Bachelor's Degree", "Master's Degree", 'Doctorate / PhD'].map(edu => (
+                                                                  <label key={edu} className="flex items-center gap-3 cursor-pointer group">
+                                                                     <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${vacancyFilters.education === edu ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                        {vacancyFilters.education === edu && <div className="w-2 h-2 rounded-full bg-teal-600" />}
+                                                                     </div>
+                                                                     <input type="radio" className="hidden" checked={vacancyFilters.education === edu} onChange={() => setVacancyFilters({ ...vacancyFilters, education: edu })} />
+                                                                     <span className="text-xs font-bold text-slate-700">{edu}</span>
+                                                                  </label>
+                                                               ))}
+                                                            </div>
+                                                          </div>
+                                                          <div className="space-y-3">
+                                                             <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">4. Experience</h4>
+                                                             <div className="space-y-2">
+                                                                {['No Experience', '1 \u2013 2 Years', '3 \u2013 5 Years', '6 \u2013 10 Years', '10+ Years'].map(exp => (
+                                                                   <label key={exp} className="flex items-center gap-3 cursor-pointer group">
+                                                                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${vacancyFilters.experience === exp ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                         {vacancyFilters.experience === exp && <div className="w-2 h-2 rounded-full bg-teal-600" />}
+                                                                      </div>
+                                                                      <input type="radio" className="hidden" checked={vacancyFilters.experience === exp} onChange={() => setVacancyFilters({ ...vacancyFilters, experience: exp })} />
+                                                                      <span className="text-xs font-bold text-slate-700">{exp}</span>
+                                                                   </label>
+                                                                ))}
+                                                             </div>
+                                                          </div>
+                                                          <div className="space-y-3">
+                                                             <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">5. Location</h4>
+                                                             <select
+                                                                value={vacancyFilters.location}
+                                                               onChange={(e) => setVacancyFilters({ ...vacancyFilters, location: e.target.value })}
+                                                               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-teal-500 transition-colors"
+                                                            >
+                                                               {MALDIVES_LOCATIONS.map(loc => (
+                                                                  <option key={loc} value={loc}>{loc}</option>
+                                                               ))}
+                                                            </select>
+                                                         </div>
                                                       </div>
                                                       <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
-                                                         <button onClick={() => setVacancyFilters({ status: [], duration: 'All' })} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">Clear</button>
+                                                         <button onClick={() => setVacancyFilters({ status: [], duration: 'All', location: 'All Locations', education: 'Any Education Level', experience: 'No Experience' })} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">Clear</button>
                                                          <button onClick={() => setIsVacancyFilterOpen(false)} className="flex-1 py-2 rounded-lg bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20">Apply</button>
                                                       </div>
                                                    </div>
@@ -2980,13 +3121,13 @@ const AdminDashboard = () => {
                                              </div>
                                           </div>
                                           <table className="w-full text-left border-collapse">
-                                             <thead>
+                                             <thead className="text-black font-bold">
                                                 <tr>
-                                                   <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Vacancy Details</th>
-                                                   <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Spoke Agency</th>
-                                                   <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-center">Openings</th>
-                                                   <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-center">View Vacancy</th>
-                                                   <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-right">Public State</th>
+                                                   <th className="px-6 py-6 text-[10px] uppercase tracking-[0.2em] text-black font-bold">Vacancy Details</th>
+                                                   <th className="px-6 py-6 text-[10px] uppercase tracking-[0.2em] text-black font-bold">Spoke Agency</th>
+                                                   <th className="px-6 py-6 text-[10px] uppercase tracking-[0.2em] text-center text-black font-bold">Openings</th>
+                                                   <th className="px-6 py-6 text-[10px] uppercase tracking-[0.2em] text-center text-black font-bold">View Vacancy</th>
+                                                   <th className="px-6 py-6 text-[10px] uppercase tracking-[0.2em] text-right text-black font-bold">Public State</th>
                                                 </tr>
                                              </thead>
                                              <tbody className="divide-y divide-slate-50">
@@ -2996,8 +3137,8 @@ const AdminDashboard = () => {
                                                          <td className="px-6 py-8 align-middle">
                                                             <div>
                                                                <h4 className="font-bold text-slate-900 text-base mb-1">{job.title}</h4>
-                                                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                                                  {job.ref} <span className="mx-1">G��</span> {job.date}
+                                                               <p className="text-[10px] font-bold text-black font-bold uppercase tracking-wider">
+                                                                  {job.ref} <span className="mx-1">G</span> {job.date}
                                                                </p>
                                                             </div>
                                                          </td>
@@ -3034,7 +3175,7 @@ const AdminDashboard = () => {
                                                    <tr>
                                                       <td colSpan="5" className="px-6 py-12 text-center">
                                                          <div className="flex flex-col items-center justify-center gap-2">
-                                                            <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400">
+                                                            <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-black font-bold">
                                                                <Search className="w-6 h-6 opacity-40" />
                                                             </div>
                                                             <p className="text-slate-500 font-bold">No record exist !!</p>
@@ -3061,7 +3202,7 @@ const AdminDashboard = () => {
                                                 />
                                                 <button
                                                    onClick={handleResumeSearch}
-                                                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors"
+                                                   className="absolute right-3 top-1/2 -translate-y-1/2 text-black font-bold hover:text-teal-600 transition-colors"
                                                 >
                                                    <Search className="w-4 h-4" />
                                                 </button>
@@ -3069,7 +3210,7 @@ const AdminDashboard = () => {
                                              <div className="relative">
                                                 <button
                                                    onClick={() => setIsResumeFilterOpen(!isResumeFilterOpen)}
-                                                   className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isResumeFilterOpen ? 'bg-teal-50 text-teal-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                                                   className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isResumeFilterOpen ? 'bg-teal-50 text-teal-600' : 'text-black font-bold hover:text-slate-600 hover:bg-slate-50'}`}
                                                 >
                                                    <Filter className="w-4 h-4" />
                                                 </button>
@@ -3077,7 +3218,7 @@ const AdminDashboard = () => {
                                                    <div className="absolute right-0 top-full mt-4 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                                                       <div className="max-h-[60vh] overflow-y-auto custom-scrollbar p-6 space-y-6">
                                                          <div className="space-y-3">
-                                                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">1. Status</h4>
+                                                            <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">1. Status</h4>
                                                             <div className="space-y-2">
                                                                {['SELECTED', 'ON HOLD', 'PROCESSING'].map(status => (
                                                                   <label key={status} className="flex items-center gap-3 cursor-pointer group">
@@ -3091,7 +3232,7 @@ const AdminDashboard = () => {
                                                             </div>
                                                          </div>
                                                          <div className="space-y-3">
-                                                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">2. Duration</h4>
+                                                            <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">2. Duration</h4>
                                                             <div className="space-y-2">
                                                                {['Since 1 hr', 'Since 1 week', 'Since 1 month', 'Since 3 months', 'All'].map(duration => (
                                                                   <label key={duration} className="flex items-center gap-3 cursor-pointer group">
@@ -3104,9 +3245,49 @@ const AdminDashboard = () => {
                                                                ))}
                                                             </div>
                                                          </div>
+                                                         <div className="space-y-3">
+                                                            <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">3. Education</h4>
+                                                            <div className="space-y-2">
+                                                               {['Any Education Level', 'O-Level / Secondary School', 'A-Level / Higher Secondary', 'Certificate', 'Diploma', 'Advanced Diploma', "Bachelor's Degree", "Master's Degree", 'Doctorate / PhD'].map(educationLevel => (
+                                                                  <label key={educationLevel} className="flex items-center gap-3 cursor-pointer group">
+                                                                     <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${resumeFilters.education === educationLevel ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                        {resumeFilters.education === educationLevel && <div className="w-2 h-2 rounded-full bg-teal-600" />}
+                                                                     </div>
+                                                                     <input type="radio" className="hidden" checked={resumeFilters.education === educationLevel} onChange={() => setResumeFilters({ ...resumeFilters, education: educationLevel })} />
+                                                                     <span className="text-xs font-bold text-slate-700">{educationLevel}</span>
+                                                                  </label>
+                                                               ))}
+                                                            </div>
+                                                          </div>
+                                                          <div className="space-y-3">
+                                                             <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">4. Experience</h4>
+                                                             <div className="space-y-2">
+                                                                {['No Experience', '1 \u2013 2 Years', '3 \u2013 5 Years', '6 \u2013 10 Years', '10+ Years'].map(exp => (
+                                                                   <label key={exp} className="flex items-center gap-3 cursor-pointer group">
+                                                                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${resumeFilters.experience === exp ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                         {resumeFilters.experience === exp && <div className="w-2 h-2 rounded-full bg-teal-600" />}
+                                                                      </div>
+                                                                      <input type="radio" className="hidden" checked={resumeFilters.experience === exp} onChange={() => setResumeFilters({ ...resumeFilters, experience: exp })} />
+                                                                      <span className="text-xs font-bold text-slate-700">{exp}</span>
+                                                                   </label>
+                                                                ))}
+                                                             </div>
+                                                          </div>
+                                                          <div className="space-y-3">
+                                                             <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">5. Location</h4>
+                                                             <select
+                                                                value={resumeFilters.location}
+                                                               onChange={(e) => setResumeFilters({ ...resumeFilters, location: e.target.value })}
+                                                               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-teal-500 transition-colors"
+                                                            >
+                                                               {MALDIVES_LOCATIONS.map(loc => (
+                                                                  <option key={loc} value={loc}>{loc}</option>
+                                                               ))}
+                                                            </select>
+                                                         </div>
                                                       </div>
                                                       <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
-                                                         <button onClick={() => setResumeFilters({ status: [], duration: 'All' })} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">Clear</button>
+                                                         <button onClick={() => setResumeFilters({ status: [], duration: 'All', location: 'All Locations', education: 'Any Education Level', experience: 'No Experience' })} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">Clear</button>
                                                          <button onClick={() => setIsResumeFilterOpen(false)} className="flex-1 py-2 rounded-lg bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20">Apply</button>
                                                       </div>
                                                    </div>
@@ -3114,13 +3295,13 @@ const AdminDashboard = () => {
                                              </div>
                                           </div>
                                           <table className="w-full text-left border-collapse">
-                                             <thead>
+                                             <thead className="text-black font-bold">
                                                 <tr>
-                                                   <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Agent Candidate</th>
-                                                   <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Job Role</th>
-                                                   <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Spoke Agency</th>
-                                                   <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-center">Status</th>
-                                                   <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-right">Admin Action</th>
+                                                   <th className="px-6 py-6 text-[10px] uppercase tracking-[0.2em] text-black font-bold">Agent Candidate</th>
+                                                   <th className="px-6 py-6 text-[10px] uppercase tracking-[0.2em] text-black font-bold">Job Role</th>
+                                                   <th className="px-6 py-6 text-[10px] uppercase tracking-[0.2em] text-black font-bold">Spoke Agency</th>
+                                                   <th className="px-6 py-6 text-[10px] uppercase tracking-[0.2em] text-center text-black font-bold">Status</th>
+                                                   <th className="px-6 py-6 text-[10px] uppercase tracking-[0.2em] text-right text-black font-bold">Admin Action</th>
                                                 </tr>
                                              </thead>
                                              <tbody className="divide-y divide-slate-50">
@@ -3130,7 +3311,7 @@ const AdminDashboard = () => {
                                                          <td className="px-6 py-8 align-middle">
                                                             <div>
                                                                <h4 className="font-bold text-slate-900 text-base mb-1">{resume.name}</h4>
-                                                               <p className="text-sm font-medium text-slate-400">
+                                                               <p className="text-sm font-medium text-black font-bold">
                                                                   {resume.email}
                                                                </p>
                                                             </div>
@@ -3163,7 +3344,7 @@ const AdminDashboard = () => {
                                                    <tr>
                                                       <td colSpan="5" className="px-6 py-12 text-center">
                                                          <div className="flex flex-col items-center justify-center gap-2">
-                                                            <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400">
+                                                            <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-black font-bold">
                                                                <Search className="w-6 h-6 opacity-40" />
                                                             </div>
                                                             <p className="text-slate-500 font-bold">No record exist !!</p>
@@ -3190,7 +3371,7 @@ const AdminDashboard = () => {
                                                 />
                                                 <button
                                                    onClick={handleAppSearch}
-                                                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 transition-colors"
+                                                   className="absolute right-3 top-1/2 -translate-y-1/2 text-black font-bold hover:text-teal-600 transition-colors"
                                                 >
                                                    <Search className="w-4 h-4" />
                                                 </button>
@@ -3198,7 +3379,7 @@ const AdminDashboard = () => {
                                              <div className="relative">
                                                 <button
                                                    onClick={() => setIsAppFilterOpen(!isAppFilterOpen)}
-                                                   className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isAppFilterOpen ? 'bg-teal-50 text-teal-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                                                   className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isAppFilterOpen ? 'bg-teal-50 text-teal-600' : 'text-black font-bold hover:text-slate-600 hover:bg-slate-50'}`}
                                                 >
                                                    <Filter className="w-4 h-4" />
                                                 </button>
@@ -3206,7 +3387,7 @@ const AdminDashboard = () => {
                                                    <div className="absolute right-0 top-full mt-4 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                                                       <div className="max-h-[60vh] overflow-y-auto custom-scrollbar p-6 space-y-6">
                                                          <div className="space-y-3">
-                                                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">1. Status</h4>
+                                                            <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">1. Status</h4>
                                                             <div className="space-y-2">
                                                                {['YET TO BE CHECKED', 'ON HOLD', 'SELECTED'].map(status => (
                                                                   <label key={status} className="flex items-center gap-3 cursor-pointer group">
@@ -3220,7 +3401,7 @@ const AdminDashboard = () => {
                                                             </div>
                                                          </div>
                                                          <div className="space-y-3">
-                                                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">2. Duration</h4>
+                                                            <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">2. Duration</h4>
                                                             <div className="space-y-2">
                                                                {['Since 1 hr', 'Since 1 week', 'Since 1 month', 'Since 3 months', 'All'].map(duration => (
                                                                   <label key={duration} className="flex items-center gap-3 cursor-pointer group">
@@ -3233,9 +3414,49 @@ const AdminDashboard = () => {
                                                                ))}
                                                             </div>
                                                          </div>
+                                                         <div className="space-y-3">
+                                                            <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">3. Education</h4>
+                                                            <div className="space-y-2">
+                                                               {['Any Education Level', 'O-Level / Secondary School', 'A-Level / Higher Secondary', 'Certificate', 'Diploma', 'Advanced Diploma', "Bachelor's Degree", "Master's Degree", 'Doctorate / PhD'].map(educationLevel => (
+                                                                  <label key={educationLevel} className="flex items-center gap-3 cursor-pointer group">
+                                                                     <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${appFilters.education === educationLevel ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                        {appFilters.education === educationLevel && <div className="w-2 h-2 rounded-full bg-teal-600" />}
+                                                                     </div>
+                                                                     <input type="radio" className="hidden" checked={appFilters.education === educationLevel} onChange={() => setAppFilters({ ...appFilters, education: educationLevel })} />
+                                                                     <span className="text-xs font-bold text-slate-700">{educationLevel}</span>
+                                                                  </label>
+                                                               ))}
+                                                            </div>
+                                                          </div>
+                                                          <div className="space-y-3">
+                                                             <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">4. Experience</h4>
+                                                             <div className="space-y-2">
+                                                                {['No Experience', '1 \u2013 2 Years', '3 \u2013 5 Years', '6 \u2013 10 Years', '10+ Years'].map(exp => (
+                                                                   <label key={exp} className="flex items-center gap-3 cursor-pointer group">
+                                                                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${appFilters.experience === exp ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                         {appFilters.experience === exp && <div className="w-2 h-2 rounded-full bg-teal-600" />}
+                                                                      </div>
+                                                                      <input type="radio" className="hidden" checked={appFilters.experience === exp} onChange={() => setAppFilters({ ...appFilters, experience: exp })} />
+                                                                      <span className="text-xs font-bold text-slate-700">{exp}</span>
+                                                                   </label>
+                                                                ))}
+                                                             </div>
+                                                          </div>
+                                                          <div className="space-y-3">
+                                                             <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">5. Location</h4>
+                                                             <select
+                                                                value={appFilters.location}
+                                                               onChange={(e) => setAppFilters({ ...appFilters, location: e.target.value })}
+                                                               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-teal-500 transition-colors"
+                                                            >
+                                                               {MALDIVES_LOCATIONS.map(loc => (
+                                                                  <option key={loc} value={loc}>{loc}</option>
+                                                               ))}
+                                                            </select>
+                                                         </div>
                                                       </div>
                                                       <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
-                                                         <button onClick={() => setAppFilters({ status: [], duration: 'All' })} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">Clear</button>
+                                                         <button onClick={() => setAppFilters({ status: [], duration: 'All', location: 'All Locations', education: 'Any Education Level', experience: 'No Experience' })} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">Clear</button>
                                                          <button onClick={() => setIsAppFilterOpen(false)} className="flex-1 py-2 rounded-lg bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20">Apply</button>
                                                       </div>
                                                    </div>
@@ -3243,12 +3464,12 @@ const AdminDashboard = () => {
                                              </div>
                                           </div>
                                           <table className="w-full text-left border-collapse">
-                                             <thead>
+                                             <thead className="text-black font-bold">
                                                 <tr>
-                                                   <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Applicant / Agency</th>
-                                                   <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em]">Target Region</th>
-                                                   <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-center">Application Status</th>
-                                                   <th className="px-6 py-6 text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] text-right">Action</th>
+                                                   <th className="px-6 py-6 text-[10px] uppercase tracking-[0.2em] text-black font-bold">Applicant / Agency</th>
+                                                   <th className="px-6 py-6 text-[10px] uppercase tracking-[0.2em] text-black font-bold">Target Region</th>
+                                                   <th className="px-6 py-6 text-[10px] uppercase tracking-[0.2em] text-center text-black font-bold">Application Status</th>
+                                                   <th className="px-6 py-6 text-[10px] uppercase tracking-[0.2em] text-right text-black font-bold">Action</th>
                                                 </tr>
                                              </thead>
                                              <tbody className="divide-y divide-slate-50">
@@ -3286,7 +3507,7 @@ const AdminDashboard = () => {
                                                    <tr>
                                                       <td colSpan="4" className="px-6 py-12 text-center">
                                                          <div className="flex flex-col items-center justify-center gap-2">
-                                                            <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400">
+                                                            <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-black font-bold">
                                                                <Search className="w-6 h-6 opacity-40" />
                                                             </div>
                                                             <p className="text-slate-500 font-bold">No record exist !!</p>
@@ -3328,7 +3549,7 @@ const AdminDashboard = () => {
                                              />
                                              <button
                                                 onClick={handleBlacklistSearch}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 transition-colors"
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-black font-bold hover:text-red-500 transition-colors"
                                              >
                                                 <Search className="w-4 h-4" />
                                              </button>
@@ -3425,7 +3646,7 @@ const AdminDashboard = () => {
                                                       setIsBlacklistSourceOpen(false);
                                                       setIsBlacklistDurationOpen(false);
                                                    }}
-                                                   className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${isBlacklistFilterOpen ? 'bg-red-50 text-red-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                                                   className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${isBlacklistFilterOpen ? 'bg-red-50 text-red-600' : 'text-black font-bold hover:text-slate-600 hover:bg-slate-50'}`}
                                                 >
                                                    <Filter className="w-4 h-4" />
                                                 </button>
@@ -3433,7 +3654,7 @@ const AdminDashboard = () => {
                                                    <div className="absolute right-0 top-full mt-4 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                                                       <div className="p-6 space-y-6">
                                                          <div className="space-y-3">
-                                                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Quick Filters</h4>
+                                                            <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest text-center">Quick Filters</h4>
                                                             <button
                                                                onClick={() => {
                                                                   setBlacklistFilters({ source: 'All', duration: 'All' });
@@ -3453,13 +3674,13 @@ const AdminDashboard = () => {
                                     </div>
                                     <div className="overflow-x-auto">
                                        <table className="w-full text-left">
-                                          <thead>
+                                          <thead className="text-black font-bold">
                                              <tr className="bg-slate-50 border-b border-slate-100">
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Candidate Name</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Job Role</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Source</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Status</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Review</th>
+                                                <th className="px-6 py-4 text-[10px] uppercase tracking-widest text-black font-bold">Candidate Name</th>
+                                                <th className="px-6 py-4 text-[10px] uppercase tracking-widest text-black font-bold">Job Role</th>
+                                                <th className="px-6 py-4 text-[10px] uppercase tracking-widest text-black font-bold">Source</th>
+                                                <th className="px-6 py-4 text-[10px] uppercase tracking-widest text-black font-bold">Status</th>
+                                                <th className="px-6 py-4 text-[10px] uppercase tracking-widest text-right text-black font-bold">Review</th>
                                              </tr>
                                           </thead>
                                           <tbody className="divide-y divide-slate-50">
@@ -3469,7 +3690,7 @@ const AdminDashboard = () => {
                                                       <td className="px-6 py-4">
                                                          <div>
                                                             <p className="text-sm font-bold text-slate-900">{candidate.name}</p>
-                                                            <p className="text-xs text-slate-400 font-medium">{candidate.email}</p>
+                                                            <p className="text-xs text-black font-bold font-medium">{candidate.email}</p>
                                                          </div>
                                                       </td>
                                                       <td className="px-6 py-4">
@@ -3484,7 +3705,7 @@ const AdminDashboard = () => {
                                                                {'source' in candidate && candidate.source === 'Direct' ? 'Direct' : 'Agency'}
                                                             </span>
                                                             {'agency' in candidate && (
-                                                               <span className="text-[10px] font-medium text-slate-400 pl-3">
+                                                               <span className="text-[10px] font-medium text-black font-bold pl-3">
                                                                   {candidate.agency}
                                                                </span>
                                                             )}
@@ -3507,7 +3728,7 @@ const AdminDashboard = () => {
                                                 ))
                                              ) : (
                                                 <tr>
-                                                   <td colSpan={5} className="px-6 py-12 text-center text-slate-400 text-sm font-medium">
+                                                   <td colSpan={5} className="px-6 py-12 text-center text-black font-bold text-sm font-medium">
                                                       No blacklisted candidates found.
                                                    </td>
                                                 </tr>
@@ -3537,7 +3758,7 @@ const AdminDashboard = () => {
                                              />
                                              <button
                                                 onClick={handleAgentBlacklistSearch}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 transition-colors"
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-black font-bold hover:text-red-500 transition-colors"
                                              >
                                                 <Search className="w-4 h-4" />
                                              </button>
@@ -3595,7 +3816,7 @@ const AdminDashboard = () => {
                                                       setIsAgentBlacklistSourceOpen(false);
                                                       setIsAgentBlacklistDurationOpen(false);
                                                    }}
-                                                   className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${isAgentBlacklistFilterOpen ? 'bg-red-50 text-red-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                                                   className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${isAgentBlacklistFilterOpen ? 'bg-red-50 text-red-600' : 'text-black font-bold hover:text-slate-600 hover:bg-slate-50'}`}
                                                 >
                                                    <Filter className="w-4 h-4" />
                                                 </button>
@@ -3603,7 +3824,7 @@ const AdminDashboard = () => {
                                                    <div className="absolute right-0 top-full mt-4 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                                                       <div className="p-6 space-y-6">
                                                          <div className="space-y-3">
-                                                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Quick Filters</h4>
+                                                            <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest text-center">Quick Filters</h4>
                                                             <button
                                                                onClick={() => {
                                                                   setAgentBlacklistFilters({ source: 'All', duration: 'All' });
@@ -3624,13 +3845,13 @@ const AdminDashboard = () => {
                                     </div>
                                     <div className="overflow-x-auto">
                                        <table className="w-full text-left">
-                                          <thead>
+                                          <thead className="text-black font-bold">
                                              <tr className="bg-slate-50 border-b border-slate-100">
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Agent Name</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Agency</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Region</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Status</th>
-                                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Review</th>
+                                                <th className="px-6 py-4 text-[10px] uppercase tracking-widest text-black font-bold">Agent Name</th>
+                                                <th className="px-6 py-4 text-[10px] uppercase tracking-widest text-black font-bold">Agency</th>
+                                                <th className="px-6 py-4 text-[10px] uppercase tracking-widest text-black font-bold">Region</th>
+                                                <th className="px-6 py-4 text-[10px] uppercase tracking-widest text-black font-bold">Status</th>
+                                                <th className="px-6 py-4 text-[10px] uppercase tracking-widest text-right text-black font-bold">Review</th>
                                              </tr>
                                           </thead>
                                           <tbody className="divide-y divide-slate-50">
@@ -3671,7 +3892,7 @@ const AdminDashboard = () => {
                                                 ))
                                              ) : (
                                                 <tr>
-                                                   <td colSpan={5} className="px-6 py-12 text-center text-slate-400 text-sm font-medium">
+                                                   <td colSpan={5} className="px-6 py-12 text-center text-black font-bold text-sm font-medium">
                                                       No rejected agent applications found.
                                                    </td>
                                                 </tr>
@@ -3723,7 +3944,7 @@ const AdminDashboard = () => {
                                  <span className="px-3 py-1 bg-slate-900 text-white text-[10px] font-bold uppercase tracking-widest rounded-full">
                                     Spoke: {selectedVacancy.agency}
                                  </span>
-                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                 <span className="text-[10px] font-bold text-black font-bold uppercase tracking-widest">
                                     {selectedVacancy.ref}
                                  </span>
                               </div>
@@ -3731,7 +3952,7 @@ const AdminDashboard = () => {
                         </div>
                         <button
                            onClick={() => setSelectedVacancy(null)}
-                           className="w-10 h-10 bg-slate-50 hover:bg-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
+                           className="w-10 h-10 bg-slate-50 hover:bg-slate-100 rounded-full flex items-center justify-center text-black font-bold hover:text-slate-600 transition-colors"
                         >
                            <X className="w-5 h-5" />
                         </button>
@@ -3745,27 +3966,27 @@ const AdminDashboard = () => {
                            </h3>
                            <div className="grid grid-cols-2 gap-6">
                               <div>
-                                 <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Region</label>
+                                 <label className="block text-[10px] font-black uppercase text-black font-bold tracking-widest mb-2">Region</label>
                                  <div className="p-4 bg-slate-50 rounded-xl font-bold text-slate-700 flex items-center gap-2">
-                                    <MapPin className="w-4 h-4 text-slate-400" /> {selectedVacancy.region}
+                                    <MapPin className="w-4 h-4 text-black font-bold" /> {selectedVacancy.region}
                                  </div>
                               </div>
                               <div>
-                                 <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Sector</label>
+                                 <label className="block text-[10px] font-black uppercase text-black font-bold tracking-widest mb-2">Sector</label>
                                  <div className="p-4 bg-slate-50 rounded-xl font-bold text-slate-700 flex items-center gap-2">
-                                    <Briefcase className="w-4 h-4 text-slate-400" /> {selectedVacancy.sector}
+                                    <Briefcase className="w-4 h-4 text-black font-bold" /> {selectedVacancy.sector}
                                  </div>
                               </div>
                               <div>
-                                 <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Headcount</label>
+                                 <label className="block text-[10px] font-black uppercase text-black font-bold tracking-widest mb-2">Headcount</label>
                                  <div className="p-4 bg-slate-50 rounded-xl font-bold text-slate-700 flex items-center gap-2">
-                                    <Users className="w-4 h-4 text-slate-400" /> {selectedVacancy.openings} Positions
+                                    <Users className="w-4 h-4 text-black font-bold" /> {selectedVacancy.openings} Positions
                                  </div>
                               </div>
                               <div>
-                                 <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Date Posted</label>
+                                 <label className="block text-[10px] font-black uppercase text-black font-bold tracking-widest mb-2">Date Posted</label>
                                  <div className="p-4 bg-slate-50 rounded-xl font-bold text-slate-700 flex items-center gap-2">
-                                    <Calendar className="w-4 h-4 text-slate-400" /> {selectedVacancy.date}
+                                    <Calendar className="w-4 h-4 text-black font-bold" /> {selectedVacancy.date}
                                  </div>
                               </div>
                            </div>
@@ -3833,7 +4054,7 @@ const AdminDashboard = () => {
                         <h3 className="text-2xl font-black text-slate-900">Job Requirements</h3>
                         <button
                            onClick={() => setIsAddVacancyOpen(false)}
-                           className="w-10 h-10 bg-slate-50 hover:bg-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
+                           className="w-10 h-10 bg-slate-50 hover:bg-slate-100 rounded-full flex items-center justify-center text-black font-bold hover:text-slate-600 transition-colors"
                         >
                            <X className="w-5 h-5" />
                         </button>
@@ -3842,7 +4063,7 @@ const AdminDashboard = () => {
                      <form onSubmit={handleAddVacancy} className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                            <div className="space-y-2">
-                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Job Title</label>
+                              <label className="text-[10px] font-black uppercase text-black font-bold tracking-widest">Job Title</label>
                               <input
                                  required
                                  type="text"
@@ -3853,7 +4074,7 @@ const AdminDashboard = () => {
                               />
                            </div>
                            <div className="space-y-2">
-                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Field / Industry</label>
+                              <label className="text-[10px] font-black uppercase text-black font-bold tracking-widest">Field / Industry</label>
                               <input
                                  type="text"
                                  value={newVacancy.industry}
@@ -3862,7 +4083,7 @@ const AdminDashboard = () => {
                               />
                            </div>
                            <div className="space-y-2">
-                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Salary Range</label>
+                              <label className="text-[10px] font-black uppercase text-black font-bold tracking-widest">Salary Range</label>
                               <input
                                  required
                                  type="text"
@@ -3873,7 +4094,7 @@ const AdminDashboard = () => {
                               />
                            </div>
                            <div className="space-y-2">
-                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Headcount Required</label>
+                              <label className="text-[10px] font-black uppercase text-black font-bold tracking-widest">Headcount Required</label>
                               <input
                                  required
                                  type="text"
@@ -3884,7 +4105,7 @@ const AdminDashboard = () => {
                               />
                            </div>
                            <div className="space-y-2">
-                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Company Name</label>
+                              <label className="text-[10px] font-black uppercase text-black font-bold tracking-widest">Company Name</label>
                               <input
                                  required
                                  type="text"
@@ -3895,14 +4116,14 @@ const AdminDashboard = () => {
                               />
                            </div>
                            <div className="space-y-2">
-                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Location</label>
+                              <label className="text-[10px] font-black uppercase text-black font-bold tracking-widest">Location</label>
                               <div className="relative">
                                  <div
                                     onClick={() => setShowLocationDropdown(!showLocationDropdown)}
                                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all cursor-pointer flex items-center justify-between"
                                  >
-                                    <span className={newVacancy.address ? 'text-slate-900' : 'text-slate-400'}>{newVacancy.address || 'Select Location'}</span>
-                                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showLocationDropdown ? 'rotate-180' : ''}`} />
+                                    <span className={newVacancy.address ? 'text-slate-900' : 'text-black font-bold'}>{newVacancy.address || 'Select Location'}</span>
+                                    <ChevronDown className={`w-4 h-4 text-black font-bold transition-transform ${showLocationDropdown ? 'rotate-180' : ''}`} />
                                  </div>
                                  {showLocationDropdown && (
                                     <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-[200px] overflow-y-auto">
@@ -3924,18 +4145,18 @@ const AdminDashboard = () => {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                            <div className="space-y-2">
-                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Education</label>
+                              <label className="text-[10px] font-black uppercase text-black font-bold tracking-widest">Education</label>
                               <div className="relative">
                                  <div
                                     onClick={() => setShowEducationDropdown(!showEducationDropdown)}
                                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all cursor-pointer flex items-center justify-between"
                                  >
-                                    <span className={newVacancy.education ? 'text-slate-900' : 'text-slate-400'}>{newVacancy.education || 'Select Education'}</span>
-                                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showEducationDropdown ? 'rotate-180' : ''}`} />
+                                    <span className={newVacancy.education ? 'text-slate-900' : 'text-black font-bold'}>{newVacancy.education || 'Select Education'}</span>
+                                    <ChevronDown className={`w-4 h-4 text-black font-bold transition-transform ${showEducationDropdown ? 'rotate-180' : ''}`} />
                                  </div>
                                  {showEducationDropdown && (
                                     <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-[200px] overflow-y-auto">
-                                       {['Any Education Level', 'O-Level / Secondary School', 'A-Level / Higher Secondary', 'Certificate', 'Diploma', 'Advanced Diploma', 'Bachelor’s Degree', 'Master’s Degree', 'Doctorate / PhD'].map((edu) => (
+                                       {['Any Education Level', 'O-Level / Secondary School', 'A-Level / Higher Secondary', 'Certificate', 'Diploma', 'Advanced Diploma', "Bachelor's Degree", "Master's Degree", 'Doctorate / PhD'].map((edu) => (
                                           <div
                                              key={edu}
                                              onClick={() => { setNewVacancy({ ...newVacancy, education: edu }); setShowEducationDropdown(false); }}
@@ -3950,14 +4171,14 @@ const AdminDashboard = () => {
                               </div>
                            </div>
                            <div className="space-y-2">
-                              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Experience</label>
+                              <label className="text-[10px] font-black uppercase text-black font-bold tracking-widest">Experience</label>
                               <div className="relative">
                                  <div
                                     onClick={() => setShowExperienceDropdown(!showExperienceDropdown)}
                                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all cursor-pointer flex items-center justify-between"
                                  >
-                                    <span className={newVacancy.experience ? 'text-slate-900' : 'text-slate-400'}>{newVacancy.experience || 'Select Experience'}</span>
-                                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showExperienceDropdown ? 'rotate-180' : ''}`} />
+                                    <span className={newVacancy.experience ? 'text-slate-900' : 'text-black font-bold'}>{newVacancy.experience || 'Select Experience'}</span>
+                                    <ChevronDown className={`w-4 h-4 text-black font-bold transition-transform ${showExperienceDropdown ? 'rotate-180' : ''}`} />
                                  </div>
                                  {showExperienceDropdown && (
                                     <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-[200px] overflow-y-auto">
@@ -3978,7 +4199,7 @@ const AdminDashboard = () => {
                         </div>
 
                         <div className="space-y-2">
-                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Job Description</label>
+                           <label className="text-[10px] font-black uppercase text-black font-bold tracking-widest">Job Description</label>
                            <textarea
                               required
                               value={newVacancy.description}
@@ -3989,7 +4210,7 @@ const AdminDashboard = () => {
                         </div>
 
                         <div className="space-y-2">
-                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Requirements</label>
+                           <label className="text-[10px] font-black uppercase text-black font-bold tracking-widest">Requirements</label>
                            <textarea
                               required
                               value={newVacancy.requirements}
@@ -4000,7 +4221,7 @@ const AdminDashboard = () => {
                         </div>
 
                         <div className="space-y-4">
-                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Required Documents</label>
+                           <label className="text-[10px] font-black uppercase text-black font-bold tracking-widest">Required Documents</label>
                            <div className="grid grid-cols-2 gap-3">
                               {REQUIRED_DOCUMENT_OPTIONS.map((doc) => (
                                  <label key={doc} className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:border-teal-200 transition-all">
@@ -4124,7 +4345,7 @@ const AdminDashboard = () => {
                         </div>
                         <button
                            onClick={() => { setSelectedResume(null); setIsBlacklistReview(false); }}
-                           className="w-10 h-10 bg-slate-50 hover:bg-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
+                           className="w-10 h-10 bg-slate-50 hover:bg-slate-100 rounded-full flex items-center justify-center text-black font-bold hover:text-slate-600 transition-colors"
                         >
                            <X className="w-5 h-5" />
                         </button>
@@ -4138,19 +4359,19 @@ const AdminDashboard = () => {
                            </h3>
                            <div className="grid grid-cols-2 gap-6">
                               <div>
-                                 <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Candidate Full Name *</label>
+                                 <label className="block text-[10px] font-black uppercase text-black font-bold tracking-widest mb-2">Candidate Full Name *</label>
                                  <div className="p-4 bg-slate-50 rounded-xl font-bold text-slate-700">{selectedResume.name}</div>
                               </div>
                               <div>
-                                 <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Email Address *</label>
+                                 <label className="block text-[10px] font-black uppercase text-black font-bold tracking-widest mb-2">Email Address *</label>
                                  <div className="p-4 bg-slate-50 rounded-xl font-bold text-slate-700">{selectedResume.email}</div>
                               </div>
                               <div>
-                                 <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">WhatsApp Number *</label>
+                                 <label className="block text-[10px] font-black uppercase text-black font-bold tracking-widest mb-2">WhatsApp Number *</label>
                                  <div className="p-4 bg-slate-50 rounded-xl font-bold text-slate-700">{selectedResume.whatsapp}</div>
                               </div>
                               <div>
-                                 <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Nationality *</label>
+                                 <label className="block text-[10px] font-black uppercase text-black font-bold tracking-widest mb-2">Nationality *</label>
                                  <div className="p-4 bg-slate-50 rounded-xl font-bold text-slate-700">{selectedResume.nationality}</div>
                               </div>
                            </div>
@@ -4267,7 +4488,7 @@ const AdminDashboard = () => {
                               setSelectedApplication(null);
                               setApprovalStep('NONE');
                            }}
-                           className="w-10 h-10 bg-slate-50 hover:bg-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
+                           className="w-10 h-10 bg-slate-50 hover:bg-slate-100 rounded-full flex items-center justify-center text-black font-bold hover:text-slate-600 transition-colors"
                         >
                            <X className="w-5 h-5" />
                         </button>
@@ -4381,7 +4602,7 @@ const AdminDashboard = () => {
                      </div>
 
                      <div className="mb-6">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">
+                        <label className="text-[10px] font-bold text-black font-bold uppercase tracking-wider mb-2 block">
                            Rejection Reason
                         </label>
                         <textarea
@@ -4424,3 +4645,4 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
+
