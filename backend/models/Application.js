@@ -28,6 +28,10 @@ const applicationSchema = new mongoose.Schema({
         type: String,
         required: false
     },
+    nationality: {
+        type: String,
+        required: false
+    },
     // File stored as Base64 in MongoDB
     resume: {
         filename: String,

@@ -2210,6 +2210,117 @@ app.delete('/api/documents/:id', async (req, res) => {
     }
 });
 
+// ==========================================
+// CANDIDATE APPLICATIONS
+// ==========================================
+
+// POST: Submit a Candidate Application (Agent → Admin)
+app.post('/api/applications', upload.fields([
+    { name: 'resume', maxCount: 1 },
+    { name: 'identity', maxCount: 1 },
+    { name: 'certs', maxCount: 1 },
+    { name: 'pcc', maxCount: 1 },
+    { name: 'goodStanding', maxCount: 1 }
+]), async (req, res) => {
+    try {
+        const { agent_id, job_id, name, email, contact, nationality } = req.body;
+
+        if (!job_id || !name || !email || !contact) {
+            return res.status(400).json({ message: 'Missing required fields: job_id, name, email, contact' });
+        }
+
+        // Helper to serialize uploaded file to Base64
+        const fileToBase64 = (fileArray) => {
+            if (!fileArray || fileArray.length === 0) return null;
+            const file = fileArray[0];
+            return {
+                filename: file.originalname,
+                contentType: file.mimetype,
+                data: file.buffer.toString('base64')
+            };
+        };
+
+        const newApplication = new Application({
+            job_id,
+            candidate_name: name,
+            email,
+            contact_number: contact,
+            agent_id: agent_id || null,
+            nationality: nationality || '',
+            resume: fileToBase64(req.files?.resume),
+            identity: fileToBase64(req.files?.identity),
+            certificates: fileToBase64(req.files?.certs),
+            pcc: fileToBase64(req.files?.pcc),
+            goodStanding: fileToBase64(req.files?.goodStanding),
+            status: 'PENDING'
+        });
+
+        await newApplication.save();
+
+        res.status(201).json({
+            message: 'Candidate submitted successfully',
+            application: {
+                id: newApplication._id,
+                candidate_name: newApplication.candidate_name,
+                job_id: newApplication.job_id,
+                status: newApplication.status,
+                applied_at: newApplication.applied_at
+            }
+        });
+    } catch (err) {
+        console.error('Error submitting application:', err);
+        res.status(500).json({ message: 'Failed to submit application', error: err.message });
+    }
+});
+
+// GET: Fetch Applications (Admin view all, Agent view own)
+app.get('/api/applications', async (req, res) => {
+    try {
+        const { agent_id, job_id, status } = req.query;
+        const filter = {};
+        if (agent_id) filter.agent_id = agent_id;
+        if (job_id) filter.job_id = job_id;
+        if (status) filter.status = status;
+
+        const applications = await Application.find(filter).sort({ applied_at: -1 });
+        res.json(applications);
+    } catch (err) {
+        console.error('Error fetching applications:', err);
+        res.status(500).json({ message: 'Failed to fetch applications', error: err.message });
+    }
+});
+
+// GET: Single Application by ID
+app.get('/api/applications/:id', async (req, res) => {
+    try {
+        const application = await Application.findById(req.params.id);
+        if (!application) return res.status(404).json({ message: 'Application not found' });
+        res.json(application);
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to fetch application', error: err.message });
+    }
+});
+
+// PUT: Update Application Status (Admin)
+app.put('/api/applications/:id/status', async (req, res) => {
+    try {
+        const { status } = req.body;
+        const validStatuses = ['PENDING', 'REVIEWING', 'ACCEPTED', 'REJECTED', 'APPROVED', 'HOLD', 'SELECTED'];
+        if (!validStatuses.includes(status)) {
+            return res.status(400).json({ message: 'Invalid status value' });
+        }
+        const application = await Application.findByIdAndUpdate(
+            req.params.id,
+            { status },
+            { new: true }
+        );
+        if (!application) return res.status(404).json({ message: 'Application not found' });
+        res.json({ message: 'Status updated', application });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to update status', error: err.message });
+    }
+});
+
 // Start Server
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
