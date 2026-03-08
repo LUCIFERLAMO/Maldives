@@ -2359,7 +2359,15 @@ app.get('/api/applications', async (req, res) => {
             });
         }
 
-        res.json(applications);
+        // CRITICAL: Return _id as a plain string — lean() returns BSON ObjectId which
+        // serializes as {$oid:"..."} in some contexts, breaking URL construction in the frontend
+        const sanitized = applications.map(app => ({
+            ...app,
+            _id: app._id ? app._id.toString() : undefined,
+        }));
+
+        res.json(sanitized);
+
     } catch (err) {
         console.error('Error fetching applications:', err);
         res.status(500).json({ message: 'Failed to fetch applications', error: err.message });
