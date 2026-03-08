@@ -2362,11 +2362,27 @@ app.put('/api/applications/:id/status', async (req, res) => {
         if (!validStatuses.includes(status)) {
             return res.status(400).json({ message: 'Invalid status value' });
         }
-        const application = await Application.findByIdAndUpdate(
-            req.params.id,
-            { status },
-            { new: true }
-        );
+
+        let application = null;
+
+        // Try by MongoDB _id first
+        if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+            application = await Application.findByIdAndUpdate(
+                req.params.id,
+                { status },
+                { new: true }
+            );
+        }
+
+        // Fallback: try by custom UUID id field
+        if (!application) {
+            application = await Application.findOneAndUpdate(
+                { id: req.params.id },
+                { status },
+                { new: true }
+            );
+        }
+
         if (!application) return res.status(404).json({ message: 'Application not found' });
         res.json({ message: 'Status updated', application });
     } catch (err) {

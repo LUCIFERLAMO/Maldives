@@ -51,25 +51,29 @@ const RecruiterDashboard = () => {
 
     // --- REAL DATA FETCHER ---
     const [pipelineData, setPipelineData] = useState([]);
-    // This gets the list of candidates from the database
-    useEffect(() => {
-        if (!user?.id) return;
+    const [isRefreshingPipeline, setIsRefreshingPipeline] = useState(false);
 
-        const fetchPipeline = async () => {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/applications/agent/${user.id}/all`);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
-                if (data) {
-                    setPipelineData(Array.isArray(data) ? data : []);
-                }
-            } catch (error) {
-                console.error("Error fetching pipeline:", error);
-                setPipelineData([]);
+    // Named function so it can be reused by Refresh button
+    const fetchPipeline = async () => {
+        if (!user?.id) return;
+        setIsRefreshingPipeline(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/applications/agent/${user.id}/all`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-        };
+            const data = await response.json();
+            setPipelineData(Array.isArray(data) ? data : []);
+        } catch (error) {
+            console.error("Error fetching pipeline:", error);
+            setPipelineData([]);
+        } finally {
+            setIsRefreshingPipeline(false);
+        }
+    };
+
+    // Fetch on mount and when user changes
+    useEffect(() => {
         fetchPipeline();
     }, [user?.id]);
     // -------------------------
@@ -323,10 +327,8 @@ const RecruiterDashboard = () => {
             popup.success("Success! Candidate Submitted to Database.");
             setSelectedJobForSubmission(null);
 
-            // Refresh Pipeline
-            const pipelineResponse = await fetch(`${API_BASE_URL}/api/applications/agent/${user.id}/all`);
-            const pipelineData = await pipelineResponse.json();
-            if (pipelineData) setPipelineData(Array.isArray(pipelineData) ? pipelineData : []);
+            // Refresh Pipeline using the top-level fetchPipeline
+            fetchPipeline();
 
         } catch (err) {
             console.error("Submission Error:", err);
@@ -1308,22 +1310,12 @@ const RecruiterDashboard = () => {
                                     </div>
                                     <div className="flex items-center gap-4">
                                         <button
-                                            onClick={() => {
-                                                if (!user?.id) return;
-                                                const fetchPipeline = async () => {
-                                                    try {
-                                                        const response = await fetch(`${API_BASE_URL}/api/applications/agent/${user.id}/all`);
-                                                        if (response.ok) {
-                                                            const data = await response.json();
-                                                            setPipelineData(Array.isArray(data) ? data : []);
-                                                        }
-                                                    } catch (error) { console.error("Error fetching pipeline:", error); }
-                                                };
-                                                fetchPipeline();
-                                            }}
-                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-slate-200 hover:text-slate-900 transition-colors shadow-sm"
+                                            onClick={fetchPipeline}
+                                            disabled={isRefreshingPipeline}
+                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-slate-200 hover:text-slate-900 transition-colors shadow-sm disabled:opacity-60"
                                         >
-                                            <RefreshCw className="w-4 h-4" /> Refresh
+                                            <RefreshCw className={`w-4 h-4 ${isRefreshingPipeline ? 'animate-spin' : ''}`} /> 
+                                            {isRefreshingPipeline ? 'Refreshing...' : 'Refresh'}
                                         </button>
                                         <div className="relative group">
                                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-teal-600 transition-colors" />
