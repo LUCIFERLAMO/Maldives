@@ -291,7 +291,7 @@ const getStatusColor = (status) => {
 
 const AdminDashboard = () => {
    const popup = usePopup();
-    const [activeTab, setActiveTab] = useState('overview');
+   const [activeTab, setActiveTab] = useState('overview');
    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
    // Hierarchical Vacancy Management View State
@@ -420,6 +420,7 @@ const AdminDashboard = () => {
          email: app.email,
          role: app.jobTitle || 'Applicant',
          agency: app.agentName || 'Unknown Agency',
+         agentId: app.agentId || null,
          status: app.status,
          statusColor: getStatusColor(app.status),
          appliedDate: app.appliedDate || new Date().toISOString(),
@@ -628,7 +629,8 @@ const AdminDashboard = () => {
                status: app.status || 'PENDING',
                appliedDate: app.applied_at || app.createdAt,
                source: app.agent_id ? 'Agency' : 'Direct',
-               agentName: app.agent_id || '',
+               agentName: app.agent_name || app.agent_id || '',
+               agentId: app.agent_id || null,
                hasResume: !!(app.resume && app.resume.data),
                hasCerts: !!(app.certificates && app.certificates.data),
                hasPassport: !!(app.identity && app.identity.data),
@@ -722,7 +724,8 @@ const AdminDashboard = () => {
                status: app.status || 'PENDING',
                appliedDate: app.applied_at || app.createdAt,
                source: app.agent_id ? 'Agency' : 'Direct',
-               agentName: app.agent_id || '',
+               agentName: app.agent_name || app.agent_id || '',
+               agentId: app.agent_id || null,
                hasResume: !!(app.resume && app.resume.data),
                hasCerts: !!(app.certificates && app.certificates.data),
                hasPassport: !!(app.identity && app.identity.data),
@@ -1116,6 +1119,22 @@ const AdminDashboard = () => {
          }
       };
       setSelectedResume(resumeData);
+   };
+
+   const handleAgentClick = async (agentId) => {
+      if (!agentId || agentId === 'Unknown Agency' || agentId === 'Direct') return;
+      try {
+         const res = await fetch(`${API_BASE_URL}/api/admin/agents/${agentId}`);
+         if (res.ok) {
+            const agentProfile = await res.json();
+            setSelectedApplication(agentProfile);
+         } else {
+            popup.error('Could not fetch agent details.');
+         }
+      } catch (err) {
+         console.error(err);
+         popup.error('Failed to load agent profile.');
+      }
    };
 
    const handleResumeStatusChange = (status) => {
@@ -2132,9 +2151,9 @@ const AdminDashboard = () => {
                   <DashboardHeader
                      onMenuClick={() => setIsSidebarOpen(true)}
                      title={getPageTitle()}
-                       onRefresh={() => { fetchAllData(true); fetchPendingAgents(true); fetchApplicationCounts(); }}
-                       isRefreshing={isLoadingJobs || isRefreshingAgents}
-                   />
+                     onRefresh={() => { fetchAllData(true); fetchPendingAgents(true); fetchApplicationCounts(); }}
+                     isRefreshing={isLoadingJobs || isRefreshingAgents}
+                  />
                   {/* CONTENT SCROLL AREA */}
                   <div className="flex-1 p-4 md:p-8 overflow-visible">
                      <div className="max-w-6xl mx-auto space-y-8">
@@ -2303,26 +2322,26 @@ const AdminDashboard = () => {
                                                             </label>
                                                          ))}
                                                       </div>
-                                                    </div>
-                                                    {/* 5. Experience */}
-                                                    <div className="space-y-2 mt-4">
-                                                       <h4 className="text-[9px] font-black uppercase text-black font-bold tracking-widest">5. Experience</h4>
-                                                       <div className="space-y-1.5">
-                                                          {['No Experience', '1 \u2013 2 Years', '3 \u2013 5 Years', '6 \u2013 10 Years', '10+ Years'].map(exp => (
-                                                             <label key={exp} className="flex items-center gap-2 cursor-pointer group">
-                                                                <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${auditFilters.experience === exp ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
-                                                                   {auditFilters.experience === exp && <div className="w-1.5 h-1.5 rounded-full bg-teal-600" />}
-                                                                </div>
-                                                                <input type="radio" className="hidden" checked={auditFilters.experience === exp} onChange={() => setAuditFilters({ ...auditFilters, experience: exp })} />
-                                                                <span className="text-xs font-bold text-slate-700">{exp}</span>
-                                                             </label>
-                                                          ))}
-                                                       </div>
-                                                    </div>
-                                                    <div className="space-y-3">
-                                                       <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">6. Location</h4>
-                                                       <select
-                                                          value={auditFilters.location}
+                                                   </div>
+                                                   {/* 5. Experience */}
+                                                   <div className="space-y-2 mt-4">
+                                                      <h4 className="text-[9px] font-black uppercase text-black font-bold tracking-widest">5. Experience</h4>
+                                                      <div className="space-y-1.5">
+                                                         {['No Experience', '1 \u2013 2 Years', '3 \u2013 5 Years', '6 \u2013 10 Years', '10+ Years'].map(exp => (
+                                                            <label key={exp} className="flex items-center gap-2 cursor-pointer group">
+                                                               <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${auditFilters.experience === exp ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                  {auditFilters.experience === exp && <div className="w-1.5 h-1.5 rounded-full bg-teal-600" />}
+                                                               </div>
+                                                               <input type="radio" className="hidden" checked={auditFilters.experience === exp} onChange={() => setAuditFilters({ ...auditFilters, experience: exp })} />
+                                                               <span className="text-xs font-bold text-slate-700">{exp}</span>
+                                                            </label>
+                                                         ))}
+                                                      </div>
+                                                   </div>
+                                                   <div className="space-y-3">
+                                                      <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">6. Location</h4>
+                                                      <select
+                                                         value={auditFilters.location}
                                                          onChange={(e) => setAuditFilters({ ...auditFilters, location: e.target.value })}
                                                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-teal-500 transition-colors"
                                                       >
@@ -2746,26 +2765,26 @@ const AdminDashboard = () => {
                                                                </label>
                                                             ))}
                                                          </div>
-                                                       </div>
-                                                       {/* 5. Experience */}
-                                                       <div className="space-y-2 mt-4">
-                                                          <h4 className="text-[9px] font-black uppercase text-black font-bold tracking-widest">5. Experience</h4>
-                                                          <div className="space-y-1.5">
-                                                             {['No Experience', '1 \u2013 2 Years', '3 \u2013 5 Years', '6 \u2013 10 Years', '10+ Years'].map(exp => (
-                                                                <label key={exp} className="flex items-center gap-2 cursor-pointer group">
-                                                                   <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${auditFilters.experience === exp ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
-                                                                      {auditFilters.experience === exp && <div className="w-1.5 h-1.5 rounded-full bg-teal-600" />}
-                                                                   </div>
-                                                                   <input type="radio" className="hidden" checked={auditFilters.experience === exp} onChange={() => setAuditFilters({ ...auditFilters, experience: exp })} />
-                                                                   <span className="text-xs font-bold text-slate-700">{exp}</span>
-                                                                </label>
-                                                             ))}
-                                                          </div>
-                                                       </div>
-                                                       <div className="space-y-3">
-                                                          <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">6. Location</h4>
-                                                          <select
-                                                             value={candidateFilters.location}
+                                                      </div>
+                                                      {/* 5. Experience */}
+                                                      <div className="space-y-2 mt-4">
+                                                         <h4 className="text-[9px] font-black uppercase text-black font-bold tracking-widest">5. Experience</h4>
+                                                         <div className="space-y-1.5">
+                                                            {['No Experience', '1 \u2013 2 Years', '3 \u2013 5 Years', '6 \u2013 10 Years', '10+ Years'].map(exp => (
+                                                               <label key={exp} className="flex items-center gap-2 cursor-pointer group">
+                                                                  <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${auditFilters.experience === exp ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                     {auditFilters.experience === exp && <div className="w-1.5 h-1.5 rounded-full bg-teal-600" />}
+                                                                  </div>
+                                                                  <input type="radio" className="hidden" checked={auditFilters.experience === exp} onChange={() => setAuditFilters({ ...auditFilters, experience: exp })} />
+                                                                  <span className="text-xs font-bold text-slate-700">{exp}</span>
+                                                               </label>
+                                                            ))}
+                                                         </div>
+                                                      </div>
+                                                      <div className="space-y-3">
+                                                         <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">6. Location</h4>
+                                                         <select
+                                                            value={candidateFilters.location}
                                                             onChange={(e) => setCandidateFilters({ ...candidateFilters, location: e.target.value })}
                                                             className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-teal-500 transition-colors"
                                                          >
@@ -2835,49 +2854,49 @@ const AdminDashboard = () => {
                                                             </div>
                                                          </td>
                                                          <td className="px-6 py-4">
-                                                             <span className={`text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-widest ${getStatusColor(app.status)}`}>
-                                                                {app.status === 'APPROVED' ? 'Abroad' :
-                                                                   app.status === 'HOLD' ? 'On Hold' :
-                                                                      app.status === 'REJECTED' ? 'Rejected' : 'Pending'}
-                                                             </span>
-                                                          </td>
-                                                          <td className="px-6 py-4 text-right">
-                                                             <div className="flex items-center justify-end gap-2">
-                                                                {/* Quick action buttons */}
-                                                                {app.status !== 'APPROVED' && (
-                                                                   <button
-                                                                      onClick={() => handleApplicationAction(app.id || app._id, 'approve')}
-                                                                      title="Mark as Abroad (Approved)"
-                                                                      className="px-3 py-1.5 rounded-lg bg-teal-600 text-white text-[9px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-sm"
-                                                                   >
-                                                                      ✓ Abroad
-                                                                   </button>
-                                                                )}
-                                                                {app.status !== 'HOLD' && (
-                                                                   <button
-                                                                      onClick={() => handleApplicationAction(app.id || app._id, 'hold')}
-                                                                      title="Put On Hold"
-                                                                      className="px-3 py-1.5 rounded-lg bg-amber-500 text-white text-[9px] font-black uppercase tracking-widest hover:bg-amber-600 transition-colors shadow-sm"
-                                                                   >
-                                                                      ⏸ Hold
-                                                                   </button>
-                                                                )}
-                                                                {app.status !== 'REJECTED' && (
-                                                                   <button
-                                                                      onClick={() => handleApplicationAction(app.id || app._id, 'reject')}
-                                                                      title="Reject Candidate"
-                                                                      className="px-3 py-1.5 rounded-lg bg-red-500 text-white text-[9px] font-black uppercase tracking-widest hover:bg-red-600 transition-colors shadow-sm"
-                                                                   >
-                                                                      ✕ Reject
-                                                                   </button>
-                                                                )}
-                                                                <button
-                                                                   onClick={() => handleViewApplication(app)}
-                                                                   className="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 text-[9px] font-black uppercase tracking-widest hover:bg-slate-200 transition-colors flex items-center gap-1"
-                                                                >
-                                                                   <Eye className="w-3 h-3" /> View
-                                                                </button>
-                                                             </div>
+                                                            <span className={`text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-widest ${getStatusColor(app.status)}`}>
+                                                               {app.status === 'APPROVED' ? 'Abroad' :
+                                                                  app.status === 'HOLD' ? 'On Hold' :
+                                                                     app.status === 'REJECTED' ? 'Rejected' : 'Pending'}
+                                                            </span>
+                                                         </td>
+                                                         <td className="px-6 py-4 text-right">
+                                                            <div className="flex items-center justify-end gap-2">
+                                                               {/* Quick action buttons */}
+                                                               {app.status !== 'APPROVED' && (
+                                                                  <button
+                                                                     onClick={() => handleApplicationAction(app.id || app._id, 'approve')}
+                                                                     title="Mark as Abroad (Approved)"
+                                                                     className="px-3 py-1.5 rounded-lg bg-teal-600 text-white text-[9px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-sm"
+                                                                  >
+                                                                     ✓ Abroad
+                                                                  </button>
+                                                               )}
+                                                               {app.status !== 'HOLD' && (
+                                                                  <button
+                                                                     onClick={() => handleApplicationAction(app.id || app._id, 'hold')}
+                                                                     title="Put On Hold"
+                                                                     className="px-3 py-1.5 rounded-lg bg-amber-500 text-white text-[9px] font-black uppercase tracking-widest hover:bg-amber-600 transition-colors shadow-sm"
+                                                                  >
+                                                                     ⏸ Hold
+                                                                  </button>
+                                                               )}
+                                                               {app.status !== 'REJECTED' && (
+                                                                  <button
+                                                                     onClick={() => handleApplicationAction(app.id || app._id, 'reject')}
+                                                                     title="Reject Candidate"
+                                                                     className="px-3 py-1.5 rounded-lg bg-red-500 text-white text-[9px] font-black uppercase tracking-widest hover:bg-red-600 transition-colors shadow-sm"
+                                                                  >
+                                                                     ✕ Reject
+                                                                  </button>
+                                                               )}
+                                                               <button
+                                                                  onClick={() => handleViewApplication(app)}
+                                                                  className="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 text-[9px] font-black uppercase tracking-widest hover:bg-slate-200 transition-colors flex items-center gap-1"
+                                                               >
+                                                                  <Eye className="w-3 h-3" /> View
+                                                               </button>
+                                                            </div>
                                                          </td>
                                                       </tr>
                                                    ))}
@@ -3078,25 +3097,25 @@ const AdminDashboard = () => {
                                                                   </label>
                                                                ))}
                                                             </div>
-                                                          </div>
-                                                          <div className="space-y-3">
-                                                             <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">4. Experience</h4>
-                                                             <div className="space-y-2">
-                                                                {['No Experience', '1 \u2013 2 Years', '3 \u2013 5 Years', '6 \u2013 10 Years', '10+ Years'].map(exp => (
-                                                                   <label key={exp} className="flex items-center gap-3 cursor-pointer group">
-                                                                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${vacancyFilters.experience === exp ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
-                                                                         {vacancyFilters.experience === exp && <div className="w-2 h-2 rounded-full bg-teal-600" />}
-                                                                      </div>
-                                                                      <input type="radio" className="hidden" checked={vacancyFilters.experience === exp} onChange={() => setVacancyFilters({ ...vacancyFilters, experience: exp })} />
-                                                                      <span className="text-xs font-bold text-slate-700">{exp}</span>
-                                                                   </label>
-                                                                ))}
-                                                             </div>
-                                                          </div>
-                                                          <div className="space-y-3">
-                                                             <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">5. Location</h4>
-                                                             <select
-                                                                value={vacancyFilters.location}
+                                                         </div>
+                                                         <div className="space-y-3">
+                                                            <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">4. Experience</h4>
+                                                            <div className="space-y-2">
+                                                               {['No Experience', '1 \u2013 2 Years', '3 \u2013 5 Years', '6 \u2013 10 Years', '10+ Years'].map(exp => (
+                                                                  <label key={exp} className="flex items-center gap-3 cursor-pointer group">
+                                                                     <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${vacancyFilters.experience === exp ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                        {vacancyFilters.experience === exp && <div className="w-2 h-2 rounded-full bg-teal-600" />}
+                                                                     </div>
+                                                                     <input type="radio" className="hidden" checked={vacancyFilters.experience === exp} onChange={() => setVacancyFilters({ ...vacancyFilters, experience: exp })} />
+                                                                     <span className="text-xs font-bold text-slate-700">{exp}</span>
+                                                                  </label>
+                                                               ))}
+                                                            </div>
+                                                         </div>
+                                                         <div className="space-y-3">
+                                                            <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">5. Location</h4>
+                                                            <select
+                                                               value={vacancyFilters.location}
                                                                onChange={(e) => setVacancyFilters({ ...vacancyFilters, location: e.target.value })}
                                                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-teal-500 transition-colors"
                                                             >
@@ -3252,25 +3271,25 @@ const AdminDashboard = () => {
                                                                   </label>
                                                                ))}
                                                             </div>
-                                                          </div>
-                                                          <div className="space-y-3">
-                                                             <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">4. Experience</h4>
-                                                             <div className="space-y-2">
-                                                                {['No Experience', '1 \u2013 2 Years', '3 \u2013 5 Years', '6 \u2013 10 Years', '10+ Years'].map(exp => (
-                                                                   <label key={exp} className="flex items-center gap-3 cursor-pointer group">
-                                                                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${resumeFilters.experience === exp ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
-                                                                         {resumeFilters.experience === exp && <div className="w-2 h-2 rounded-full bg-teal-600" />}
-                                                                      </div>
-                                                                      <input type="radio" className="hidden" checked={resumeFilters.experience === exp} onChange={() => setResumeFilters({ ...resumeFilters, experience: exp })} />
-                                                                      <span className="text-xs font-bold text-slate-700">{exp}</span>
-                                                                   </label>
-                                                                ))}
-                                                             </div>
-                                                          </div>
-                                                          <div className="space-y-3">
-                                                             <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">5. Location</h4>
-                                                             <select
-                                                                value={resumeFilters.location}
+                                                         </div>
+                                                         <div className="space-y-3">
+                                                            <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">4. Experience</h4>
+                                                            <div className="space-y-2">
+                                                               {['No Experience', '1 \u2013 2 Years', '3 \u2013 5 Years', '6 \u2013 10 Years', '10+ Years'].map(exp => (
+                                                                  <label key={exp} className="flex items-center gap-3 cursor-pointer group">
+                                                                     <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${resumeFilters.experience === exp ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                        {resumeFilters.experience === exp && <div className="w-2 h-2 rounded-full bg-teal-600" />}
+                                                                     </div>
+                                                                     <input type="radio" className="hidden" checked={resumeFilters.experience === exp} onChange={() => setResumeFilters({ ...resumeFilters, experience: exp })} />
+                                                                     <span className="text-xs font-bold text-slate-700">{exp}</span>
+                                                                  </label>
+                                                               ))}
+                                                            </div>
+                                                         </div>
+                                                         <div className="space-y-3">
+                                                            <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">5. Location</h4>
+                                                            <select
+                                                               value={resumeFilters.location}
                                                                onChange={(e) => setResumeFilters({ ...resumeFilters, location: e.target.value })}
                                                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-teal-500 transition-colors"
                                                             >
@@ -3316,7 +3335,16 @@ const AdminDashboard = () => {
                                                          <td className="px-6 py-8 align-middle">
                                                             <div className="flex items-center gap-3">
                                                                <span className={`w-2 h-2 rounded-full ${resume.agency === 'GLOBAL TALENT' ? 'bg-amber-400' : 'bg-indigo-400'}`}></span>
-                                                               <span className="font-bold text-slate-700 text-xs tracking-wider uppercase">{resume.agency}</span>
+                                                               {resume.agentId ? (
+                                                                  <button
+                                                                     onClick={() => handleAgentClick(resume.agentId)}
+                                                                     className="font-bold text-teal-600 hover:text-teal-700 hover:underline underline-offset-4 text-xs tracking-wider uppercase transition-colors"
+                                                                  >
+                                                                     {resume.agency}
+                                                                  </button>
+                                                               ) : (
+                                                                  <span className="font-bold text-slate-700 text-xs tracking-wider uppercase">{resume.agency}</span>
+                                                               )}
                                                             </div>
                                                          </td>
                                                          <td className="px-6 py-8 text-center align-middle">
@@ -3421,25 +3449,25 @@ const AdminDashboard = () => {
                                                                   </label>
                                                                ))}
                                                             </div>
-                                                          </div>
-                                                          <div className="space-y-3">
-                                                             <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">4. Experience</h4>
-                                                             <div className="space-y-2">
-                                                                {['No Experience', '1 \u2013 2 Years', '3 \u2013 5 Years', '6 \u2013 10 Years', '10+ Years'].map(exp => (
-                                                                   <label key={exp} className="flex items-center gap-3 cursor-pointer group">
-                                                                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${appFilters.experience === exp ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
-                                                                         {appFilters.experience === exp && <div className="w-2 h-2 rounded-full bg-teal-600" />}
-                                                                      </div>
-                                                                      <input type="radio" className="hidden" checked={appFilters.experience === exp} onChange={() => setAppFilters({ ...appFilters, experience: exp })} />
-                                                                      <span className="text-xs font-bold text-slate-700">{exp}</span>
-                                                                   </label>
-                                                                ))}
-                                                             </div>
-                                                          </div>
-                                                          <div className="space-y-3">
-                                                             <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">5. Location</h4>
-                                                             <select
-                                                                value={appFilters.location}
+                                                         </div>
+                                                         <div className="space-y-3">
+                                                            <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">4. Experience</h4>
+                                                            <div className="space-y-2">
+                                                               {['No Experience', '1 \u2013 2 Years', '3 \u2013 5 Years', '6 \u2013 10 Years', '10+ Years'].map(exp => (
+                                                                  <label key={exp} className="flex items-center gap-3 cursor-pointer group">
+                                                                     <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${appFilters.experience === exp ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
+                                                                        {appFilters.experience === exp && <div className="w-2 h-2 rounded-full bg-teal-600" />}
+                                                                     </div>
+                                                                     <input type="radio" className="hidden" checked={appFilters.experience === exp} onChange={() => setAppFilters({ ...appFilters, experience: exp })} />
+                                                                     <span className="text-xs font-bold text-slate-700">{exp}</span>
+                                                                  </label>
+                                                               ))}
+                                                            </div>
+                                                         </div>
+                                                         <div className="space-y-3">
+                                                            <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">5. Location</h4>
+                                                            <select
+                                                               value={appFilters.location}
                                                                onChange={(e) => setAppFilters({ ...appFilters, location: e.target.value })}
                                                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-teal-500 transition-colors"
                                                             >
@@ -4377,9 +4405,9 @@ const AdminDashboard = () => {
                               <ShieldCheck className="w-4 h-4" /> 2. Mandatory Document Bundle
                            </h3>
                            <div className="grid grid-cols-2 gap-6">
-                              <DocumentCard label="Resume / CV *" filename={selectedResume.documents.resume} />
-                              <DocumentCard label="Passport / ID Copy *" filename={selectedResume.documents.passport} />
-                              <DocumentCard label="Educational Certificates *" filename={selectedResume.documents.education} />
+                              <DocumentCard label="Resume / CV *" filename={selectedResume.documents?.resume?.filename || (typeof selectedResume.documents?.resume === 'string' ? selectedResume.documents.resume : 'resume.pdf')} fileObj={selectedResume.documents?.resume} />
+                              <DocumentCard label="Passport / ID Copy *" filename={selectedResume.documents?.identity?.filename || selectedResume.documents?.passport?.filename || (typeof selectedResume.documents?.passport === 'string' ? selectedResume.documents.passport : 'passport.pdf')} fileObj={selectedResume.documents?.identity || selectedResume.documents?.passport} />
+                              <DocumentCard label="Educational Certificates *" filename={selectedResume.documents?.certificates?.filename || selectedResume.documents?.education?.filename || (typeof selectedResume.documents?.education === 'string' ? selectedResume.documents.education : 'certificates.pdf')} fileObj={selectedResume.documents?.certificates || selectedResume.documents?.education} />
                            </div>
                         </section>
 
@@ -4389,8 +4417,8 @@ const AdminDashboard = () => {
                               <ShieldCheck className="w-4 h-4" /> 3. Compliance & Governance
                            </h3>
                            <div className="grid grid-cols-2 gap-6">
-                              <DocumentCard label="Police Clearance (PCC)" filename={selectedResume.documents.pcc} />
-                              <DocumentCard label="Good Standing Certificate" filename={selectedResume.documents.goodStanding} />
+                              <DocumentCard label="Police Clearance (PCC)" filename={selectedResume.documents?.pcc?.filename || (typeof selectedResume.documents?.pcc === 'string' ? selectedResume.documents.pcc : 'pcc.pdf')} fileObj={selectedResume.documents?.pcc} />
+                              <DocumentCard label="Good Standing Certificate" filename={selectedResume.documents?.goodStanding?.filename || (typeof selectedResume.documents?.goodStanding === 'string' ? selectedResume.documents.goodStanding : 'good_standing.pdf')} fileObj={selectedResume.documents?.goodStanding} />
                            </div>
                         </section>
                      </div>

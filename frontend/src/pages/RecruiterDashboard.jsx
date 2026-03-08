@@ -57,7 +57,7 @@ const RecruiterDashboard = () => {
 
         const fetchPipeline = async () => {
             try {
-                const response = await fetch(`${API_BASE_URL}/api/applications?agent_id=${user.id}`);
+                const response = await fetch(`${API_BASE_URL}/api/applications/agent/${user.id}/all`);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -324,7 +324,7 @@ const RecruiterDashboard = () => {
             setSelectedJobForSubmission(null);
 
             // Refresh Pipeline
-            const pipelineResponse = await fetch(`${API_BASE_URL}/api/applications?agent_id=${user.id}`);
+            const pipelineResponse = await fetch(`${API_BASE_URL}/api/applications/agent/${user.id}/all`);
             const pipelineData = await pipelineResponse.json();
             if (pipelineData) setPipelineData(Array.isArray(pipelineData) ? pipelineData : []);
 
@@ -794,11 +794,11 @@ const RecruiterDashboard = () => {
                                             <div>
                                                 {catSearch ? (
                                                     <><button onClick={() => setSearchTerm('')} className="text-xs font-bold text-teal-600 hover:text-teal-800 mb-1 flex items-center gap-1"><ArrowLeft className="w-3 h-3" /> All Categories</button>
-                                                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{catSearch}</h2>
-                                                    <p className="text-slate-500 font-medium text-sm mt-1">{jobsByCategory[catSearch]?.length || 0} open positions</p></>
+                                                        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{catSearch}</h2>
+                                                        <p className="text-slate-500 font-medium text-sm mt-1">{jobsByCategory[catSearch]?.length || 0} open positions</p></>
                                                 ) : (
                                                     <><h2 className="text-2xl font-bold text-slate-900 tracking-tight">Active Vacancies</h2>
-                                                    <p className="text-slate-500 font-medium text-sm mt-1">Browse open positions by industry</p></>
+                                                        <p className="text-slate-500 font-medium text-sm mt-1">Browse open positions by industry</p></>
                                                 )}
                                             </div>
                                             <div className="flex items-center gap-3">
@@ -1124,15 +1124,21 @@ const RecruiterDashboard = () => {
                                                             <td className="px-8 py-5 text-slate-600">{app.jobs?.title || 'Unknown Role'}</td>
                                                             <td className="px-8 py-5 text-right">
                                                                 <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide
-                                                   ${app.status === 'APPROVED' ? 'bg-teal-50 text-teal-700 border border-teal-100' :
-                                                     app.status === 'REJECTED' ? 'bg-red-50 text-red-700 border border-red-100' :
-                                                     app.status === 'HOLD' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
-                                                     'bg-blue-50 text-blue-700 border border-blue-100'
-                                                   }`}>
+                                                    ${app.status === 'APPROVED' ? 'bg-teal-50 text-teal-700 border border-teal-100' :
+                                                                        app.status === 'SELECTED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                                                                            app.status === 'ACCEPTED' ? 'bg-green-50 text-green-700 border border-green-100' :
+                                                                                app.status === 'REJECTED' ? 'bg-red-50 text-red-700 border border-red-100' :
+                                                                                    app.status === 'HOLD' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
+                                                                                        app.status === 'REVIEWING' ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' :
+                                                                                            'bg-blue-50 text-blue-700 border border-blue-100'
+                                                                    }`}>
                                                                     {app.status === 'APPROVED' ? 'Abroad' :
-                                                                     app.status === 'HOLD' ? 'On Hold' :
-                                                                     app.status === 'REJECTED' ? 'Rejected' :
-                                                                     'Pending'}
+                                                                        app.status === 'SELECTED' ? 'Selected' :
+                                                                            app.status === 'ACCEPTED' ? 'Accepted' :
+                                                                                app.status === 'HOLD' ? 'On Hold' :
+                                                                                    app.status === 'REJECTED' ? 'Rejected' :
+                                                                                        app.status === 'REVIEWING' ? 'Reviewing' :
+                                                                                            'Pending'}
                                                                 </span>
                                                             </td>
                                                         </tr>
@@ -1301,12 +1307,12 @@ const RecruiterDashboard = () => {
                                         <p className="text-slate-500 font-medium text-sm mt-1">Real-time updates on your submitted candidates</p>
                                     </div>
                                     <div className="flex items-center gap-4">
-                                        <button 
+                                        <button
                                             onClick={() => {
                                                 if (!user?.id) return;
                                                 const fetchPipeline = async () => {
                                                     try {
-                                                        const response = await fetch(`${API_BASE_URL}/api/applications?agent_id=${user.id}`);
+                                                        const response = await fetch(`${API_BASE_URL}/api/applications/agent/${user.id}/all`);
                                                         if (response.ok) {
                                                             const data = await response.json();
                                                             setPipelineData(Array.isArray(data) ? data : []);
@@ -1382,14 +1388,20 @@ const RecruiterDashboard = () => {
                                                                 <td className="px-6 py-4 text-center">
                                                                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide
                                                       ${app.status === 'APPROVED' ? 'bg-teal-50 text-teal-700 border border-teal-100' :
-                                                        app.status === 'REJECTED' ? 'bg-red-50 text-red-700 border border-red-100' :
-                                                        app.status === 'HOLD' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
-                                                        'bg-blue-50 text-blue-700 border border-blue-100'
-                                                      }`}>
+                                                                            app.status === 'SELECTED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                                                                                app.status === 'ACCEPTED' ? 'bg-green-50 text-green-700 border border-green-100' :
+                                                                                    app.status === 'REJECTED' ? 'bg-red-50 text-red-700 border border-red-100' :
+                                                                                        app.status === 'HOLD' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
+                                                                                            app.status === 'REVIEWING' ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' :
+                                                                                                'bg-blue-50 text-blue-700 border border-blue-100'
+                                                                        }`}>
                                                                         {app.status === 'APPROVED' ? 'Abroad' :
-                                                                         app.status === 'HOLD' ? 'On Hold' :
-                                                                         app.status === 'REJECTED' ? 'Rejected' :
-                                                                         'Pending'}
+                                                                            app.status === 'SELECTED' ? 'Selected' :
+                                                                                app.status === 'ACCEPTED' ? 'Accepted' :
+                                                                                    app.status === 'HOLD' ? 'On Hold' :
+                                                                                        app.status === 'REJECTED' ? 'Rejected' :
+                                                                                            app.status === 'REVIEWING' ? 'Reviewing' :
+                                                                                                'Pending'}
                                                                     </span>
                                                                 </td>
                                                             </tr>

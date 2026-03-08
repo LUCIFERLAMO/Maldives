@@ -138,8 +138,8 @@ app.post('/api/auth/register', authLimiter, upload.fields([
 
         // Backend Password Validation
         if (!validatePassword(password)) {
-            return res.status(400).json({ 
-                message: 'Password does not meet security requirements: Minimum 8 characters, at least one uppercase, one lowercase, one digit, and one special character.' 
+            return res.status(400).json({
+                message: 'Password does not meet security requirements: Minimum 8 characters, at least one uppercase, one lowercase, one digit, and one special character.'
             });
         }
 
@@ -489,8 +489,8 @@ app.post('/api/auth/reset-password', async (req, res) => {
 
         // Backend Password Validation for new password
         if (!validatePassword(newPassword)) {
-            return res.status(400).json({ 
-                message: 'New password does not meet security requirements.' 
+            return res.status(400).json({
+                message: 'New password does not meet security requirements.'
             });
         }
 
@@ -526,8 +526,8 @@ app.put('/api/auth/change-password', async (req, res) => {
 
         // Backend Password Validation
         if (!validatePassword(newPassword)) {
-            return res.status(400).json({ 
-                message: 'New password does not meet security requirements.' 
+            return res.status(400).json({
+                message: 'New password does not meet security requirements.'
             });
         }
 
@@ -729,8 +729,8 @@ app.put('/api/auth/password', async (req, res) => {
 
         // Backend Password Validation
         if (!validatePassword(newPassword)) {
-            return res.status(400).json({ 
-                message: 'New password does not meet security requirements.' 
+            return res.status(400).json({
+                message: 'New password does not meet security requirements.'
             });
         }
 
@@ -918,6 +918,18 @@ app.get('/api/admin/pending-agents', async (req, res) => {
     }
 });
 
+// GET: Fetch a single agent by ID
+app.get('/api/admin/agents/:id', async (req, res) => {
+    try {
+        const agent = await mongoose.model('Profile').findById(req.params.id);
+        if (!agent) return res.status(404).json({ message: 'Agent not found' });
+        res.json(agent);
+    } catch (err) {
+        console.error('Error fetching agent:', err);
+        res.status(500).json({ message: 'Server error', error: err.message });
+    }
+});
+
 // PUT: Approve agent (update status to ACTIVE)
 app.put('/api/admin/agents/:id/approve', async (req, res) => {
     try {
@@ -1040,13 +1052,13 @@ app.put('/api/admin/agencies/:id/approve', async (req, res) => {
             const digits = "01234567819";
             const symbols = "!@#$%^&*";
             const all = upper + lower + digits + symbols;
-            
+
             let password = "";
             password += upper[Math.floor(Math.random() * upper.length)];
             password += lower[Math.floor(Math.random() * lower.length)];
             password += digits[Math.floor(Math.random() * digits.length)];
             password += symbols[Math.floor(Math.random() * symbols.length)];
-            
+
             for (let i = 0; i < 4; i++) {
                 password += all[Math.floor(Math.random() * all.length)];
             }
@@ -2298,7 +2310,31 @@ app.get('/api/applications', async (req, res) => {
         if (job_id) filter.job_id = job_id;
         if (status) filter.status = status;
 
-        const applications = await Application.find(filter).sort({ applied_at: -1 });
+        const applications = await Application.find(filter).sort({ applied_at: -1 }).lean();
+
+        // Populate agent name manually since agent_id is a string, not an ObjectId
+        const agentIds = [...new Set(applications.map(a => a.agent_id).filter(Boolean))];
+        if (agentIds.length > 0) {
+            const Profile = mongoose.model('Profile');
+            const validObjectIdArray = agentIds.filter(id => mongoose.Types.ObjectId.isValid(id));
+            const orQueries = [{ id: { $in: agentIds } }];
+            if (validObjectIdArray.length > 0) {
+                orQueries.push({ _id: { $in: validObjectIdArray } });
+            }
+
+            const agents = await Profile.find({ $or: orQueries }, 'id agency_name full_name');
+            const agentMap = agents.reduce((acc, agent) => {
+                acc[agent._id.toString()] = agent.agency_name || agent.full_name;
+                if (agent.id) acc[agent.id] = agent.agency_name || agent.full_name;
+                return acc;
+            }, {});
+            applications.forEach(app => {
+                if (app.agent_id && agentMap[app.agent_id]) {
+                    app.agent_name = agentMap[app.agent_id];
+                }
+            });
+        }
+
         res.json(applications);
     } catch (err) {
         console.error('Error fetching applications:', err);
