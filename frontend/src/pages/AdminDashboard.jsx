@@ -666,10 +666,28 @@ const AdminDashboard = () => {
       }
    };
 
+   // Fetch Pending Job Requests
+   const fetchPendingJobRequests = async () => {
+      setIsRefreshingJobRequests(true);
+      try {
+         const res = await fetch(`${API_BASE_URL}/api/admin/job-requests?status=PENDING`);
+         if (res.ok) {
+            const data = await res.json();
+            setPendingJobRequests(data);
+            setPendingJobRequestsCount(data.length);
+         }
+      } catch (error) {
+         console.error('Error fetching job requests:', error);
+      } finally {
+         setIsRefreshingJobRequests(false);
+      }
+   };
+
    // Fetch on mount
    useEffect(() => {
       fetchPendingAgents();
       fetchAllData();
+      fetchPendingJobRequests();
    }, []);
 
    // Handle Delete Vacancy
@@ -3023,6 +3041,20 @@ const AdminDashboard = () => {
                                           </span>
                                        )}
                                     </button>
+                                    <button
+                                       onClick={() => setAgentSubTab('job_requests')}
+                                       className={`flex items-center gap-2 px-6 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${agentSubTab === 'job_requests'
+                                          ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/20'
+                                          : 'bg-white text-black font-bold hover:text-slate-600'
+                                          }`}
+                                    >
+                                       <Briefcase className="w-4 h-4" /> Job Requests
+                                       {pendingJobRequestsCount > 0 && (
+                                          <span className="ml-2 bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center shadow-sm">
+                                             {pendingJobRequestsCount > 99 ? '99+' : pendingJobRequestsCount}
+                                          </span>
+                                       )}
+                                    </button>
                                  </div>
 
                                  {/* Content Area */}
@@ -3198,6 +3230,83 @@ const AdminDashboard = () => {
                                                 )}
                                              </tbody>
                                           </table>
+                                       </div>
+                                    )}
+
+                                    {agentSubTab === 'job_requests' && (
+                                       <div className="space-y-4">
+                                          <div className="flex justify-between items-center mb-6">
+                                             <h3 className="text-lg font-bold text-slate-800">Pending Job Requests</h3>
+                                             <button 
+                                                onClick={fetchPendingJobRequests}
+                                                disabled={isRefreshingJobRequests}
+                                                className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-200 transition-colors disabled:opacity-50"
+                                             >
+                                                <RefreshCw className={`w-4 h-4 ${isRefreshingJobRequests ? 'animate-spin' : ''}`} />
+                                                Refresh
+                                             </button>
+                                          </div>
+
+                                          {pendingJobRequests.length > 0 ? (
+                                             <div className="space-y-4">
+                                                {pendingJobRequests.map(request => (
+                                                   <div key={request._id || request.id} className="bg-slate-50 border border-slate-100 rounded-xl p-6 transition-all hover:bg-slate-100 hover:border-slate-200">
+                                                      <div className="flex flex-col md:flex-row justify-between gap-4">
+                                                         <div>
+                                                            <div className="flex items-center gap-3">
+                                                               <h4 className="font-bold text-slate-900 text-lg mb-1">{request.title} <span className="text-slate-500 text-sm font-normal">at</span> {request.company}</h4>
+                                                               <span className="px-2 py-1 bg-amber-100 text-amber-700 text-[10px] font-black uppercase tracking-wider rounded border border-amber-200">
+                                                                  {request.status}
+                                                               </span>
+                                                            </div>
+                                                            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-bold text-slate-600 mt-2">
+                                                               <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-slate-400" /> {request.location}</span>
+                                                               <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5 text-slate-400" /> {request.vacancies || 1} Openings</span>
+                                                               <span className="flex items-center gap-1"><Briefcase className="w-3.5 h-3.5 text-slate-400" /> {request.category}</span>
+                                                               <span className="flex items-center gap-1"><DollarSign className="w-3.5 h-3.5 text-slate-400" /> {request.salary_range || 'Not specified'}</span>
+                                                            </div>
+                                                            <div className="mt-4 p-4 bg-white rounded-lg border border-slate-100 flex flex-wrap gap-4 items-center">
+                                                               <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Submitted By:</div>
+                                                               <div className="flex items-center gap-4 text-sm font-bold text-slate-700">
+                                                                  <span className="flex items-center gap-1"><Building2 className="w-4 h-4 text-slate-400" /> {request.agent_name || request.agency_name}</span>
+                                                                  <span className="flex items-center gap-1 text-slate-500"> {request.agent_email}</span>
+                                                               </div>
+                                                            </div>
+                                                         </div>
+                                                         <div className="flex shrink-0 gap-3 mt-4 md:mt-0 items-start">
+                                                            <button 
+                                                               onClick={() => {
+                                                                  setSelectedJobRequest(request);
+                                                                  handleApproveJobRequest(request);
+                                                               }}
+                                                               disabled={isApprovingJob}
+                                                               className="px-4 py-2 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50"
+                                                            >
+                                                               Approve
+                                                            </button>
+                                                            <button 
+                                                               onClick={() => {
+                                                                  setSelectedJobRequest(request);
+                                                                  setShowRejectModal(true);
+                                                               }}
+                                                               className="px-4 py-2 bg-white text-red-600 border border-red-200 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-red-50 hover:border-red-300 transition-colors"
+                                                            >
+                                                               Reject
+                                                            </button>
+                                                         </div>
+                                                      </div>
+                                                   </div>
+                                                ))}
+                                             </div>
+                                          ) : (
+                                             <div className="py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-center">
+                                                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm border border-slate-100">
+                                                   <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                                                </div>
+                                                <h4 className="text-slate-900 font-bold mb-1">No Pending Requests</h4>
+                                                <p className="text-slate-500 text-sm">All job requests from agents have been reviewed.</p>
+                                             </div>
+                                          )}
                                        </div>
                                     )}
 
