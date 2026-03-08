@@ -733,7 +733,8 @@ const AdminDashboard = () => {
             const data = await response.json();
             // Map DB fields to frontend format
             const mapped = (Array.isArray(data) ? data : []).map(app => ({
-               id: app._id || app.id,
+               id: app._id ? app._id.toString() : (app.id || ''),
+               customId: app.id || '',
                jobId: app.job_id || app.jobId,
                candidateName: app.candidate_name || 'Unknown',
                email: app.email || '',
@@ -805,7 +806,7 @@ const AdminDashboard = () => {
    };
 
    // Handle application status update (Approve/Reject/Hold)
-   const handleApplicationAction = async (appId, action) => {
+   const handleApplicationAction = async (appId, action, appCustomId) => {
       // Map action string to DB status value
       const statusMap = {
          approve: 'APPROVED',
@@ -815,23 +816,27 @@ const AdminDashboard = () => {
       const newStatus = statusMap[action];
       if (!newStatus) return;
 
+      // Use the string version of the ID for the URL
+      const idForUrl = (appId || '').toString();
+
       try {
-         const response = await fetch(`${API_BASE_URL}/api/applications/${appId}/status`, {
+         // Try the primary endpoint with MongoDB _id
+         const response = await fetch(`${API_BASE_URL}/api/applications/${idForUrl}/status`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: newStatus })
+            body: JSON.stringify({ status: newStatus, customId: appCustomId || '' })
          });
 
          if (response.ok) {
-            popup.success(`Candidate marked as ${newStatus}.`);
+            popup.success(`Candidate status updated to ${newStatus}.`);
             // Optimistically update local state
             setJobApplications(prev => prev.map(app =>
-               (app.id === appId || app._id === appId)
+               (app.id === idForUrl || app.customId === appCustomId)
                   ? { ...app, status: newStatus, statusColor: getStatusColor(newStatus) }
                   : app
             ));
             // Refresh full application list from DB
-            fetchApplicationsByJob(selectedJobId);
+            if (selectedJobId) fetchApplicationsByJob(selectedJobId);
          } else {
             const errData = await response.json().catch(() => ({}));
             popup.error(errData.message || `Failed to update status.`);
@@ -2883,7 +2888,7 @@ const AdminDashboard = () => {
                                                                {/* Quick action buttons */}
                                                                {app.status !== 'APPROVED' && (
                                                                   <button
-                                                                     onClick={() => handleApplicationAction(app.id || app._id, 'approve')}
+                                                                     onClick={() => handleApplicationAction(app.id, 'approve', app.customId)}
                                                                      title="Mark as Abroad (Approved)"
                                                                      className="px-3 py-1.5 rounded-lg bg-teal-600 text-white text-[9px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-sm"
                                                                   >
@@ -2892,7 +2897,7 @@ const AdminDashboard = () => {
                                                                )}
                                                                {app.status !== 'HOLD' && (
                                                                   <button
-                                                                     onClick={() => handleApplicationAction(app.id || app._id, 'hold')}
+                                                                     onClick={() => handleApplicationAction(app.id, 'hold', app.customId)}
                                                                      title="Put On Hold"
                                                                      className="px-3 py-1.5 rounded-lg bg-amber-500 text-white text-[9px] font-black uppercase tracking-widest hover:bg-amber-600 transition-colors shadow-sm"
                                                                   >
@@ -2901,7 +2906,7 @@ const AdminDashboard = () => {
                                                                )}
                                                                {app.status !== 'REJECTED' && (
                                                                   <button
-                                                                     onClick={() => handleApplicationAction(app.id || app._id, 'reject')}
+                                                                     onClick={() => handleApplicationAction(app.id, 'reject', app.customId)}
                                                                      title="Reject Candidate"
                                                                      className="px-3 py-1.5 rounded-lg bg-red-500 text-white text-[9px] font-black uppercase tracking-widest hover:bg-red-600 transition-colors shadow-sm"
                                                                   >
@@ -4776,4 +4781,5 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
+
 
