@@ -820,11 +820,11 @@ const AdminDashboard = () => {
       const idForUrl = (appId || '').toString();
 
       try {
-         // Try the primary endpoint with MongoDB _id
-         const response = await fetch(`${API_BASE_URL}/api/applications/${idForUrl}/status`, {
+         // Use the correct admin endpoint for status updates
+         const response = await fetch(`${API_BASE_URL}/api/admin/applications/${idForUrl}/status`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: newStatus, customId: appCustomId || '' })
+            body: JSON.stringify({ status: newStatus, reviewed_by: 'Admin', review_notes: '' })
          });
 
          if (response.ok) {
@@ -1160,8 +1160,39 @@ const AdminDashboard = () => {
       }
    };
 
-   const handleResumeStatusChange = (status) => {
+   const handleResumeStatusChange = async (status) => {
       if (!selectedResume) return;
+
+      // Map UI status labels to DB enum values
+      const statusMap = {
+         'Selected': 'SELECTED',
+         'SELECTED': 'SELECTED',
+         'Rejected': 'REJECTED',
+         'REJECTED': 'REJECTED',
+         'On Hold': 'HOLD',
+         'ON HOLD': 'HOLD',
+         'HOLD': 'HOLD'
+      };
+      const dbStatus = statusMap[status] || status.toUpperCase();
+      const appId = selectedResume.id || selectedResume._id;
+
+      // Persist to database first
+      try {
+         const response = await fetch(`${API_BASE_URL}/api/admin/applications/${appId}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: dbStatus, reviewed_by: 'Admin' })
+         });
+         if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            popup.error(errData.message || 'Failed to update status in database.');
+            return;
+         }
+      } catch (err) {
+         console.error('Error persisting status to DB:', err);
+         popup.error('Network error: Could not update status.');
+         return;
+      }
 
       const updatedApplications = allApplications.map(app => {
          // Fix: Ensure we don't match undefined === undefined
