@@ -1706,6 +1706,7 @@ app.post('/api/applications', upload.fields([
             candidate_name: req.body.name,
             email: req.body.email,
             contact_number: req.body.contact,
+            nationality: req.body.nationality,
             agent_id: req.body.agent_id || null, // Capture agent ID if provided
             resume: {
                 filename: resumeFile.originalname,
@@ -1859,7 +1860,7 @@ app.get('/api/applications/agent/:agentId/all', async (req, res) => {
                     }
                 }
 
-                appObj.jobs = job ? {
+                appObj.job = job ? {
                     title: job.title,
                     company: job.company,
                     location: job.location,
@@ -1952,7 +1953,7 @@ app.put('/api/admin/applications/:id/status', async (req, res) => {
             return res.status(404).json({ message: 'Application not found' });
         }
 
-        application.status = status;
+        application.status = status?.toUpperCase();
         if (reviewed_by) application.reviewed_by = reviewed_by;
         if (review_notes) application.review_notes = review_notes;
         application.reviewed_at = new Date();

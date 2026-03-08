@@ -559,7 +559,7 @@ const ProfilePage = () => {
             // Fetch Documents from MongoDB backend
             async function fetchDocuments() {
                 try {
-                    const response = await fetch(`${API_BASE_URL}/api/documents?user_id=${user.id}`);
+                    const response = await fetch(`${API_BASE_URL}/api/documents?user_id=${encodeURIComponent(user.id)}`);
                     if (response.ok) {
                         const data = await response.json();
                         // Ensure data is array
@@ -610,7 +610,7 @@ const ProfilePage = () => {
             if (!isAgent) {
                 async function fetchApplications() {
                     try {
-                        const response = await fetch(`${API_BASE_URL}/api/applications/candidate/${user.email}`);
+                        const response = await fetch(`${API_BASE_URL}/api/applications/candidate/${encodeURIComponent(user.email)}`);
                         if (response.ok) {
                             const data = await response.json();
                             // Ensure data is array
@@ -636,7 +636,7 @@ const ProfilePage = () => {
     const handlePersonalSubmit = async (e) => {
         e.preventDefault();
         try {
-            const response = await fetch(`${API_BASE_URL}/api/profile/${user.id}`, {
+            const response = await fetch(`${API_BASE_URL}/api/profile/${encodeURIComponent(user.id)}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

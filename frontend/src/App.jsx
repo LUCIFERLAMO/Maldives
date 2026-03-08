@@ -13,6 +13,7 @@ import AgentLoginPage from './pages/AgentLoginPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import CandidateDashboard from './pages/CandidateDashboard';
 import SavedJobsPage from './pages/SavedJobsPage';
+import MyApplicationsPage from './pages/MyApplicationsPage';
 
 import ProfilePage from './pages/ProfilePage';
 import SupportPage from './pages/SupportPage';
@@ -108,6 +109,14 @@ const AppContent = () => {
                         }
                     />
                     {/* </Route> removed */}
+                    <Route
+                        path="/career-history"
+                        element={
+                            <ProtectedRoute allowedRoles={['candidate']}>
+                                <MyApplicationsPage />
+                            </ProtectedRoute>
+                        }
+                    />
                 </Routes>
             </main>
             {!isDashboard && <Footer />}

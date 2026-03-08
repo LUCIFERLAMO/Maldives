@@ -113,9 +113,24 @@ const CandidateDashboard = () => {
         }
     }, [user]);
 
+    const handleMarkAllRead = async () => {
+        if (!user?.id) return;
+        try {
+            const response = await fetch(`http://localhost:5000/api/notifications/user/${user.id}/read-all`, {
+                method: 'PUT'
+            });
+            if (response.ok) {
+                setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+                setUnreadCount(0);
+            }
+        } catch (err) {
+            console.error("Error marking all as read:", err);
+        }
+    };
+
     const activeAppsCount = applications.length;
-    const pendingCount = applications.filter(a => a.status === 'PENDING' || a.status === 'Pending').length;
-    const approvedCount = applications.filter(a => a.status === 'APPROVED' || a.status === 'Approved').length;
+    const pendingCount = applications.filter(a => a.status === 'PENDING').length;
+    const approvedCount = applications.filter(a => a.status === 'APPROVED' || a.status === 'SELECTED').length;
 
     // Scroll handlers for category carousel
     const scrollLeft = () => {
@@ -250,7 +265,12 @@ const CandidateDashboard = () => {
                                                     )}
                                                 </div>
                                                 <div className="p-4 bg-slate-50 border-t border-slate-100 text-center">
-                                                    <button className="text-xs font-bold text-slate-500 hover:text-teal-600 uppercase tracking-wider">Mark all as read</button>
+                                                    <button 
+                                                        onClick={handleMarkAllRead}
+                                                        className="text-xs font-bold text-slate-500 hover:text-teal-600 uppercase tracking-wider"
+                                                    >
+                                                        Mark all as read
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
@@ -401,10 +421,17 @@ const CandidateDashboard = () => {
                                         <FileSearch className="w-5 h-5 text-slate-600" />
                                     </div>
                                     <div>
-                                        <h3 className="font-bold text-slate-900 text-lg">Recent Applications</h3>
-                                        <p className="text-slate-500 text-sm">Track your job applications</p>
+                                        <h3 className="font-bold text-slate-900 text-lg">Career History</h3>
+                                        <p className="text-slate-500 text-sm">Track your professional journey</p>
                                     </div>
                                 </div>
+                                <Link
+                                    to="/career-history"
+                                    className="text-sm font-bold text-teal-600 hover:text-teal-700 flex items-center gap-1 group/link"
+                                >
+                                    View All History
+                                    <ArrowRight className="w-4 h-4 group-hover/link:translate-x-1 transition-transform" />
+                                </Link>
                             </div>
 
                             {/* Applications List */}
@@ -440,9 +467,9 @@ const CandidateDashboard = () => {
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-3">
-                                                        <span className={`px-3 py-1.5 rounded-lg text-xs font-bold ${app.status === 'APPROVED' || app.status === 'Approved'
+                                                        <span className={`px-3 py-1.5 rounded-lg text-xs font-bold ${app.status === 'APPROVED' || app.status === 'SELECTED'
                                                             ? 'bg-green-100 text-green-800 border border-green-200'
-                                                            : app.status === 'REJECTED' || app.status === 'Rejected'
+                                                            : app.status === 'REJECTED'
                                                                 ? 'bg-red-100 text-red-700 border border-red-200'
                                                                 : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
                                                             }`}>
