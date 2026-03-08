@@ -709,7 +709,15 @@ const RecruiterDashboard = () => {
                                                     .map((req) => (
                                                         <div
                                                             key={req.id || req._id}
-                                                            onClick={() => setExpandedJobRequestId(expandedJobRequestId === req.id ? null : req.id)}
+                                                            onClick={() => {
+                                                                const isExpanding = expandedJobRequestId !== (req.id || req._id);
+                                                                setExpandedJobRequestId(isExpanding ? (req.id || req._id) : null);
+                                                                if (isExpanding) {
+                                                                    setTimeout(() => {
+                                                                        document.getElementById(`status-block-${req.id || req._id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                                                                    }, 350);
+                                                                }
+                                                            }}
                                                             className={`bg-white rounded-xl border transition-all cursor-pointer group overflow-hidden ${expandedJobRequestId === req.id
                                                                 ? 'border-teal-200 shadow-md ring-1 ring-teal-500/10'
                                                                 : 'border-slate-200 shadow-sm hover:shadow-md hover:border-teal-100'
@@ -766,6 +774,24 @@ const RecruiterDashboard = () => {
                                                                                 </ul>
                                                                             </div>
                                                                         </div>
+                                                                        
+                                                                        {req.status === 'REJECTED' && req.review_notes && (
+                                                                            <div id={`status-block-${req.id || req._id}`} className="mt-6 p-4 bg-red-50 border border-red-100 rounded-lg">
+                                                                                <h4 className="text-xs font-bold text-red-800 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                                                                    <AlertCircle className="w-4 h-4 text-red-600" /> Rejection Reason
+                                                                                </h4>
+                                                                                <p className="text-sm text-red-700 font-medium whitespace-pre-wrap">{req.review_notes}</p>
+                                                                            </div>
+                                                                        )}
+
+                                                                        {req.status === 'APPROVED' && (
+                                                                            <div id={`status-block-${req.id || req._id}`} className="mt-6 p-4 bg-emerald-50 border border-emerald-100 rounded-lg">
+                                                                                <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                                                                    <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Request Approved
+                                                                                </h4>
+                                                                                <p className="text-sm text-emerald-700 font-medium">This job request has been approved and is now live. Candidates can now apply to it.</p>
+                                                                            </div>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             </div>

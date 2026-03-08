@@ -1623,6 +1623,58 @@ app.put('/api/admin/job-requests/:id/reject', async (req, res) => {
     }
 });
 
+// PUT: Update job request status (Approve/Reject)
+app.put('/api/admin/job-requests/:id/status', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status, reviewed_by, review_notes } = req.body;
+
+        const jobRequest = await JobRequest.findById(id);
+        if (!jobRequest) return res.status(404).json({ message: 'Job request not found' });
+
+        if (jobRequest.status !== 'PENDING') {
+            return res.status(400).json({ message: 'Job request already processed' });
+        }
+
+        if (status === 'APPROVED') {
+            const newJob = new Job({
+                title: jobRequest.title,
+                company: jobRequest.company,
+                location: jobRequest.location,
+                category: jobRequest.category,
+                salary_range: jobRequest.salary_range,
+                description: jobRequest.description,
+                requirements: jobRequest.requirements,
+                education: jobRequest.education,
+                experience: jobRequest.experience,
+                status: 'OPEN'
+            });
+            await newJob.save();
+            
+            jobRequest.status = 'APPROVED';
+            jobRequest.reviewed_by = reviewed_by || 'Admin';
+            jobRequest.review_notes = review_notes || 'Approved';
+            jobRequest.reviewed_at = new Date();
+            jobRequest.approved_job_id = newJob.id;
+            await jobRequest.save();
+
+            return res.json({ message: 'Job request approved', jobRequest, job: newJob });
+        } else if (status === 'REJECTED') {
+            jobRequest.status = 'REJECTED';
+            jobRequest.reviewed_by = reviewed_by || 'Admin';
+            jobRequest.review_notes = review_notes || 'Rejected';
+            jobRequest.reviewed_at = new Date();
+            await jobRequest.save();
+
+            return res.json({ message: 'Job request rejected', jobRequest });
+        } else {
+            return res.status(400).json({ message: 'Invalid status' });
+        }
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to update job request status', error: err.message });
+    }
+});
+
 // ========================
 // APPLICATIONS ROUTES - Files stored as Base64 in MongoDB
 // ========================
