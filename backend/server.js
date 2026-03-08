@@ -1768,7 +1768,29 @@ app.get('/api/applications/agent/:agentId/all', async (req, res) => {
     try {
         const { agentId } = req.params;
 
-        const applications = await Application.find({ agent_id: agentId })
+        // Build a list of all possible agent_id values stored for this agent
+        // (some records stored MongoDB _id string, others stored UUID)
+        const agentIdVariants = [agentId];
+        try {
+            const agentProfile = await Profile.findOne({
+                $or: [
+                    { id: agentId },
+                    ...(mongoose.Types.ObjectId.isValid(agentId) ? [{ _id: agentId }] : [])
+                ]
+            }).select('id _id').lean();
+            if (agentProfile) {
+                if (agentProfile.id && !agentIdVariants.includes(agentProfile.id)) {
+                    agentIdVariants.push(agentProfile.id);
+                }
+                if (agentProfile._id && !agentIdVariants.includes(agentProfile._id.toString())) {
+                    agentIdVariants.push(agentProfile._id.toString());
+                }
+            }
+        } catch (profileErr) {
+            console.warn('Could not look up agent profile variants:', profileErr.message);
+        }
+
+        const applications = await Application.find({ agent_id: { $in: agentIdVariants } })
             .select('-resume.data -certificates.data')
             .sort({ applied_at: -1 });
 
@@ -1801,6 +1823,7 @@ app.get('/api/applications/agent/:agentId/all', async (req, res) => {
         res.status(500).json({ message: 'Failed to fetch agent applications', error: err.message });
     }
 });
+
 
 // GET: All applications (for Admin Dashboard)
 app.get('/api/admin/applications', async (req, res) => {
