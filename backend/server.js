@@ -39,6 +39,7 @@ const allowedOrigins = [
     'http://localhost:3000',
     'http://localhost:5173',
     'http://localhost:3001',
+    'http://localhost:3002',
     ...(process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean)
 ];
 app.use(cors({
@@ -1622,6 +1623,58 @@ app.put('/api/admin/job-requests/:id/reject', async (req, res) => {
     }
 });
 
+// PUT: Update job request status (Approve/Reject)
+app.put('/api/admin/job-requests/:id/status', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status, reviewed_by, review_notes } = req.body;
+
+        const jobRequest = await JobRequest.findById(id);
+        if (!jobRequest) return res.status(404).json({ message: 'Job request not found' });
+
+        if (jobRequest.status !== 'PENDING') {
+            return res.status(400).json({ message: 'Job request already processed' });
+        }
+
+        if (status === 'APPROVED') {
+            const newJob = new Job({
+                title: jobRequest.title,
+                company: jobRequest.company,
+                location: jobRequest.location,
+                category: jobRequest.category,
+                salary_range: jobRequest.salary_range,
+                description: jobRequest.description,
+                requirements: jobRequest.requirements,
+                education: jobRequest.education,
+                experience: jobRequest.experience,
+                status: 'OPEN'
+            });
+            await newJob.save();
+            
+            jobRequest.status = 'APPROVED';
+            jobRequest.reviewed_by = reviewed_by || 'Admin';
+            jobRequest.review_notes = review_notes || 'Approved';
+            jobRequest.reviewed_at = new Date();
+            jobRequest.approved_job_id = newJob.id;
+            await jobRequest.save();
+
+            return res.json({ message: 'Job request approved', jobRequest, job: newJob });
+        } else if (status === 'REJECTED') {
+            jobRequest.status = 'REJECTED';
+            jobRequest.reviewed_by = reviewed_by || 'Admin';
+            jobRequest.review_notes = review_notes || 'Rejected';
+            jobRequest.reviewed_at = new Date();
+            await jobRequest.save();
+
+            return res.json({ message: 'Job request rejected', jobRequest });
+        } else {
+            return res.status(400).json({ message: 'Invalid status' });
+        }
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to update job request status', error: err.message });
+    }
+});
+
 // ========================
 // APPLICATIONS ROUTES - Files stored as Base64 in MongoDB
 // ========================
@@ -1653,6 +1706,7 @@ app.post('/api/applications', upload.fields([
             candidate_name: req.body.name,
             email: req.body.email,
             contact_number: req.body.contact,
+            nationality: req.body.nationality,
             agent_id: req.body.agent_id || null, // Capture agent ID if provided
             resume: {
                 filename: resumeFile.originalname,
@@ -1767,7 +1821,29 @@ app.get('/api/applications/agent/:agentId/all', async (req, res) => {
     try {
         const { agentId } = req.params;
 
-        const applications = await Application.find({ agent_id: agentId })
+        // Build a list of all possible agent_id values stored for this agent
+        // (some records stored MongoDB _id string, others stored UUID)
+        const agentIdVariants = [agentId];
+        try {
+            const agentProfile = await Profile.findOne({
+                $or: [
+                    { id: agentId },
+                    ...(mongoose.Types.ObjectId.isValid(agentId) ? [{ _id: agentId }] : [])
+                ]
+            }).select('id _id').lean();
+            if (agentProfile) {
+                if (agentProfile.id && !agentIdVariants.includes(agentProfile.id)) {
+                    agentIdVariants.push(agentProfile.id);
+                }
+                if (agentProfile._id && !agentIdVariants.includes(agentProfile._id.toString())) {
+                    agentIdVariants.push(agentProfile._id.toString());
+                }
+            }
+        } catch (profileErr) {
+            console.warn('Could not look up agent profile variants:', profileErr.message);
+        }
+
+        const applications = await Application.find({ agent_id: { $in: agentIdVariants } })
             .select('-resume.data -certificates.data')
             .sort({ applied_at: -1 });
 
@@ -1784,7 +1860,7 @@ app.get('/api/applications/agent/:agentId/all', async (req, res) => {
                     }
                 }
 
-                appObj.jobs = job ? {
+                appObj.job = job ? {
                     title: job.title,
                     company: job.company,
                     location: job.location,
@@ -1800,6 +1876,7 @@ app.get('/api/applications/agent/:agentId/all', async (req, res) => {
         res.status(500).json({ message: 'Failed to fetch agent applications', error: err.message });
     }
 });
+
 
 // GET: All applications (for Admin Dashboard)
 app.get('/api/admin/applications', async (req, res) => {
@@ -1876,7 +1953,7 @@ app.put('/api/admin/applications/:id/status', async (req, res) => {
             return res.status(404).json({ message: 'Application not found' });
         }
 
-        application.status = status;
+        application.status = status?.toUpperCase();
         if (reviewed_by) application.reviewed_by = reviewed_by;
         if (review_notes) application.review_notes = review_notes;
         application.reviewed_at = new Date();
@@ -2335,7 +2412,15 @@ app.get('/api/applications', async (req, res) => {
             });
         }
 
-        res.json(applications);
+        // CRITICAL: Return _id as a plain string — lean() returns BSON ObjectId which
+        // serializes as {$oid:"..."} in some contexts, breaking URL construction in the frontend
+        const sanitized = applications.map(app => ({
+            ...app,
+            _id: app._id ? app._id.toString() : undefined,
+        }));
+
+        res.json(sanitized);
+
     } catch (err) {
         console.error('Error fetching applications:', err);
         res.status(500).json({ message: 'Failed to fetch applications', error: err.message });
@@ -2361,11 +2446,27 @@ app.put('/api/applications/:id/status', async (req, res) => {
         if (!validStatuses.includes(status)) {
             return res.status(400).json({ message: 'Invalid status value' });
         }
-        const application = await Application.findByIdAndUpdate(
-            req.params.id,
-            { status },
-            { new: true }
-        );
+
+        let application = null;
+
+        // Try by MongoDB _id first
+        if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+            application = await Application.findByIdAndUpdate(
+                req.params.id,
+                { status },
+                { new: true }
+            );
+        }
+
+        // Fallback: try by custom UUID id field
+        if (!application) {
+            application = await Application.findOneAndUpdate(
+                { id: req.params.id },
+                { status },
+                { new: true }
+            );
+        }
+
         if (!application) return res.status(404).json({ message: 'Application not found' });
         res.json({ message: 'Status updated', application });
     } catch (err) {

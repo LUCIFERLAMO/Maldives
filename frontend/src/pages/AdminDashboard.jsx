@@ -733,7 +733,8 @@ const AdminDashboard = () => {
             const data = await response.json();
             // Map DB fields to frontend format
             const mapped = (Array.isArray(data) ? data : []).map(app => ({
-               id: app._id || app.id,
+               id: app._id ? app._id.toString() : (app.id || ''),
+               customId: app.id || '',
                jobId: app.job_id || app.jobId,
                candidateName: app.candidate_name || 'Unknown',
                email: app.email || '',
@@ -805,7 +806,7 @@ const AdminDashboard = () => {
    };
 
    // Handle application status update (Approve/Reject/Hold)
-   const handleApplicationAction = async (appId, action) => {
+   const handleApplicationAction = async (appId, action, appCustomId) => {
       // Map action string to DB status value
       const statusMap = {
          approve: 'APPROVED',
@@ -815,23 +816,27 @@ const AdminDashboard = () => {
       const newStatus = statusMap[action];
       if (!newStatus) return;
 
+      // Use the string version of the ID for the URL
+      const idForUrl = (appId || '').toString();
+
       try {
-         const response = await fetch(`${API_BASE_URL}/api/applications/${appId}/status`, {
+         // Use the correct admin endpoint for status updates
+         const response = await fetch(`${API_BASE_URL}/api/admin/applications/${idForUrl}/status`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: newStatus })
+            body: JSON.stringify({ status: newStatus, reviewed_by: 'Admin', review_notes: '' })
          });
 
          if (response.ok) {
-            popup.success(`Candidate marked as ${newStatus}.`);
+            popup.success(`Candidate status updated to ${newStatus}.`);
             // Optimistically update local state
             setJobApplications(prev => prev.map(app =>
-               (app.id === appId || app._id === appId)
+               (app.id === idForUrl || app.customId === appCustomId)
                   ? { ...app, status: newStatus, statusColor: getStatusColor(newStatus) }
                   : app
             ));
             // Refresh full application list from DB
-            fetchApplicationsByJob(selectedJobId);
+            if (selectedJobId) fetchApplicationsByJob(selectedJobId);
          } else {
             const errData = await response.json().catch(() => ({}));
             popup.error(errData.message || `Failed to update status.`);
@@ -981,64 +986,43 @@ const AdminDashboard = () => {
       fetchApplicationsByJob(job.id || job._id);
    };
 
-   // Approve job request handler
-   const handleApproveJobRequest = async (request) => {
-      setIsApprovingJob(true);
-      try {
-         const response = await fetch(`${API_BASE_URL}/api/admin/job-requests/${request._id}/approve`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-               reviewed_by: 'Admin',
-               review_notes: 'Approved'
-            })
-         });
-         const data = await response.json();
-         if (response.ok) {
-            popup.success(`G�� Job request approved! "${request.title}" is now live.`);
-            setPendingJobRequests(prev => prev.filter(r => r._id !== request._id));
-            setPendingJobRequestsCount(prev => prev - 1);
-            fetchJobsByCategory(selectedCategory);
-         } else {
-            popup.error('Failed to approve: ' + data.message);
-         }
-      } catch (error) {
-         console.error('Error approving job request:', error);
-         popup.error('Error approving job request');
-      } finally {
-         setIsApprovingJob(false);
-      }
-   };
+   // Approve/Reject job request handler
+   const handleJobRequestStatus = async (request, status, reason = '') => {
+      const isApproving = status === 'APPROVED';
+      if (isApproving) setIsApprovingJob(true);
+      else setIsRejectingJob(true);
 
-   // Reject job request handler
-   const handleRejectJobRequest = async () => {
-      if (!selectedJobRequest) return;
-      setIsRejectingJob(true);
       try {
-         const response = await fetch(`${API_BASE_URL}/api/admin/job-requests/${selectedJobRequest._id}/reject`, {
+         const response = await fetch(`${API_BASE_URL}/api/admin/job-requests/${request._id || request.id}/status`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+               status,
                reviewed_by: 'Admin',
-               review_notes: rejectReason || 'Rejected by admin'
+               review_notes: reason || (isApproving ? 'Approved' : 'Rejected by admin')
             })
          });
          const data = await response.json();
          if (response.ok) {
-            popup.error(`G�� Job request "${selectedJobRequest.title}" has been rejected.`);
-            setPendingJobRequests(prev => prev.filter(r => r._id !== selectedJobRequest._id));
+            popup.success(isApproving ? `🎉 Job request "${request.title}" is now live.` : `🚫 Job request "${request.title}" has been rejected.`);
+            setPendingJobRequests(prev => prev.filter(r => (r._id || r.id) !== (request._id || request.id)));
             setPendingJobRequestsCount(prev => prev - 1);
-            setShowRejectModal(false);
-            setSelectedJobRequest(null);
-            setRejectReason('');
+            if (isApproving) {
+               fetchJobsByCategory(selectedCategory);
+            } else {
+               setShowRejectModal(false);
+               setSelectedJobRequest(null);
+               setRejectReason('');
+            }
          } else {
-            popup.error('Failed to reject: ' + data.message);
+            popup.error(`Failed to ${isApproving ? 'approve' : 'reject'}: ` + data.message);
          }
       } catch (error) {
-         console.error('Error rejecting job request:', error);
-         popup.error('Error rejecting job request');
+         console.error(`Error ${isApproving ? 'approving' : 'rejecting'} job request:`, error);
+         popup.error(`Error ${isApproving ? 'approving' : 'rejecting'} job request`);
       } finally {
-         setIsRejectingJob(false);
+         if (isApproving) setIsApprovingJob(false);
+         else setIsRejectingJob(false);
       }
    };
 
@@ -1155,8 +1139,39 @@ const AdminDashboard = () => {
       }
    };
 
-   const handleResumeStatusChange = (status) => {
+   const handleResumeStatusChange = async (status) => {
       if (!selectedResume) return;
+
+      // Map UI status labels to DB enum values
+      const statusMap = {
+         'Selected': 'SELECTED',
+         'SELECTED': 'SELECTED',
+         'Rejected': 'REJECTED',
+         'REJECTED': 'REJECTED',
+         'On Hold': 'HOLD',
+         'ON HOLD': 'HOLD',
+         'HOLD': 'HOLD'
+      };
+      const dbStatus = statusMap[status] || status.toUpperCase();
+      const appId = selectedResume.id || selectedResume._id;
+
+      // Persist to database first
+      try {
+         const response = await fetch(`${API_BASE_URL}/api/admin/applications/${appId}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: dbStatus, reviewed_by: 'Admin' })
+         });
+         if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            popup.error(errData.message || 'Failed to update status in database.');
+            return;
+         }
+      } catch (err) {
+         console.error('Error persisting status to DB:', err);
+         popup.error('Network error: Could not update status.');
+         return;
+      }
 
       const updatedApplications = allApplications.map(app => {
          // Fix: Ensure we don't match undefined === undefined
@@ -2883,7 +2898,7 @@ const AdminDashboard = () => {
                                                                {/* Quick action buttons */}
                                                                {app.status !== 'APPROVED' && (
                                                                   <button
-                                                                     onClick={() => handleApplicationAction(app.id || app._id, 'approve')}
+                                                                     onClick={() => handleApplicationAction(app.id, 'approve', app.customId)}
                                                                      title="Mark as Abroad (Approved)"
                                                                      className="px-3 py-1.5 rounded-lg bg-teal-600 text-white text-[9px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-sm"
                                                                   >
@@ -2892,7 +2907,7 @@ const AdminDashboard = () => {
                                                                )}
                                                                {app.status !== 'HOLD' && (
                                                                   <button
-                                                                     onClick={() => handleApplicationAction(app.id || app._id, 'hold')}
+                                                                     onClick={() => handleApplicationAction(app.id, 'hold', app.customId)}
                                                                      title="Put On Hold"
                                                                      className="px-3 py-1.5 rounded-lg bg-amber-500 text-white text-[9px] font-black uppercase tracking-widest hover:bg-amber-600 transition-colors shadow-sm"
                                                                   >
@@ -2901,7 +2916,7 @@ const AdminDashboard = () => {
                                                                )}
                                                                {app.status !== 'REJECTED' && (
                                                                   <button
-                                                                     onClick={() => handleApplicationAction(app.id || app._id, 'reject')}
+                                                                     onClick={() => handleApplicationAction(app.id, 'reject', app.customId)}
                                                                      title="Reject Candidate"
                                                                      className="px-3 py-1.5 rounded-lg bg-red-500 text-white text-[9px] font-black uppercase tracking-widest hover:bg-red-600 transition-colors shadow-sm"
                                                                   >
@@ -3064,54 +3079,113 @@ const AdminDashboard = () => {
 
                                           {pendingJobRequests.length > 0 ? (
                                              <div className="space-y-4">
-                                                {pendingJobRequests.map(request => (
-                                                   <div key={request._id || request.id} className="bg-slate-50 border border-slate-100 rounded-xl p-6 transition-all hover:bg-slate-100 hover:border-slate-200">
-                                                      <div className="flex flex-col md:flex-row justify-between gap-4">
-                                                         <div>
-                                                            <div className="flex items-center gap-3">
-                                                               <h4 className="font-bold text-slate-900 text-lg mb-1">{request.title} <span className="text-slate-500 text-sm font-normal">at</span> {request.company}</h4>
-                                                               <span className="px-2 py-1 bg-amber-100 text-amber-700 text-[10px] font-black uppercase tracking-wider rounded border border-amber-200">
-                                                                  {request.status}
-                                                               </span>
-                                                            </div>
-                                                            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-bold text-slate-600 mt-2">
-                                                               <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-slate-400" /> {request.location}</span>
-                                                               <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5 text-slate-400" /> {request.vacancies || 1} Openings</span>
-                                                               <span className="flex items-center gap-1"><Briefcase className="w-3.5 h-3.5 text-slate-400" /> {request.category}</span>
-                                                               <span className="flex items-center gap-1"><DollarSign className="w-3.5 h-3.5 text-slate-400" /> {request.salary_range || 'Not specified'}</span>
-                                                            </div>
-                                                            <div className="mt-4 p-4 bg-white rounded-lg border border-slate-100 flex flex-wrap gap-4 items-center">
-                                                               <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Submitted By:</div>
-                                                               <div className="flex items-center gap-4 text-sm font-bold text-slate-700">
-                                                                  <span className="flex items-center gap-1"><Building2 className="w-4 h-4 text-slate-400" /> {request.agent_name || request.agency_name}</span>
-                                                                  <span className="flex items-center gap-1 text-slate-500"> {request.agent_email}</span>
+                                                {pendingJobRequests.map(request => {
+                                                   const isRejecting = showRejectModal && selectedJobRequest?._id === (request._id || request.id);
+
+                                                   return (
+                                                      <div key={request._id || request.id} className="bg-slate-50 border border-slate-100 rounded-xl p-6 transition-all hover:bg-slate-100 hover:border-slate-200">
+                                                         <div className="flex flex-col md:flex-row justify-between gap-4">
+                                                            <div className="flex-1">
+                                                               <div className="flex items-center gap-3">
+                                                                  <h4 className="font-bold text-slate-900 text-lg mb-1">{request.title} <span className="text-slate-500 text-sm font-normal">at</span> {request.company}</h4>
+                                                                  <span className="px-2 py-1 bg-amber-100 text-amber-700 text-[10px] font-black uppercase tracking-wider rounded border border-amber-200">
+                                                                     {request.status}
+                                                                  </span>
+                                                               </div>
+                                                               <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-medium text-slate-600 mt-2">
+                                                                  <span className="flex items-center gap-1 font-bold"><Briefcase className="w-3.5 h-3.5 text-slate-400" /> {request.category}</span>
+                                                                  <span className="flex items-center gap-1 font-bold"><MapPin className="w-3.5 h-3.5 text-slate-400" /> {request.location}</span>
+                                                                  <span className="flex items-center gap-1 font-bold"><DollarSign className="w-3.5 h-3.5 text-slate-400" /> {request.salary_range || 'Not specified'}</span>
+                                                                  <span className="flex items-center gap-1 font-bold"><Users className="w-3.5 h-3.5 text-slate-400" /> {request.vacancies || 1} Openings</span>
+                                                                  <span className="flex items-center gap-1 font-bold"><Award className="w-3.5 h-3.5 text-slate-400" /> {request.experience || 'Any Experience'}</span>
+                                                               </div>
+
+                                                               <div className="mt-4 text-sm text-slate-700">
+                                                                  <p className="font-semibold mb-1">Description:</p>
+                                                                  <p className="mb-3 whitespace-pre-wrap">{request.description || 'No description provided.'}</p>
+
+                                                                  <p className="font-semibold mb-1">Requirements:</p>
+                                                                  {Array.isArray(request.requirements) && request.requirements.length > 0 ? (
+                                                                     <ul className="list-disc pl-5 mb-3">
+                                                                        {request.requirements.map((reqItem, idx) => (
+                                                                           <li key={idx}>{reqItem}</li>
+                                                                        ))}
+                                                                     </ul>
+                                                                  ) : (
+                                                                     <p className="mb-3">None specified.</p>
+                                                                  )}
+                                                               </div>
+
+                                                               <div className="mt-4 p-4 bg-white rounded-lg border border-slate-100 flex flex-wrap gap-x-8 gap-y-4 items-center">
+                                                                  <div className="flex flex-col gap-1">
+                                                                     <div className="text-[10px] font-black tracking-widest text-slate-400 uppercase">Submitted By</div>
+                                                                     <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                                                                        <Building2 className="w-4 h-4 text-emerald-600" /> {request.agent_name || request.agency_name}
+                                                                     </div>
+                                                                  </div>
+                                                                  <div className="flex flex-col gap-1">
+                                                                     <div className="text-[10px] font-black tracking-widest text-slate-400 uppercase">Date</div>
+                                                                     <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                                                                        <Calendar className="w-4 h-4 text-slate-400" /> {new Date(request.createdAt).toLocaleDateString()}
+                                                                     </div>
+                                                                  </div>
                                                                </div>
                                                             </div>
+
+                                                            <div className="flex shrink-0 flex-col gap-3 mt-4 md:mt-0 items-end min-w-[120px]">
+                                                               {!isRejecting && (
+                                                                  <>
+                                                                     <button
+                                                                        onClick={() => handleJobRequestStatus(request, 'APPROVED')}
+                                                                        disabled={isApprovingJob}
+                                                                        className="w-full px-4 py-2 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50"
+                                                                     >
+                                                                        Approve
+                                                                     </button>
+                                                                     <button
+                                                                        onClick={() => {
+                                                                           setSelectedJobRequest(request);
+                                                                           setShowRejectModal(true);
+                                                                        }}
+                                                                        className="w-full px-4 py-2 bg-white text-red-600 border border-red-200 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-red-50 hover:border-red-300 transition-colors"
+                                                                     >
+                                                                        Reject
+                                                                     </button>
+                                                                  </>
+                                                               )}
+                                                            </div>
                                                          </div>
-                                                         <div className="flex shrink-0 gap-3 mt-4 md:mt-0 items-start">
-                                                            <button
-                                                               onClick={() => {
-                                                                  setSelectedJobRequest(request);
-                                                                  handleApproveJobRequest(request);
-                                                               }}
-                                                               disabled={isApprovingJob}
-                                                               className="px-4 py-2 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50"
-                                                            >
-                                                               Approve
-                                                            </button>
-                                                            <button
-                                                               onClick={() => {
-                                                                  setSelectedJobRequest(request);
-                                                                  setShowRejectModal(true);
-                                                               }}
-                                                               className="px-4 py-2 bg-white text-red-600 border border-red-200 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-red-50 hover:border-red-300 transition-colors"
-                                                            >
-                                                               Reject
-                                                            </button>
-                                                         </div>
+
+                                                         {isRejecting && (
+                                                            <div className="mt-6 p-4 border border-red-200 bg-red-50 rounded-lg animate-in fade-in duration-200">
+                                                               <label className="block text-[10px] font-black uppercase tracking-widest mb-2 text-red-800">Rejection Reason</label>
+                                                               <textarea
+                                                                  className="w-full p-3 border border-red-200 rounded-md text-sm mb-3 focus:outline-none focus:border-red-400"
+                                                                  rows={3}
+                                                                  placeholder="Explain why this request is rejected..."
+                                                                  value={rejectReason}
+                                                                  onChange={(e) => setRejectReason(e.target.value)}
+                                                               />
+                                                               <div className="flex justify-end gap-3">
+                                                                  <button
+                                                                     onClick={() => { setShowRejectModal(false); setRejectReason(''); setSelectedJobRequest(null); }}
+                                                                     className="px-4 py-2 border border-slate-300 text-slate-600 rounded-md text-[10px] uppercase font-black tracking-widest hover:bg-slate-100"
+                                                                  >
+                                                                     Cancel
+                                                                  </button>
+                                                                  <button
+                                                                     onClick={() => handleJobRequestStatus(request, 'REJECTED', rejectReason)}
+                                                                     disabled={isRejectingJob || !rejectReason.trim()}
+                                                                     className="px-4 py-2 bg-red-600 text-white rounded-md text-[10px] uppercase font-black tracking-widest hover:bg-red-700 shadow-sm disabled:opacity-50"
+                                                                  >
+                                                                     Confirm Reject
+                                                                  </button>
+                                                               </div>
+                                                            </div>
+                                                         )}
                                                       </div>
-                                                   </div>
-                                                ))}
+                                                   );
+                                                })}
                                              </div>
                                           ) : (
                                              <div className="py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-center">
@@ -4591,4 +4665,5 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
+
 

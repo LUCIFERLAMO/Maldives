@@ -23,6 +23,10 @@ const applicationSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    nationality: {
+        type: String,
+        required: false
+    },
     // Optional: if submitted by an agent
     agent_id: {
         type: String,

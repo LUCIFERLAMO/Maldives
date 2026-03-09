@@ -6,8 +6,8 @@ import { MOCK_APPLICATIONS, MOCK_JOBS } from '../constants';
 import {
     Search, LayoutDashboard, Users, Briefcase,
     X, Shield, LogOut, Briefcase as BriefcaseIcon,
-    Ban, PlusCircle, CheckCircle, RefreshCw, ArrowLeft,
-    AlertTriangle, Globe, ArrowRight, UserPlus,
+    Ban, PlusCircle, CheckCircle, CheckCircle2, RefreshCw, ArrowLeft,
+    AlertTriangle, AlertCircle, Globe, ArrowRight, UserPlus,
     MapPin, Award, User,
     AlignLeft, ChevronDown, ShieldCheck,
     FilePlus, Clock, Settings, Key, Eye, EyeOff,
@@ -51,25 +51,29 @@ const RecruiterDashboard = () => {
 
     // --- REAL DATA FETCHER ---
     const [pipelineData, setPipelineData] = useState([]);
-    // This gets the list of candidates from the database
-    useEffect(() => {
-        if (!user?.id) return;
+    const [isRefreshingPipeline, setIsRefreshingPipeline] = useState(false);
 
-        const fetchPipeline = async () => {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/applications/agent/${user.id}/all`);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
-                if (data) {
-                    setPipelineData(Array.isArray(data) ? data : []);
-                }
-            } catch (error) {
-                console.error("Error fetching pipeline:", error);
-                setPipelineData([]);
+    // Named function so it can be reused by Refresh button
+    const fetchPipeline = async () => {
+        if (!user?.id) return;
+        setIsRefreshingPipeline(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/applications/agent/${user.id}/all`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-        };
+            const data = await response.json();
+            setPipelineData(Array.isArray(data) ? data : []);
+        } catch (error) {
+            console.error("Error fetching pipeline:", error);
+            setPipelineData([]);
+        } finally {
+            setIsRefreshingPipeline(false);
+        }
+    };
+
+    // Fetch on mount and when user changes
+    useEffect(() => {
         fetchPipeline();
     }, [user?.id]);
     // -------------------------
@@ -323,10 +327,8 @@ const RecruiterDashboard = () => {
             popup.success("Success! Candidate Submitted to Database.");
             setSelectedJobForSubmission(null);
 
-            // Refresh Pipeline
-            const pipelineResponse = await fetch(`${API_BASE_URL}/api/applications/agent/${user.id}/all`);
-            const pipelineData = await pipelineResponse.json();
-            if (pipelineData) setPipelineData(Array.isArray(pipelineData) ? pipelineData : []);
+            // Refresh Pipeline using the top-level fetchPipeline
+            fetchPipeline();
 
         } catch (err) {
             console.error("Submission Error:", err);
@@ -707,7 +709,15 @@ const RecruiterDashboard = () => {
                                                     .map((req) => (
                                                         <div
                                                             key={req.id || req._id}
-                                                            onClick={() => setExpandedJobRequestId(expandedJobRequestId === req.id ? null : req.id)}
+                                                            onClick={() => {
+                                                                const isExpanding = expandedJobRequestId !== (req.id || req._id);
+                                                                setExpandedJobRequestId(isExpanding ? (req.id || req._id) : null);
+                                                                if (isExpanding) {
+                                                                    setTimeout(() => {
+                                                                        document.getElementById(`status-block-${req.id || req._id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                                                                    }, 350);
+                                                                }
+                                                            }}
                                                             className={`bg-white rounded-xl border transition-all cursor-pointer group overflow-hidden ${expandedJobRequestId === req.id
                                                                 ? 'border-teal-200 shadow-md ring-1 ring-teal-500/10'
                                                                 : 'border-slate-200 shadow-sm hover:shadow-md hover:border-teal-100'
@@ -764,6 +774,24 @@ const RecruiterDashboard = () => {
                                                                                 </ul>
                                                                             </div>
                                                                         </div>
+                                                                        
+                                                                        {req.status === 'REJECTED' && req.review_notes && (
+                                                                            <div id={`status-block-${req.id || req._id}`} className="mt-6 p-4 bg-red-50 border border-red-100 rounded-lg">
+                                                                                <h4 className="text-xs font-bold text-red-800 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                                                                    <AlertCircle className="w-4 h-4 text-red-600" /> Rejection Reason
+                                                                                </h4>
+                                                                                <p className="text-sm text-red-700 font-medium whitespace-pre-wrap">{req.review_notes}</p>
+                                                                            </div>
+                                                                        )}
+
+                                                                        {req.status === 'APPROVED' && (
+                                                                            <div id={`status-block-${req.id || req._id}`} className="mt-6 p-4 bg-emerald-50 border border-emerald-100 rounded-lg">
+                                                                                <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                                                                    <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Request Approved
+                                                                                </h4>
+                                                                                <p className="text-sm text-emerald-700 font-medium">This job request has been approved and is now live. Candidates can now apply to it.</p>
+                                                                            </div>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -1308,22 +1336,12 @@ const RecruiterDashboard = () => {
                                     </div>
                                     <div className="flex items-center gap-4">
                                         <button
-                                            onClick={() => {
-                                                if (!user?.id) return;
-                                                const fetchPipeline = async () => {
-                                                    try {
-                                                        const response = await fetch(`${API_BASE_URL}/api/applications/agent/${user.id}/all`);
-                                                        if (response.ok) {
-                                                            const data = await response.json();
-                                                            setPipelineData(Array.isArray(data) ? data : []);
-                                                        }
-                                                    } catch (error) { console.error("Error fetching pipeline:", error); }
-                                                };
-                                                fetchPipeline();
-                                            }}
-                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-slate-200 hover:text-slate-900 transition-colors shadow-sm"
+                                            onClick={fetchPipeline}
+                                            disabled={isRefreshingPipeline}
+                                            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-slate-200 hover:text-slate-900 transition-colors shadow-sm disabled:opacity-60"
                                         >
-                                            <RefreshCw className="w-4 h-4" /> Refresh
+                                            <RefreshCw className={`w-4 h-4 ${isRefreshingPipeline ? 'animate-spin' : ''}`} /> 
+                                            {isRefreshingPipeline ? 'Refreshing...' : 'Refresh'}
                                         </button>
                                         <div className="relative group">
                                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-teal-600 transition-colors" />

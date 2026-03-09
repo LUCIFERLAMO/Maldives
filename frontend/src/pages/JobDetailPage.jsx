@@ -27,6 +27,7 @@ const JobDetailPage = () => {
         name: '',
         contact: '',
         email: '',
+        nationality: '',
     });
 
     const [files, setFiles] = useState({
@@ -82,7 +83,8 @@ const JobDetailPage = () => {
             setFormData({
                 name: user.name,
                 email: user.email,
-                contact: '',
+                contact: user.contact_number || '',
+                nationality: user.nationality || '',
             });
         }
     }, [isAuthenticated, user]);
@@ -169,6 +171,7 @@ const JobDetailPage = () => {
             formDataPayload.append('name', formData.name);
             formDataPayload.append('email', formData.email);
             formDataPayload.append('contact', formData.contact);
+            formDataPayload.append('nationality', formData.nationality);
 
             if (files.resume) {
                 formDataPayload.append('resume', files.resume);
@@ -482,6 +485,13 @@ const JobDetailPage = () => {
                                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 pl-1">Contact Number</label>
                                     <input
                                         type="tel" name="contact" value={formData.contact} onChange={handleInputChange} required placeholder="+960..."
+                                        className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-900 outline-none focus:border-teal-500 transition-colors"
+                                    />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 pl-1">Nationality</label>
+                                    <input
+                                        type="text" name="nationality" value={formData.nationality} onChange={handleInputChange} required placeholder="Enter your nationality"
                                         className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-900 outline-none focus:border-teal-500 transition-colors"
                                     />
                                 </div>
