@@ -1,0 +1,318 @@
+﻿diff --cc frontend/src/pages/AdminDashboard.jsx
+index 3ec0304,685a5bd..0000000
+--- a/frontend/src/pages/AdminDashboard.jsx
++++ b/frontend/src/pages/AdminDashboard.jsx
+@@@ -3064,54 -3264,113 +3079,137 @@@ const AdminDashboard = () => 
+  
+                                            {pendingJobRequests.length > 0 ? (
+                                               <div className="space-y-4">
+-                                                 {pendingJobRequests.map(request => (
+-                                                    <div key={request._id || request.id} className="bg-slate-50 border border-slate-100 rounded-xl p-6 transition-all hover:bg-slate-100 hover:border-slate-200">
+-                                                       <div className="flex flex-col md:flex-row justify-between gap-4">
+-                                                          <div>
+-                                                             <div className="flex items-center gap-3">
+-                                                                <h4 className="font-bold text-slate-900 text-lg mb-1">{request.title} <span className="text-slate-500 text-sm font-normal">at</span> {request.company}</h4>
+-                                                                <span className="px-2 py-1 bg-amber-100 text-amber-700 text-[10px] font-black uppercase tracking-wider rounded border border-amber-200">
+-                                                                   {request.status}
+-                                                                </span>
+-                                                             </div>
+-                                                             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-bold text-slate-600 mt-2">
+-                                                                <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-slate-400" /> {request.location}</span>
+-                                                                <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5 text-slate-400" /> {request.vacancies || 1} Openings</span>
+-                                                                <span className="flex items-center gap-1"><Briefcase className="w-3.5 h-3.5 text-slate-400" /> {request.category}</span>
+-                                                                <span className="flex items-center gap-1"><DollarSign className="w-3.5 h-3.5 text-slate-400" /> {request.salary_range || 'Not specified'}</span>
+-                                                             </div>
+-                                                             <div className="mt-4 p-4 bg-white rounded-lg border border-slate-100 flex flex-wrap gap-4 items-center">
+-                                                                <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Submitted By:</div>
+-                                                                <div className="flex items-center gap-4 text-sm font-bold text-slate-700">
+-                                                                   <span className="flex items-center gap-1"><Building2 className="w-4 h-4 text-slate-400" /> {request.agent_name || request.agency_name}</span>
+-                                                                   <span className="flex items-center gap-1 text-slate-500"> {request.agent_email}</span>
++                                                 {pendingJobRequests.map(request => {
++                                                    const isRejecting = showRejectModal && selectedJobRequest?._id === (request._id || request.id);
++ 
++                                                    return (
++                                                       <div key={request._id || request.id} className="bg-slate-50 border border-slate-100 rounded-xl p-6 transition-all hover:bg-slate-100 hover:border-slate-200">
++                                                          <div className="flex flex-col md:flex-row justify-between gap-4">
++                                                             <div className="flex-1">
++                                                                <div className="flex items-center gap-3">
++                                                                   <h4 className="font-bold text-slate-900 text-lg mb-1">{request.title} <span className="text-slate-500 text-sm font-normal">at</span> {request.company}</h4>
++                                                                   <span className="px-2 py-1 bg-amber-100 text-amber-700 text-[10px] font-black uppercase tracking-wider rounded border border-amber-200">
++                                                                      {request.status}
++                                                                   </span>
++                                                                </div>
++                                                                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-medium text-slate-600 mt-2">
++                                                                   <span className="flex items-center gap-1 font-bold"><Briefcase className="w-3.5 h-3.5 text-slate-400" /> {request.category}</span>
++                                                                   <span className="flex items-center gap-1 font-bold"><MapPin className="w-3.5 h-3.5 text-slate-400" /> {request.location}</span>
++                                                                   <span className="flex items-center gap-1 font-bold"><DollarSign className="w-3.5 h-3.5 text-slate-400" /> {request.salary_range || 'Not specified'}</span>
++                                                                   <span className="flex items-center gap-1 font-bold"><Users className="w-3.5 h-3.5 text-slate-400" /> {request.vacancies || 1} Openings</span>
++                                                                   <span className="flex items-center gap-1 font-bold"><Award className="w-3.5 h-3.5 text-slate-400" /> {request.experience || 'Any Experience'}</span>
++                                                                </div>
++                                                                
++                                                                <div className="mt-4 text-sm text-slate-700">
++                                                                   <p className="font-semibold mb-1">Description:</p>
++                                                                   <p className="mb-3 whitespace-pre-wrap">{request.description || 'No description provided.'}</p>
++                                                                   
++                                                                   <p className="font-semibold mb-1">Requirements:</p>
++                                                                   {Array.isArray(request.requirements) && request.requirements.length > 0 ? (
++                                                                      <ul className="list-disc pl-5 mb-3">
++                                                                         {request.requirements.map((reqItem, idx) => (
++                                                                            <li key={idx}>{reqItem}</li>
++                                                                         ))}
++                                                                      </ul>
++                                                                   ) : (
++                                                                      <p className="mb-3">None specified.</p>
++                                                                   )}
++                                                                </div>
++ 
++                                                                <div className="mt-4 p-4 bg-white rounded-lg border border-slate-100 flex flex-wrap gap-x-8 gap-y-4 items-center">
++                                                                   <div className="flex flex-col gap-1">
++                                                                      <div className="text-[10px] font-black tracking-widest text-slate-400 uppercase">Submitted By</div>
++                                                                      <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
++                                                                         <Building2 className="w-4 h-4 text-emerald-600" /> {request.agent_name || request.agency_name}
++                                                                      </div>
++                                                                   </div>
++                                                                   <div className="flex flex-col gap-1">
++                                                                      <div className="text-[10px] font-black tracking-widest text-slate-400 uppercase">Date</div>
++                                                                      <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
++                                                                         <Calendar className="w-4 h-4 text-slate-400" /> {new Date(request.createdAt).toLocaleDateString()}
++                                                                      </div>
++                                                                   </div>
+                                                                 </div>
+                                                              </div>
++ 
++                                                             <div className="flex shrink-0 flex-col gap-3 mt-4 md:mt-0 items-end min-w-[120px]">
++                                                                {!isRejecting && (
++                                                                   <>
++                                                                      <button 
++                                                                         onClick={() => handleJobRequestStatus(request, 'APPROVED')}
++                                                                         disabled={isApprovingJob}
++                                                                         className="w-full px-4 py-2 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50"
++                                                                      >
++                                                                         Approve
++                                                                      </button>
++                                                                      <button 
++                                                                         onClick={() => {
++                                                                            setSelectedJobRequest(request);
++                                                                            setShowRejectModal(true);
++                                                                         }}
++                                                                         className="w-full px-4 py-2 bg-white text-red-600 border border-red-200 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-red-50 hover:border-red-300 transition-colors"
++                                                                      >
++                                                                         Reject
++                                                                      </button>
++                                                                   </>
++                                                                )}
++                                                             </div>
+                                                           </div>
+++<<<<<<< HEAD
+ +                                                         <div className="flex shrink-0 gap-3 mt-4 md:mt-0 items-start">
+ +                                                            <button
+ +                                                               onClick={() => {
+ +                                                                  setSelectedJobRequest(request);
+ +                                                                  handleApproveJobRequest(request);
+ +                                                               }}
+ +                                                               disabled={isApprovingJob}
+ +                                                               className="px-4 py-2 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50"
+ +                                                            >
+ +                                                               Approve
+ +                                                            </button>
+ +                                                            <button
+ +                                                               onClick={() => {
+ +                                                                  setSelectedJobRequest(request);
+ +                                                                  setShowRejectModal(true);
+ +                                                               }}
+ +                                                               className="px-4 py-2 bg-white text-red-600 border border-red-200 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-red-50 hover:border-red-300 transition-colors"
+ +                                                            >
+ +                                                               Reject
+ +                                                            </button>
+ +                                                         </div>
+++=======
++ 
++                                                          {isRejecting && (
++                                                             <div className="mt-6 p-4 border border-red-200 bg-red-50 rounded-lg animate-in fade-in duration-200">
++                                                                <label className="block text-[10px] font-black uppercase tracking-widest mb-2 text-red-800">Rejection Reason</label>
++                                                                <textarea 
++                                                                   className="w-full p-3 border border-red-200 rounded-md text-sm mb-3 focus:outline-none focus:border-red-400"
++                                                                   rows={3}
++                                                                   placeholder="Explain why this request is rejected..."
++                                                                   value={rejectReason}
++                                                                   onChange={(e) => setRejectReason(e.target.value)}
++                                                                />
++                                                                <div className="flex justify-end gap-3">
++                                                                   <button 
++                                                                      onClick={() => { setShowRejectModal(false); setRejectReason(''); setSelectedJobRequest(null); }}
++                                                                      className="px-4 py-2 border border-slate-300 text-slate-600 rounded-md text-[10px] uppercase font-black tracking-widest hover:bg-slate-100"
++                                                                   >
++                                                                      Cancel
++                                                                   </button>
++                                                                   <button 
++                                                                      onClick={() => handleJobRequestStatus(request, 'REJECTED', rejectReason)}
++                                                                      disabled={isRejectingJob || !rejectReason.trim()}
++                                                                      className="px-4 py-2 bg-red-600 text-white rounded-md text-[10px] uppercase font-black tracking-widest hover:bg-red-700 shadow-sm disabled:opacity-50"
++                                                                   >
++                                                                      Confirm Reject
++                                                                   </button>
++                                                                </div>
++                                                             </div>
++                                                          )}
+++>>>>>>> origin/main
+                                                        </div>
+-                                                    </div>
+-                                                 ))}
++                                                    );
++                                                 })}
+                                               </div>
+                                            ) : (
+                                               <div className="py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-center">
+diff --git a/diff.txt b/diff.txt
+deleted file mode 100644
+index 043f37b..0000000
+Binary files a/diff.txt and /dev/null differ
+diff --git a/frontend/src/utils/passwordValidation.js b/frontend/src/utils/passwordValidation.js
+deleted file mode 100644
+index 2184e74..0000000
+--- a/frontend/src/utils/passwordValidation.js
++++ /dev/null
+@@ -1,39 +0,0 @@
+-/**
+- * Password validation utility
+- * Checks that a password meets minimum security requirements:
+- * - At least 8 characters
+- * - At least one uppercase letter
+- * - At least one lowercase letter
+- * - At least one digit
+- * - At least one special character
+- */
+-export const validatePassword = (password) => {
+-    if (!password) return {
+-        isValid: false,
+-        errors: ['Password is required'],
+-        criteria: { length: false, upper: false, lower: false, number: false, symbol: false }
+-    };
+-
+-    const criteria = {
+-        length: password.length >= 8,
+-        upper: /[A-Z]/.test(password),
+-        lower: /[a-z]/.test(password),
+-        number: /[0-9]/.test(password),
+-        symbol: /[!@#$%^&*(),.?":{}|<>_\-+=~`[\]\\;'/]/.test(password),
+-    };
+-
+-    const errors = [];
+-    if (!criteria.length) errors.push('At least 8 characters');
+-    if (!criteria.upper) errors.push('At least one uppercase letter');
+-    if (!criteria.lower) errors.push('At least one lowercase letter');
+-    if (!criteria.number) errors.push('At least one number');
+-    if (!criteria.symbol) errors.push('At least one special character');
+-
+-    return {
+-        isValid: errors.length === 0,
+-        errors,
+-        criteria,
+-    };
+-};
+-
+-export default validatePassword;
+diff --git a/frontend/test-error.cjs b/frontend/test-error.cjs
+deleted file mode 100644
+index d862453..0000000
+--- a/frontend/test-error.cjs
++++ /dev/null
+@@ -1,39 +0,0 @@
+-const puppeteer = require('puppeteer');
+-
+-(async () => {
+-  const browser = await puppeteer.launch();
+-  const page = await browser.newPage();
+-  
+-  // Listen for console logs
+-  page.on('console', msg => console.log('PAGE LOG:', msg.text()));
+-  
+-  // Catch uncaught exceptions on the page
+-  page.on('pageerror', error => {
+-    console.log('PAGE EXCEPTION:', error.message);
+-  });
+-
+-  try {
+-    const url = process.argv[2] || 'http://localhost:4173/login/agent';
+-    console.log("Navigating to", url);
+-    await page.goto(url, { waitUntil: 'networkidle0' });
+-    
+-    // Check if our fatal error div exists
+-    const fatalError = await page.evaluate(() => {
+-      const el = document.getElementById('app-fatal-error');
+-      return el ? el.innerText : null;
+-    });
+-
+-    if (fatalError) {
+-      console.log('FOUND FATAL ERROR DIV:', fatalError);
+-    } else {
+-      console.log('No fatal error div found.');
+-      // Print the DOM to see what rendered
+-      const html = await page.content();
+-      console.log("HTML starts with:", html.substring(0, 500));
+-    }
+-  } catch (err) {
+-    console.error("Navigation failed:", err);
+-  } finally {
+-    await browser.close();
+-  }
+-})();
+diff --git a/remote_refs.txt b/remote_refs.txt
+deleted file mode 100644
+index 166aff3..0000000
+Binary files a/remote_refs.txt and /dev/null differ
+diff --git a/src/utils/passwordValidation.js b/src/utils/passwordValidation.js
+deleted file mode 100644
+index ec0f957..0000000
+--- a/src/utils/passwordValidation.js
++++ /dev/null
+@@ -1,33 +0,0 @@
+-/**
+- * Validates a password based on specific security criteria:
+- * - Minimum 8 characters
+- * - At least one uppercase letter
+- * - At least one lowercase letter
+- * - At least one digit
+- * - At least one special character
+- * 
+- * @param {string} password - The password to validate
+- * @returns {object} - An object containing validation status and specific criteria matches
+- */
+-export const validatePassword = (password) => {
+-    const minLength = 8;
+-    const hasUpperCase = /[A-Z]/.test(password);
+-    const hasLowerCase = /[a-z]/.test(password);
+-    const hasNumber = /[0-9]/.test(password);
+-    const hasSymbol = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+-    const isLongEnough = password.length >= minLength;
+-
+-    const isValid = hasUpperCase && hasLowerCase && hasNumber && hasSymbol && isLongEnough;
+-
+-    return {
+-        isValid,
+-        criteria: {
+-            length: isLongEnough,
+-            upper: hasUpperCase,
+-            lower: hasLowerCase,
+-            number: hasNumber,
+-            symbol: hasSymbol
+-        },
+-        message: isValid ? 'Strong password' : 'Password does not meet requirements'
+-    };
+-};
+diff --git a/test-console.js b/test-console.js
+deleted file mode 100644
+index d4f8a77..0000000
+--- a/test-console.js
++++ /dev/null
+@@ -1,9 +0,0 @@
+-const puppeteer = require("puppeteer");
+-(async () => {
+-  const browser = await puppeteer.launch();
+-  const page = await browser.newPage();
+-  page.on("console", msg => console.log("PAGE LOG:", msg.text()));
+-  page.on("pageerror", err => console.log("PAGE ERROR:", err.toString()));
+-  await page.goto("http://localhost:5173/login/agent", { waitUntil: "networkidle0" }).catch(e => console.log("GOTO ERROR", e.message));
+-  await browser.close();
+-})();
+\ No newline at end of file
