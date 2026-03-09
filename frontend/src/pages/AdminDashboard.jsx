@@ -307,7 +307,7 @@ const AdminDashboard = () => {
    // Removed duplicate jobApplications declaration
    const [isLoadingJobs, setIsLoadingJobs] = useState(false);
    const [isLoadingApplications, setIsLoadingApplications] = useState(false);
-   const [agentSubTab, setAgentSubTab] = useState('vacancies');
+   const [agentSubTab, setAgentSubTab] = useState('resumes');
 
    // --- Viewed Application Tracking (localStorage) ---
    const [viewedApplicationIds, setViewedApplicationIds] = useState(() => {
@@ -2999,20 +2999,7 @@ const AdminDashboard = () => {
                               <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                                  {/* Sub-tabs */}
                                  <div className="flex items-center gap-4 mb-8">
-                                    <button
-                                       onClick={() => setAgentSubTab('vacancies')}
-                                       className={`flex items-center gap-2 px-6 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${agentSubTab === 'vacancies'
-                                          ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/20'
-                                          : 'bg-white text-black font-bold hover:text-slate-600'
-                                          }`}
-                                    >
-                                       <Briefcase className="w-4 h-4" /> Agent Vacancies
-                                       {agentVacancies.length > 0 && (
-                                          <span className="ml-2 bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center shadow-sm">
-                                             {agentVacancies.length > 99 ? '99+' : agentVacancies.length}
-                                          </span>
-                                       )}
-                                    </button>
+
                                     <button
                                        onClick={() => setAgentSubTab('resumes')}
                                        className={`flex items-center gap-2 px-6 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${agentSubTab === 'resumes'
@@ -3059,185 +3046,13 @@ const AdminDashboard = () => {
 
                                  {/* Content Area */}
                                  <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-8">
-                                    {agentSubTab === 'vacancies' && (
-                                       <div className="space-y-4">
-                                          <div className="flex justify-end items-center gap-3">
-                                             <div className="relative">
-                                                <input
-                                                   type="text"
-                                                   placeholder="Search vacancies..."
-                                                   className="pl-4 pr-10 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 w-64"
-                                                   value={vacancySearchInput}
-                                                   onChange={(e) => setVacancySearchInput(e.target.value)}
-                                                   onKeyDown={(e) => e.key === 'Enter' && handleVacancySearch()}
-                                                />
-                                                <button
-                                                   onClick={handleVacancySearch}
-                                                   className="absolute right-3 top-1/2 -translate-y-1/2 text-black font-bold hover:text-teal-600 transition-colors"
-                                                >
-                                                   <Search className="w-4 h-4" />
-                                                </button>
-                                             </div>
-                                             <div className="relative">
-                                                <button
-                                                   onClick={() => setIsVacancyFilterOpen(!isVacancyFilterOpen)}
-                                                   className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isVacancyFilterOpen ? 'bg-teal-50 text-teal-600' : 'text-black font-bold hover:text-slate-600 hover:bg-slate-50'}`}
-                                                >
-                                                   <Filter className="w-4 h-4" />
-                                                </button>
-                                                {isVacancyFilterOpen && (
-                                                   <div className="absolute right-0 top-full mt-4 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                                      <div className="max-h-[60vh] overflow-y-auto custom-scrollbar p-6 space-y-6">
-                                                         <div className="space-y-3">
-                                                            <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">1. Status</h4>
-                                                            <div className="space-y-2">
-                                                               {['HIDDEN', 'LIVE TO PUBLIC', 'STILL IN HOLD'].map(status => (
-                                                                  <label key={status} className="flex items-center gap-3 cursor-pointer group">
-                                                                     <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${vacancyFilters.status.includes(status) ? 'bg-teal-600 border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
-                                                                        {vacancyFilters.status.includes(status) && <CheckCircle2 className="w-3 h-3 text-white" />}
-                                                                     </div>
-                                                                     <input type="checkbox" className="hidden" checked={vacancyFilters.status.includes(status)} onChange={() => toggleVacancyFilter(status)} />
-                                                                     <span className="text-xs font-bold text-slate-700">{status}</span>
-                                                                  </label>
-                                                               ))}
-                                                            </div>
-                                                         </div>
-                                                         <div className="space-y-3">
-                                                            <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">2. Duration</h4>
-                                                            <div className="space-y-2">
-                                                               {['Since 1 hr', 'Since 1 week', 'Since 1 month', 'Since 3 months', 'All'].map(duration => (
-                                                                  <label key={duration} className="flex items-center gap-3 cursor-pointer group">
-                                                                     <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${vacancyFilters.duration === duration ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
-                                                                        {vacancyFilters.duration === duration && <div className="w-2 h-2 rounded-full bg-teal-600" />}
-                                                                     </div>
-                                                                     <input type="radio" className="hidden" checked={vacancyFilters.duration === duration} onChange={() => setVacancyFilters({ ...vacancyFilters, duration })} />
-                                                                     <span className="text-xs font-bold text-slate-700">{duration}</span>
-                                                                  </label>
-                                                               ))}
-                                                            </div>
-                                                         </div>
-                                                         <div className="space-y-3">
-                                                            <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">3. Education</h4>
-                                                            <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
-                                                               {['Any Education Level', 'O-Level / Secondary School', 'A-Level / Higher Secondary', 'Certificate', 'Diploma', 'Advanced Diploma', "Bachelor's Degree", "Master's Degree", 'Doctorate / PhD'].map(edu => (
-                                                                  <label key={edu} className="flex items-center gap-3 cursor-pointer group">
-                                                                     <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${vacancyFilters.education === edu ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
-                                                                        {vacancyFilters.education === edu && <div className="w-2 h-2 rounded-full bg-teal-600" />}
-                                                                     </div>
-                                                                     <input type="radio" className="hidden" checked={vacancyFilters.education === edu} onChange={() => setVacancyFilters({ ...vacancyFilters, education: edu })} />
-                                                                     <span className="text-xs font-bold text-slate-700">{edu}</span>
-                                                                  </label>
-                                                               ))}
-                                                            </div>
-                                                         </div>
-                                                         <div className="space-y-3">
-                                                            <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">4. Experience</h4>
-                                                            <div className="space-y-2">
-                                                               {['No Experience', '1 \u2013 2 Years', '3 \u2013 5 Years', '6 \u2013 10 Years', '10+ Years'].map(exp => (
-                                                                  <label key={exp} className="flex items-center gap-3 cursor-pointer group">
-                                                                     <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${vacancyFilters.experience === exp ? 'border-teal-600' : 'border-slate-300 group-hover:border-teal-500'}`}>
-                                                                        {vacancyFilters.experience === exp && <div className="w-2 h-2 rounded-full bg-teal-600" />}
-                                                                     </div>
-                                                                     <input type="radio" className="hidden" checked={vacancyFilters.experience === exp} onChange={() => setVacancyFilters({ ...vacancyFilters, experience: exp })} />
-                                                                     <span className="text-xs font-bold text-slate-700">{exp}</span>
-                                                                  </label>
-                                                               ))}
-                                                            </div>
-                                                         </div>
-                                                         <div className="space-y-3">
-                                                            <h4 className="text-[10px] font-black uppercase text-black font-bold tracking-widest">5. Location</h4>
-                                                            <select
-                                                               value={vacancyFilters.location}
-                                                               onChange={(e) => setVacancyFilters({ ...vacancyFilters, location: e.target.value })}
-                                                               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-teal-500 transition-colors"
-                                                            >
-                                                               {MALDIVES_LOCATIONS.map(loc => (
-                                                                  <option key={loc} value={loc}>{loc}</option>
-                                                               ))}
-                                                            </select>
-                                                         </div>
-                                                      </div>
-                                                      <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
-                                                         <button onClick={() => setVacancyFilters({ status: [], duration: 'All', location: 'All Locations', education: 'Any Education Level', experience: 'No Experience' })} className="flex-1 py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-colors">Clear</button>
-                                                         <button onClick={() => setIsVacancyFilterOpen(false)} className="flex-1 py-2 rounded-lg bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20">Apply</button>
-                                                      </div>
-                                                   </div>
-                                                )}
-                                             </div>
-                                          </div>
-                                          <table className="w-full text-left border-collapse">
-                                             <thead className="text-black font-bold">
-                                                <tr>
-                                                   <th className="px-6 py-6 text-[10px] uppercase tracking-[0.2em] text-black font-bold">Vacancy Details</th>
-                                                   <th className="px-6 py-6 text-[10px] uppercase tracking-[0.2em] text-black font-bold">Spoke Agency</th>
-                                                   <th className="px-6 py-6 text-[10px] uppercase tracking-[0.2em] text-center text-black font-bold">Openings</th>
-                                                   <th className="px-6 py-6 text-[10px] uppercase tracking-[0.2em] text-center text-black font-bold">View Vacancy</th>
-                                                   <th className="px-6 py-6 text-[10px] uppercase tracking-[0.2em] text-right text-black font-bold">Public State</th>
-                                                </tr>
-                                             </thead>
-                                             <tbody className="divide-y divide-slate-50">
-                                                {filteredAgentVacancies.length > 0 ? (
-                                                   filteredAgentVacancies.map((job) => (
-                                                      <tr key={job.id} className="group hover:bg-slate-50 transition-colors">
-                                                         <td className="px-6 py-8 align-middle">
-                                                            <div>
-                                                               <h4 className="font-bold text-slate-900 text-base mb-1">{job.title}</h4>
-                                                               <p className="text-[10px] font-bold text-black font-bold uppercase tracking-wider">
-                                                                  {job.ref} <span className="mx-1">G</span> {job.date}
-                                                               </p>
-                                                            </div>
-                                                         </td>
-                                                         <td className="px-6 py-8 align-middle">
-                                                            <div className="flex items-center gap-4">
-                                                               <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center">
-                                                                  <Globe2 className="w-5 h-5" />
-                                                               </div>
-                                                               <span className="font-bold text-slate-700 text-sm">{job.agency}</span>
-                                                            </div>
-                                                         </td>
-                                                         <td className="px-6 py-8 text-center bg-transparent align-middle">
-                                                            <span className="font-black text-slate-900 text-xl">{job.openings}</span>
-                                                         </td>
-                                                         <td className="px-6 py-8 text-center align-middle">
-                                                            <button
-                                                               onClick={() => setSelectedVacancy(job)}
-                                                               className="px-6 py-3 rounded-lg bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-colors shadow-lg shadow-teal-600/20 flex items-center justify-center gap-2"
-                                                            >
-                                                               <Eye className="w-3 h-3" /> VIEW DETAILS
-                                                            </button>
-                                                         </td>
-                                                         <td className="px-6 py-8 text-right align-middle">
-                                                            <div className={`inline-flex items-center gap-2 ${job.stateColor} text-[10px] font-black uppercase tracking-widest`}>
-                                                               {job.state === 'HIDDEN' && <AlertCircle className="w-4 h-4" />}
-                                                               {job.state === 'LIVE TO PUBLIC' && <Globe2 className="w-4 h-4" />}
-                                                               {job.state === 'STILL IN HOLD' && <Clock className="w-4 h-4" />}
-                                                               {job.state}
-                                                            </div>
-                                                         </td>
-                                                      </tr>
-                                                   ))
-                                                ) : (
-                                                   <tr>
-                                                      <td colSpan="5" className="px-6 py-12 text-center">
-                                                         <div className="flex flex-col items-center justify-center gap-2">
-                                                            <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-black font-bold">
-                                                               <Search className="w-6 h-6 opacity-40" />
-                                                            </div>
-                                                            <p className="text-slate-500 font-bold">No record exist !!</p>
-                                                         </div>
-                                                      </td>
-                                                   </tr>
-                                                )}
-                                             </tbody>
-                                          </table>
-                                       </div>
-                                    )}
+
 
                                     {agentSubTab === 'job_requests' && (
                                        <div className="space-y-4">
                                           <div className="flex justify-between items-center mb-6">
                                              <h3 className="text-lg font-bold text-slate-800">Pending Job Requests</h3>
-                                             <button 
+                                             <button
                                                 onClick={fetchPendingJobRequests}
                                                 disabled={isRefreshingJobRequests}
                                                 className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-200 transition-colors disabled:opacity-50"
@@ -3274,7 +3089,7 @@ const AdminDashboard = () => {
                                                             </div>
                                                          </div>
                                                          <div className="flex shrink-0 gap-3 mt-4 md:mt-0 items-start">
-                                                            <button 
+                                                            <button
                                                                onClick={() => {
                                                                   setSelectedJobRequest(request);
                                                                   handleApproveJobRequest(request);
@@ -3284,7 +3099,7 @@ const AdminDashboard = () => {
                                                             >
                                                                Approve
                                                             </button>
-                                                            <button 
+                                                            <button
                                                                onClick={() => {
                                                                   setSelectedJobRequest(request);
                                                                   setShowRejectModal(true);
