@@ -224,8 +224,16 @@ const RecruiterDashboard = () => {
             return;
         }
 
-        if (passwordData.newPassword.length < 6) {
-            setPasswordError('New password must be at least 6 characters');
+        // Validate new password to match backend requirements exactly
+        const hasUpperCase = /[A-Z]/.test(passwordData.newPassword);
+        const hasLowerCase = /[a-z]/.test(passwordData.newPassword);
+        const hasNumber = /[0-9]/.test(passwordData.newPassword);
+        const hasSymbol = /[!@#$%^&*(),.?":{}|<>_\-+=~`[\]\\;'/]/.test(passwordData.newPassword);
+        if (
+            passwordData.newPassword.length < 8 ||
+            !hasUpperCase || !hasLowerCase || !hasNumber || !hasSymbol
+        ) {
+            setPasswordError('Password must be at least 8 characters with an uppercase letter, lowercase letter, number, and special character (e.g. !, @, #)');
             return;
         }
 
@@ -1248,7 +1256,7 @@ const RecruiterDashboard = () => {
                                                             type={showNewPassword ? 'text' : 'password'}
                                                             value={passwordData.newPassword}
                                                             onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                                                            placeholder="Enter new password (min 6 characters)"
+                                                            placeholder="Min 8 chars, uppercase, lowercase, number & symbol"
                                                             className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 pr-12 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all"
                                                         />
                                                         <button
