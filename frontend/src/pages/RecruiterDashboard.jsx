@@ -230,10 +230,10 @@ const RecruiterDashboard = () => {
         const hasNumber = /[0-9]/.test(passwordData.newPassword);
         const hasSymbol = /[!@#$%^&*(),.?":{}|<>_\-+=~`[\]\\;'/]/.test(passwordData.newPassword);
         if (
-            passwordData.newPassword.length < 8 ||
+            passwordData.newPassword.length < 6 ||
             !hasUpperCase || !hasLowerCase || !hasNumber || !hasSymbol
         ) {
-            setPasswordError('Password must be at least 8 characters with an uppercase letter, lowercase letter, number, and special character (e.g. !, @, #)');
+            setPasswordError('Password must be at least 6 characters and include an uppercase letter, a lowercase letter, a number, and a special character (e.g. !, @, #)');
             return;
         }
 
