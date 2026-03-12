@@ -833,6 +833,44 @@ app.post('/api/profile/:id/avatar', upload.single('avatar'), async (req, res) =>
     }
 });
 
+// DELETE: Delete Agent Account (and all linked data)
+app.delete('/api/profile/:id/delete-account', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Find profile by MongoDB _id or custom id field
+        let profile;
+        const isMongoId = /^[0-9a-fA-F]{24}$/.test(id);
+        if (isMongoId) profile = await Profile.findById(id);
+        if (!profile) profile = await Profile.findOne({ id });
+
+        if (!profile) {
+            return res.status(404).json({ message: 'Account not found' });
+        }
+
+        // Only allow agents to self-delete via this route
+        if (profile.role !== 'AGENT') {
+            return res.status(403).json({ message: 'This endpoint is only for agent accounts' });
+        }
+
+        // Delete all applications submitted by this agent
+        await Application.deleteMany({ agent_id: profile._id.toString() })
+            .catch(() => Application.deleteMany({ agent_id: id }));
+
+        // Delete all job requests created by this agent
+        await JobRequest.deleteMany({ agent_id: profile._id.toString() })
+            .catch(() => JobRequest.deleteMany({ agent_id: id }));
+
+        // Delete the profile itself (this removes login credentials)
+        await Profile.findByIdAndDelete(profile._id);
+
+        res.json({ message: 'Account and all associated data deleted successfully' });
+    } catch (err) {
+        console.error('Delete account error:', err);
+        res.status(500).json({ message: 'Failed to delete account', error: err.message });
+    }
+});
+
 // POST: Toggle Saved Job
 app.post('/api/profile/:id/save-job', async (req, res) => {
     try {

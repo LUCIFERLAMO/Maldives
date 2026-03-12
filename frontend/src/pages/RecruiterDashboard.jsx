@@ -33,11 +33,16 @@ const RecruiterDashboard = () => {
         if (!user?.id || deleteConfirmInput !== user?.email) return;
         setIsDeletingAccount(true);
         try {
-            await fetch(`${API_BASE_URL}/api/profile/${user.id}/delete-account`, { method: 'DELETE' });
+            const res = await fetch(`${API_BASE_URL}/api/profile/${user.id}/delete-account`, { method: 'DELETE' });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(data.message || 'Failed to delete account');
+            }
             logout();
             navigate('/agent-login');
         } catch (err) {
             console.error('Delete account failed:', err);
+            popup.error(err.message || 'Failed to delete account. Please try again.');
             setIsDeletingAccount(false);
         }
     };
