@@ -2004,12 +2004,14 @@ const AdminDashboard = () => {
                            </div>
                            <div>
                               <p className="text-[10px] font-bold text-black font-bold uppercase tracking-wider mb-1">Temporary Password</p>
-                              <p className="text-sm font-bold text-teal-600 font-mono">{approvedCredentials.temporaryPassword}</p>
+                              <p className="text-sm font-bold text-teal-600 font-mono">
+                                 {approvedCredentials.temporaryPassword || 'Not exposed via API for security'}
+                              </p>
                            </div>
                         </div>
 
                         <p className="text-xs text-slate-500 mb-6">
-                           Please share these credentials with the agency. They will be prompted to change their password on first login.
+                           Credentials are no longer returned in API responses. Ask the agency to use secure onboarding/reset flow.
                         </p>
 
                         <button

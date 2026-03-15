@@ -61,7 +61,9 @@ export const AuthProvider = ({ children }) => {
                 // Fetch fresh full profile from DB to get latest avatar, location, phone etc.
                 let fullProfile = null;
                 try {
-                    const profileRes = await fetch(`${API_BASE_URL}/api/profile/${data.user.id}`);
+                    const profileRes = await fetch(`${API_BASE_URL}/api/profile/${data.user.id}`, {
+                        headers: data.token ? { Authorization: `Bearer ${data.token}` } : {}
+                    });
                     if (profileRes.ok) fullProfile = await profileRes.json();
                 } catch (e) {
                     console.warn('Could not fetch full profile after login:', e);
@@ -81,7 +83,8 @@ export const AuthProvider = ({ children }) => {
                     skills: fullProfile?.skills || data.user.skills || [],
                     experience_years: fullProfile?.experience_years ?? data.user.experience_years ?? 0,
                     agency_name: fullProfile?.agency_name || data.user.agency_name || null,
-                    status: fullProfile?.status || data.user.status || 'ACTIVE'
+                    status: fullProfile?.status || data.user.status || 'ACTIVE',
+                    token: data.token || null
                 };
                 setUser(userData);
                 saveToStorage(userData); // Avatar excluded from storage
@@ -116,7 +119,9 @@ export const AuthProvider = ({ children }) => {
                 // Fetch fresh full profile from DB to get latest avatar, location etc.
                 let fullProfile = null;
                 try {
-                    const profileRes = await fetch(`${API_BASE_URL}/api/profile/${data.user.id}`);
+                    const profileRes = await fetch(`${API_BASE_URL}/api/profile/${data.user.id}`, {
+                        headers: data.token ? { Authorization: `Bearer ${data.token}` } : {}
+                    });
                     if (profileRes.ok) fullProfile = await profileRes.json();
                 } catch (e) {
                     console.warn('Could not fetch full profile after Google login:', e);
@@ -136,7 +141,8 @@ export const AuthProvider = ({ children }) => {
                     skills: fullProfile?.skills || data.user.skills || [],
                     experience_years: fullProfile?.experience_years ?? data.user.experience_years ?? 0,
                     agency_name: fullProfile?.agency_name || data.user.agency_name || null,
-                    status: fullProfile?.status || data.user.status || 'ACTIVE'
+                    status: fullProfile?.status || data.user.status || 'ACTIVE',
+                    token: data.token || null
                 };
                 setUser(userData);
                 saveToStorage(userData);
