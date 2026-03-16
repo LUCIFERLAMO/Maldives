@@ -154,6 +154,7 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Audit Logging Middleware
 import logAudit from './utils/auditLogger.js';
+import AuditLog from './models/AuditLog.js';
 
 app.use(async (req, res, next) => {
     res.on("finish", async () => {
@@ -169,6 +170,17 @@ app.use(async (req, res, next) => {
         );
     });
     next();
+});
+
+// Audit Logs API — fetch logs for the admin System Logs page
+app.get('/api/audit-logs', async (req, res) => {
+    try {
+        const logs = await AuditLog.find().sort({ timestamp: -1 }).limit(200);
+        res.json(logs);
+    } catch (err) {
+        console.error('Failed to fetch audit logs:', err.message);
+        res.status(500).json({ message: 'Failed to fetch audit logs' });
+    }
 });
 
 
