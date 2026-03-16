@@ -334,14 +334,8 @@ const BrowseJobsPage = () => {
 
             {/* 1. EDITORIAL HERO */}
             <div className="relative bg-white pt-24 pb-10 lg:pt-28 lg:pb-16 px-6 rounded-b-[3rem] lg:rounded-b-[4rem] shadow-sm z-20 overflow-hidden">
-                {/* Background Image with Smooth Gradient Mask */}
-                <div className="absolute inset-0 z-0 select-none">
-                    <img
-                        src="https://images.unsplash.com/photo-1540206395-688085723adb?q=80&w=2576&auto=format&fit=crop"
-                        alt=""
-                        className="w-full h-full object-cover opacity-80"
-                        style={{ maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%)', WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%)' }}
-                    />
+                {/* Background Styling - Removed broken image */}
+                <div className="absolute inset-0 z-0 select-none bg-gradient-to-br from-teal-900/5 to-slate-900/10">
                     <div className="absolute inset-0 bg-teal-900/10 mix-blend-overlay"></div>
                 </div>
 
