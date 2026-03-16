@@ -210,6 +210,8 @@ mongoose.connect(MONGODB_URI)
 const storage = multer.memoryStorage();
 const ALLOWED_UPLOAD_MIME_TYPES = new Set([
     'application/pdf',
+    'application/msword', // .doc
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
     'image/jpeg',
     'image/jpg',
     'image/png',
