@@ -78,22 +78,6 @@ const AgentLoginPage = () => {
         }
     };
 
-    // Temporary Logic for Developer Access
-    const handleTempAccess = () => {
-        if (!import.meta.env.DEV) {
-            popup.error('Temporary developer access is not available in production.');
-            return;
-        }
-        mockLogin({
-            id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-            name: 'Developer Agent',
-            email: 'dev@agent.com',
-            role: 'agent',
-            status: 'APPROVED',
-            token: null
-        });
-        navigate('/recruiter');
-    };
 
     return (
         <div className="min-h-[calc(100vh-64px)] bg-[#fdfbf7] flex items-center justify-center p-4">
@@ -161,15 +145,6 @@ const AgentLoginPage = () => {
                             </button>
                         </form>
 
-                        {/* Temporary Developer Access Link */}
-                        <div className="mt-6 text-center">
-                            <button
-                                onClick={handleTempAccess}
-                                className="text-[10px] text-slate-400 font-bold uppercase tracking-widest hover:text-teal-600 transition-colors border-b border-transparent hover:border-teal-600 pb-0.5"
-                            >
-                                Temporary Developer Access
-                            </button>
-                        </div>
                     </div>
                 </div>
             </div>
