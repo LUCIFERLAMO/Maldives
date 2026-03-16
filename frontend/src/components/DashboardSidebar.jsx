@@ -49,6 +49,7 @@ export const DashboardSidebar = ({ activeTab, setActiveTab, isOpen = false, onCl
                 <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
                     {[
                         { id: 'overview', label: 'OVERVIEW', icon: LayoutDashboard },
+                        { id: 'audit_logs', label: 'SYSTEM LOGS', icon: UserCheck },
                         { id: 'audit', label: 'AUDIT QUEUE', icon: UserCheck },
                         { id: 'vacancies', label: 'VACANCY\nMANAGEMENT', icon: Briefcase },
                         { id: 'agents', label: 'AGENT ECOSYSTEM', icon: Globe2 },

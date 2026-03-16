@@ -158,6 +158,7 @@ import logAudit from './utils/auditLogger.js';
 app.use(async (req, res, next) => {
     res.on("finish", async () => {
         const user = req.user?.email || "anonymous";
+        console.log(`[AUDIT] ${req.method} ${req.originalUrl} → ${res.statusCode} (${user})`);
         await logAudit(
             user,
             req.user?.role || "guest",
@@ -169,6 +170,7 @@ app.use(async (req, res, next) => {
     });
     next();
 });
+
 
 // Error sanitization middleware — strip raw error details from responses
 app.use((req, res, next) => {
