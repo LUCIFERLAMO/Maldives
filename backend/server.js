@@ -12,6 +12,7 @@ import bcrypt from 'bcryptjs';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import jwt from 'jsonwebtoken';
+import morgan from 'morgan';
 
 // Force all DNS resolution to prefer IPv4 (Render free tier blocks IPv6 outbound)
 dns.setDefaultResultOrder('ipv4first');
@@ -152,36 +153,10 @@ app.use('/api/', globalLimiter);
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Audit Logging Middleware
-import logAudit from './utils/auditLogger.js';
-import AuditLog from './models/AuditLog.js';
-
-app.use(async (req, res, next) => {
-    res.on("finish", async () => {
-        const user = req.user?.email || "anonymous";
-        console.log(`[AUDIT] ${req.method} ${req.originalUrl} → ${res.statusCode} (${user})`);
-        await logAudit(
-            user,
-            req.user?.role || "guest",
-            req.method,
-            req.originalUrl,
-            req.ip,
-            res.statusCode
-        );
-    });
-    next();
-});
-
-// Audit Logs API — fetch logs for the admin System Logs page
-app.get('/api/audit-logs', async (req, res) => {
-    try {
-        const logs = await AuditLog.find().sort({ timestamp: -1 }).limit(200);
-        res.json(logs);
-    } catch (err) {
-        console.error('Failed to fetch audit logs:', err.message);
-        res.status(500).json({ message: 'Failed to fetch audit logs' });
-    }
-});
+// HTTP Request Logging via Morgan
+morgan.token('user', (req) => req.user?.email || 'anonymous');
+morgan.token('role', (req) => req.user?.role || 'guest');
+app.use(morgan(':date[iso] :method :url :status :res[content-length] - :response-time ms - :user (:role)'));
 
 
 // Error sanitization middleware — strip raw error details from responses
@@ -261,7 +236,6 @@ import Document from './models/Document.js';
 import Subscription from './models/Subscription.js';
 import Notification from './models/Notification.js';
 import notificationRoutes from './routes/notification_routes.js';
-import auditRoutes from './routes/audit_routes.js';
 
 const getApplicationByAnyId = async (id) => {
     let application = await Application.findOne({ id });
@@ -476,9 +450,6 @@ app.get('/api/health', (req, res) => {
 
 // NOTIFICATION ROUTES
 app.use('/api', notificationRoutes);
-
-// AUDIT LOG ROUTES
-app.use('/api', auditRoutes);
 
 // AUTH ROUTES
 app.post('/api/auth/register', authLimiter, upload.fields([

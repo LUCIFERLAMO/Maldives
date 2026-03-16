@@ -35,7 +35,7 @@ import {
 
 import { DashboardSidebar } from '../components/DashboardSidebar';
 import { DashboardHeader } from '../components/DashboardHeader';
-import { AuditLogsList } from '../components/AuditLogsList';
+
 import { INDUSTRIES, REQUIRED_DOCUMENT_OPTIONS } from '../constants';
 
 const MALDIVES_LOCATIONS = ['All Locations', 'Male', 'Hulhumale', 'Villingili', 'Haa Alif', 'Haa Dhaalu', 'Shaviyani', 'Noonu', 'Raa', 'Baa', 'Lhaviyani', 'Kaafu', 'Alif Alif', 'Alif Dhaalu', 'Vaavu', 'Meemu', 'Faafu', 'Dhaalu', 'Thaa', 'Laamu', 'Gaafu Alif', 'Gaafu Dhaalu', 'Gnaviyani', 'Seenu'];
@@ -3930,13 +3930,6 @@ const AdminDashboard = () => {
 
 
                         {/* PLACEHOLDER FOR OTHER TABS */}
-                        {
-                           activeTab === 'audit_logs' && (
-                              <div className="p-8">
-                                 <AuditLogsList />
-                              </div>
-                           )
-                        }
                         {
                            activeTab === 'network' && (
                               <div className="flex flex-col items-center justify-center p-20 bg-white rounded-xl border-2 border-dashed border-slate-200 text-center">
