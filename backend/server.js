@@ -538,6 +538,7 @@ app.post('/api/auth/register', authLimiter, upload.fields([
         });
 
         await newProfile.save();
+        req.user = { email, role }; // For audit log
         res.status(201).json({ message: 'User registered successfully', user: newProfile });
     } catch (err) {
         res.status(500).json({ message: 'Registration failed' });
@@ -551,6 +552,9 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
         // Normalize email
         email = normalizeEmail(email);
 
+        // Track the attempted login identity for the audit log
+        req.user = { email, role: role || 'guest' };
+
         // DEV ADMIN BYPASS
         if (email === 'admin@globalakjobs.com' && password === 'Admin@GlobalAK124!' && role === 'ADMIN') {
             const token = createAuthToken({
@@ -559,6 +563,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
                 email: 'admin@globalakjobs.com',
                 role: 'ADMIN'
             });
+            req.user = { email: 'admin@globalakjobs.com', role: 'ADMIN' }; // For audit log
             return res.json({
                 message: 'Login successful',
                 token,
@@ -615,6 +620,8 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
         const requiresPasswordChange = user.requiresPasswordChange || false;
         const token = createAuthToken(user);
         securityLog('login_success', { userId: user.id, role: user.role, ip: req.ip });
+
+        req.user = { email: user.email, role: user.role }; // For audit log
 
         res.json({
             message: 'Login successful',
