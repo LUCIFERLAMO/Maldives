@@ -1502,7 +1502,10 @@ const RecruiterDashboard = () => {
                                                 type="text"
                                                 placeholder="As per passport"
                                                 value={submissionData.name}
-                                                onChange={e => setSubmissionData({ ...submissionData, name: e.target.value })}
+                                                onChange={e => {
+                                                    const val = e.target.value.replace(/[^A-Za-z\s]/g, '');
+                                                    setSubmissionData({ ...submissionData, name: val });
+                                                }}
                                                 className="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-4 text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
                                             />
                                         </div>
@@ -1512,7 +1515,10 @@ const RecruiterDashboard = () => {
                                                 type="email"
                                                 placeholder="email@candidate.com"
                                                 value={submissionData.email}
-                                                onChange={e => setSubmissionData({ ...submissionData, email: e.target.value })}
+                                                onChange={e => {
+                                                    const val = e.target.value.replace(/[<>/]/g, '');
+                                                    setSubmissionData({ ...submissionData, email: val });
+                                                }}
                                                 className="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-4 text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
                                             />
                                         </div>
@@ -1522,7 +1528,10 @@ const RecruiterDashboard = () => {
                                                 type="tel"
                                                 placeholder="+CountryCode Number"
                                                 value={submissionData.whatsapp}
-                                                onChange={e => setSubmissionData({ ...submissionData, whatsapp: e.target.value })}
+                                                onChange={e => {
+                                                    const val = e.target.value.replace(/[^\d+]/g, '');
+                                                    setSubmissionData({ ...submissionData, whatsapp: val });
+                                                }}
                                                 className="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-4 text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
                                             />
                                         </div>
@@ -1532,7 +1541,10 @@ const RecruiterDashboard = () => {
                                                 type="text"
                                                 placeholder="Nationality"
                                                 value={submissionData.nationality}
-                                                onChange={e => setSubmissionData({ ...submissionData, nationality: e.target.value })}
+                                                onChange={e => {
+                                                    const val = e.target.value.replace(/[^A-Za-z\s]/g, '');
+                                                    setSubmissionData({ ...submissionData, nationality: val });
+                                                }}
                                                 className="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-4 text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
                                             />
                                         </div>
