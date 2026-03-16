@@ -86,6 +86,24 @@ app.use('/api/', globalLimiter);
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// Audit Logging Middleware
+import logAudit from './utils/auditLogger.js';
+
+app.use(async (req, res, next) => {
+    res.on("finish", async () => {
+        const user = req.user?.email || "anonymous";
+        await logAudit(
+            user,
+            req.user?.role || "guest",
+            req.method,
+            req.originalUrl,
+            req.ip,
+            res.statusCode
+        );
+    });
+    next();
+});
+
 // MongoDB Connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/maldives-career';
 
@@ -113,6 +131,7 @@ import Document from './models/Document.js';
 import Subscription from './models/Subscription.js';
 import Notification from './models/Notification.js';
 import notificationRoutes from './routes/notification_routes.js';
+import auditRoutes from './routes/audit_routes.js';
 
 // --- ROUTES ---
 
@@ -127,6 +146,9 @@ app.get('/api/health', (req, res) => {
 
 // NOTIFICATION ROUTES
 app.use('/api', notificationRoutes);
+
+// AUDIT LOG ROUTES
+app.use('/api', auditRoutes);
 
 // AUTH ROUTES
 app.post('/api/auth/register', authLimiter, upload.fields([
@@ -1207,6 +1229,16 @@ app.post('/api/jobs', async (req, res) => {
         });
 
         await newJob.save();
+
+        await logAudit(
+            req.user?.email || "anonymous",
+            "RECRUITER",
+            "CREATE_JOB",
+            "/jobs/create",
+            req.ip,
+            "SUCCESS"
+        );
+
         res.status(201).json(newJob);
     } catch (err) {
         res.status(500).json({ message: 'Failed to create job', error: err.message });
@@ -1401,6 +1433,15 @@ app.delete('/api/jobs/:id', async (req, res) => {
         // Ideally, we should also delete or archive related applications
         // For now, we will just delete the job as per requirement
         await Job.deleteOne({ _id: job._id });
+
+        await logAudit(
+            req.user?.email || "anonymous",
+            "ADMIN",
+            "DELETE_JOB",
+            "/jobs/delete",
+            req.ip,
+            "SUCCESS"
+        );
 
         res.json({ message: 'Job deleted successfully' });
     } catch (err) {
@@ -1737,6 +1778,15 @@ app.post('/api/applications', upload.fields([
         });
 
         const savedApp = await newApplication.save();
+
+        await logAudit(
+            req.body.email || "anonymous",
+            "CANDIDATE",
+            "APPLY_JOB",
+            "/jobs/apply",
+            req.ip,
+            "SUCCESS"
+        );
 
         // Return success without the file data (to keep response small)
         res.status(201).json({
