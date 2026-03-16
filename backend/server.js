@@ -11,6 +11,7 @@ import dns from 'dns';
 import bcrypt from 'bcryptjs';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import jwt from 'jsonwebtoken';
 
 // Force all DNS resolution to prefer IPv4 (Render free tier blocks IPv6 outbound)
 dns.setDefaultResultOrder('ipv4first');
@@ -22,11 +23,20 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const JWT_SECRET = process.env.JWT_SECRET || '';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h';
+
+const trustProxyEnabled = process.env.TRUST_PROXY === 'true' || process.env.NODE_ENV === 'production';
+app.set('trust proxy', trustProxyEnabled ? 1 : false);
+
+if (!JWT_SECRET) {
+    console.warn('WARNING: JWT_SECRET is not set. Authentication tokens will be insecure until JWT_SECRET is configured.');
+}
 
 // Central Password Validation Logic (Backend)
 const validatePassword = (password) => {
     if (!password) return false;
-    const minLength = 8;
+    const minLength = 6;
     const hasUpperCase = /[A-Z]/.test(password);
     const hasLowerCase = /[a-z]/.test(password);
     const hasNumber = /[0-9]/.test(password);
@@ -54,11 +64,67 @@ app.use(cors({
     credentials: true
 }));
 
+if (process.env.NODE_ENV === 'production') {
+    app.use((req, res, next) => {
+        const forwardedProto = req.headers['x-forwarded-proto'];
+        if (forwardedProto && forwardedProto !== 'https') {
+            return res.status(400).json({ message: 'HTTPS is required.' });
+        }
+        next();
+    });
+}
+
 // Security: set protective HTTP response headers (XSS, clickjacking, MIME sniffing, etc.)
-app.use(helmet());
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "https://accounts.google.com", "https://apis.google.com"],
+            frameSrc: ["'self'", "https://accounts.google.com"],
+            connectSrc: ["'self'", "https://oauth2.googleapis.com", "https://api.resend.com"],
+            imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
+            styleSrc: ["'self'", "'unsafe-inline'", 'https:'],
+            fontSrc: ["'self'", 'https:', 'data:'],
+            objectSrc: ["'none'"],
+            baseUri: ["'self'"]
+        }
+    }
+}));
 
 // Helper: escape user-supplied strings before using in regex (prevents ReDoS attacks)
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const sanitizeText = (value, maxLen = 500) => {
+    if (value === undefined || value === null) return value;
+    return String(value)
+        .replace(/<[^>]*>/g, '')
+        .replace(/javascript:/gi, '')
+        .replace(/on\w+=/gi, '')
+        .replace(/[<>]/g, '')
+        .trim()
+        .slice(0, maxLen);
+};
+
+const normalizeEmail = (value) => String(value || '').toLowerCase().trim();
+
+const createAuthToken = (user) => {
+    const payload = {
+        id: user.id,
+        mongoId: user._id?.toString?.() || user._id,
+        email: normalizeEmail(user.email),
+        role: user.role
+    };
+    return jwt.sign(payload, JWT_SECRET || 'dev-insecure-secret', { expiresIn: JWT_EXPIRES_IN });
+};
+
+const securityLog = (event, details = {}) => {
+    console.log(JSON.stringify({
+        level: 'security',
+        event,
+        timestamp: new Date().toISOString(),
+        ...details
+    }));
+};
 
 // Rate limiting — protect sensitive endpoints from brute-force and abuse
 const authLimiter = rateLimit({
@@ -104,20 +170,70 @@ app.use(async (req, res, next) => {
     next();
 });
 
+// Error sanitization middleware — strip raw error details from responses
+app.use((req, res, next) => {
+    const originalJson = res.json.bind(res);
+    res.json = (body) => {
+        if (body && typeof body === 'object' && !Array.isArray(body) && Object.prototype.hasOwnProperty.call(body, 'error')) {
+            const sanitized = { ...body };
+            delete sanitized.error;
+            return originalJson(sanitized);
+        }
+        return originalJson(body);
+    };
+    next();
+});
+
 // MongoDB Connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/maldives-career';
 
 console.log('Attempting to connect to MongoDB...');
 
+const migrateLegacyPlaintextPasswords = async () => {
+    try {
+        const users = await Profile.find({}).select('_id password');
+        let migratedCount = 0;
+
+        for (const user of users) {
+            if (!user.password || /^\$2[aby]\$/.test(user.password)) continue;
+            user.password = await bcrypt.hash(user.password, 12);
+            await user.save();
+            migratedCount += 1;
+        }
+
+        if (migratedCount > 0) {
+            securityLog('password_migration_completed', { migratedCount });
+        }
+    } catch (err) {
+        console.error('Password migration failed:', err.message);
+    }
+};
+
 // Mongoose Connection
 mongoose.connect(MONGODB_URI)
-    .then(() => console.log(`Connected to MongoDB: ${MONGODB_URI.includes('localhost') ? 'Local' : 'Cloud/Atlas'}`))
+    .then(async () => {
+        console.log(`Connected to MongoDB: ${MONGODB_URI.includes('localhost') ? 'Local' : 'Cloud/Atlas'}`);
+        await migrateLegacyPlaintextPasswords();
+    })
     .catch(err => console.log('MongoDB connection error:', err));
 
 // Use memory storage for file uploads (files stored in memory temporarily, then saved to MongoDB as Base64)
 const storage = multer.memoryStorage();
+const ALLOWED_UPLOAD_MIME_TYPES = new Set([
+    'application/pdf',
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/webp'
+]);
 const upload = multer({
     storage,
+    fileFilter: (req, file, cb) => {
+        if (!ALLOWED_UPLOAD_MIME_TYPES.has(file.mimetype)) {
+            return cb(new Error('Unsupported file type. Only PDF and images are allowed.'));
+        }
+        cb(null, true);
+    },
     limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit per file
 });
 
@@ -132,6 +248,206 @@ import Subscription from './models/Subscription.js';
 import Notification from './models/Notification.js';
 import notificationRoutes from './routes/notification_routes.js';
 import auditRoutes from './routes/audit_routes.js';
+
+const getApplicationByAnyId = async (id) => {
+    let application = await Application.findOne({ id });
+    if (!application && mongoose.Types.ObjectId.isValid(id)) {
+        application = await Application.findById(id);
+    }
+    return application;
+};
+
+const isPublicRoute = (method, path) => {
+    const rules = [
+        { method: 'GET', pattern: /^\/health$/ },
+        { method: 'GET', pattern: /^\/jobs(?:\/.*)?$/ },
+        { method: 'POST', pattern: /^\/auth\/(register|login|google|forgot-password|reset-password-token)$/ },
+        { method: 'GET', pattern: /^\/auth\/validate-reset-token\/[^/]+$/ }
+    ];
+    return rules.some(rule => rule.method === method && rule.pattern.test(path));
+};
+
+const parseBearerToken = (req) => {
+    const authHeader = req.headers.authorization || '';
+    if (!authHeader.startsWith('Bearer ')) return null;
+    return authHeader.slice(7).trim();
+};
+
+const isStateChangingMethod = (method) => ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
+
+const csrfExemptPaths = new Set([
+    '/auth/register',
+    '/auth/login',
+    '/auth/google',
+    '/auth/forgot-password',
+    '/auth/reset-password-token',
+    '/health'
+]);
+
+app.use('/api', async (req, res, next) => {
+    try {
+        const method = req.method.toUpperCase();
+        const path = req.path;
+
+        if (isPublicRoute(method, path)) {
+            return next();
+        }
+
+        if (isStateChangingMethod(method) && !csrfExemptPaths.has(path)) {
+            const headerValue = req.headers['x-requested-with'];
+            if (headerValue !== 'XMLHttpRequest') {
+                return res.status(403).json({ message: 'Request blocked by anti-forgery protection' });
+            }
+        }
+
+        const token = parseBearerToken(req);
+        if (!token) {
+            return res.status(401).json({ message: 'Unauthorized' });
+        }
+
+        let decoded;
+        try {
+            decoded = jwt.verify(token, JWT_SECRET || 'dev-insecure-secret');
+        } catch (err) {
+            return res.status(401).json({ message: 'Invalid or expired token' });
+        }
+
+        req.user = decoded;
+        const isAdmin = decoded.role === 'ADMIN';
+        const userIds = [decoded.id, decoded.mongoId].filter(Boolean).map(v => String(v));
+        const ownsUserId = (value) => value !== undefined && value !== null && userIds.includes(String(value));
+        const ownsEmail = (value) => normalizeEmail(value) && normalizeEmail(value) === normalizeEmail(decoded.email);
+
+        if (path.startsWith('/admin/')) {
+            if (!isAdmin) return res.status(403).json({ message: 'Forbidden' });
+            return next();
+        }
+
+        if (path.startsWith('/jobs') && method !== 'GET' && !isAdmin) {
+            return res.status(403).json({ message: 'Forbidden' });
+        }
+
+        const profileMatch = path.match(/^\/profile\/([^/]+)(?:\/|$)/);
+        if (profileMatch && !isAdmin && !ownsUserId(profileMatch[1])) {
+            return res.status(403).json({ message: 'Forbidden' });
+        }
+
+        const notificationsMatch = path.match(/^\/notifications\/([^/]+)$/);
+        if (notificationsMatch && method === 'GET' && !isAdmin && !ownsUserId(notificationsMatch[1])) {
+            return res.status(403).json({ message: 'Forbidden' });
+        }
+
+        const notificationsReadAllMatch = path.match(/^\/notifications\/user\/([^/]+)\/read-all$/);
+        if (notificationsReadAllMatch && !isAdmin && !ownsUserId(notificationsReadAllMatch[1])) {
+            return res.status(403).json({ message: 'Forbidden' });
+        }
+
+        if (path === '/subscribe') {
+            const userId = req.body?.userId;
+            if (!isAdmin && !ownsUserId(userId)) return res.status(403).json({ message: 'Forbidden' });
+        }
+
+        if (path === '/subscription/check') {
+            const userId = req.query?.userId;
+            if (userId && !isAdmin && !ownsUserId(userId)) return res.status(403).json({ message: 'Forbidden' });
+        }
+
+        const subscriptionsMatch = path.match(/^\/subscriptions\/([^/]+)$/);
+        if (subscriptionsMatch && !isAdmin && !ownsUserId(subscriptionsMatch[1])) {
+            return res.status(403).json({ message: 'Forbidden' });
+        }
+
+        const notificationReadMatch = path.match(/^\/notifications\/([^/]+)\/read$/);
+        if (notificationReadMatch && !isAdmin) {
+            const note = await Notification.findById(notificationReadMatch[1]).select('userId');
+            if (!note || !ownsUserId(note.userId)) return res.status(403).json({ message: 'Forbidden' });
+        }
+
+        const candidateAppsMatch = path.match(/^\/applications\/candidate\/([^/]+)$/);
+        if (candidateAppsMatch && !isAdmin && !ownsEmail(decodeURIComponent(candidateAppsMatch[1]))) {
+            return res.status(403).json({ message: 'Forbidden' });
+        }
+
+        const agentAppsMatch = path.match(/^\/applications\/agent\/([^/]+)(?:\/|$)/);
+        if (agentAppsMatch && !isAdmin && !ownsUserId(agentAppsMatch[1])) {
+            return res.status(403).json({ message: 'Forbidden' });
+        }
+
+        const agentJobRequestsMatch = path.match(/^\/job-requests\/agent\/([^/]+)$/);
+        if (agentJobRequestsMatch && !isAdmin && !ownsUserId(agentJobRequestsMatch[1])) {
+            return res.status(403).json({ message: 'Forbidden' });
+        }
+
+        if (path === '/job-requests' && method === 'POST') {
+            const agentId = req.body?.agent_id;
+            if (!isAdmin && decoded.role !== 'AGENT') return res.status(403).json({ message: 'Forbidden' });
+            if (!isAdmin && !ownsUserId(agentId)) return res.status(403).json({ message: 'Forbidden' });
+        }
+
+        if (path === '/applications' && method === 'GET' && !isAdmin) {
+            return res.status(403).json({ message: 'Forbidden' });
+        }
+
+        if (/^\/applications\/[^/]+\/status$/.test(path) && method === 'PUT' && !isAdmin) {
+            return res.status(403).json({ message: 'Forbidden' });
+        }
+
+        const visibilityMatch = path.match(/^\/applications\/([^/]+)\/request-visibility$/);
+        if (visibilityMatch && !isAdmin) {
+            const application = await getApplicationByAnyId(visibilityMatch[1]);
+            if (!application || !ownsEmail(application.email)) return res.status(403).json({ message: 'Forbidden' });
+        }
+
+        const applicationDetailMatch = path.match(/^\/applications\/([^/]+)(?:\/(resume|certificates|documents))?$/);
+        if (applicationDetailMatch && method === 'GET') {
+            const application = await getApplicationByAnyId(applicationDetailMatch[1]);
+            if (!application) return res.status(404).json({ message: 'Application not found' });
+            const ownsApplicationAsAgent = application.agent_id && ownsUserId(application.agent_id);
+            const ownsApplicationAsCandidate = application.email && ownsEmail(application.email);
+            if (!isAdmin && !ownsApplicationAsAgent && !ownsApplicationAsCandidate) {
+                return res.status(403).json({ message: 'Forbidden' });
+            }
+        }
+
+        if (path === '/documents' && method === 'GET') {
+            const userId = req.query?.user_id;
+            if (!isAdmin && !ownsUserId(userId)) return res.status(403).json({ message: 'Forbidden' });
+        }
+
+        if (path === '/documents' && method === 'POST') {
+            const userId = req.body?.user_id;
+            if (!isAdmin && !ownsUserId(userId)) return res.status(403).json({ message: 'Forbidden' });
+        }
+
+        const documentMatch = path.match(/^\/documents\/([^/]+)$/);
+        if (documentMatch) {
+            const document = await Document.findById(documentMatch[1]).select('user_id');
+            if (!document) return res.status(404).json({ message: 'Document not found' });
+            if (!isAdmin && !ownsUserId(document.user_id)) return res.status(403).json({ message: 'Forbidden' });
+        }
+
+        if (path === '/auth/password' && !isAdmin && !ownsUserId(req.body?.userId)) {
+            return res.status(403).json({ message: 'Forbidden' });
+        }
+
+        if (path === '/auth/reset-password' && !isAdmin && !ownsEmail(req.body?.email)) {
+            return res.status(403).json({ message: 'Forbidden' });
+        }
+
+        if (path === '/auth/change-password' && !isAdmin) {
+            const bodyEmailMatches = req.body?.email ? ownsEmail(req.body.email) : true;
+            const bodyAgentMatches = req.body?.agentId ? ownsUserId(req.body.agentId) : true;
+            if (!bodyEmailMatches || !bodyAgentMatches) {
+                return res.status(403).json({ message: 'Forbidden' });
+            }
+        }
+
+        return next();
+    } catch (error) {
+        console.error('Authorization middleware error:', error);
+        return res.status(500).json({ message: 'Authorization check failed' });
+    }
+});
 
 // --- ROUTES ---
 
@@ -167,9 +483,7 @@ app.post('/api/auth/register', authLimiter, upload.fields([
         }
 
         // Normalize email
-        if (email) {
-            email = email.toLowerCase().trim();
-        }
+        email = normalizeEmail(email);
 
         // Check if user exists (case-insensitive)
         const existingUser = await Profile.findOne({ email: { $regex: new RegExp(`^${escapeRegex(email)}$`, 'i') } });
@@ -224,7 +538,7 @@ app.post('/api/auth/register', authLimiter, upload.fields([
         await newProfile.save();
         res.status(201).json({ message: 'User registered successfully', user: newProfile });
     } catch (err) {
-        res.status(500).json({ message: 'Registration failed', error: err.message });
+        res.status(500).json({ message: 'Registration failed' });
     }
 });
 
@@ -233,32 +547,25 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
         let { email, password, role } = req.body;
 
         // Normalize email
-        if (email) {
-            email = email.toLowerCase().trim();
-        }
+        email = normalizeEmail(email);
 
         // Check user - use case-insensitive regex so emails like 'BCD@gmail.com' still match when user types 'bcd@gmail.com'
         const user = await Profile.findOne({ email: { $regex: new RegExp(`^${escapeRegex(email)}$`, 'i') } });
         if (!user) {
-            return res.status(400).json({ message: 'User not found' });
+            securityLog('login_failed', { email, reason: 'invalid_credentials', ip: req.ip });
+            return res.status(400).json({ message: 'Invalid email or password' });
         }
 
-        // Validate password — bcrypt compare with graceful fallback for legacy plain-text accounts
-        let isValidPassword = await bcrypt.compare(password, user.password).catch(() => false);
+        // Validate password — bcrypt only
+        const isValidPassword = await bcrypt.compare(password, user.password).catch(() => false);
         if (!isValidPassword) {
-            // Fallback: support old plain-text passwords and migrate them to bcrypt silently
-            if (user.password === password) {
-                isValidPassword = true;
-                user.password = await bcrypt.hash(password, 12);
-                await user.save();
-            }
-        }
-        if (!isValidPassword) {
-            return res.status(400).json({ message: 'Invalid credentials' });
+            securityLog('login_failed', { email, reason: 'invalid_credentials', ip: req.ip });
+            return res.status(400).json({ message: 'Invalid email or password' });
         }
 
         // Validate role access
         if (user.role !== role) {
+            securityLog('login_failed', { email, reason: 'role_mismatch', ip: req.ip, role });
             return res.status(403).json({ message: `Access denied. This account is not a ${role}.` });
         }
 
@@ -279,9 +586,12 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 
         // Check if agent needs to change password (first login)
         const requiresPasswordChange = user.requiresPasswordChange || false;
+        const token = createAuthToken(user);
+        securityLog('login_success', { userId: user.id, role: user.role, ip: req.ip });
 
         res.json({
             message: 'Login successful',
+            token,
             user: {
                 id: user.id,
                 _id: user._id,
@@ -303,7 +613,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
             requiresPasswordChange
         });
     } catch (err) {
-        res.status(500).json({ message: 'Login failed', error: err.message });
+        res.status(500).json({ message: 'Login failed' });
     }
 });
 
@@ -425,6 +735,7 @@ app.post('/api/auth/google', authLimiter, async (req, res) => {
             // ── Success: return user session data ────────────────────────────────────
             return res.json({
                 message: 'Google login successful',
+                token: createAuthToken(profile),
                 user: {
                     id: profile.id,
                     _id: profile._id,
@@ -461,6 +772,7 @@ app.post('/api/auth/google', authLimiter, async (req, res) => {
 
             return res.status(201).json({
                 message: 'Google account registered and logged in',
+                token: createAuthToken(newProfile),
                 user: {
                     id: newProfile.id,
                     _id: newProfile._id,
@@ -481,7 +793,7 @@ app.post('/api/auth/google', authLimiter, async (req, res) => {
 
     } catch (err) {
         console.error('Google OAuth error:', err);
-        res.status(500).json({ message: 'Google login failed', error: err.message });
+        res.status(500).json({ message: 'Google login failed' });
     }
 });
 
@@ -502,10 +814,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
         }
 
         // Verify old password — bcrypt compare with plain-text fallback for legacy accounts
-        let isValidOldPassword = await bcrypt.compare(oldPassword, user.password).catch(() => false);
-        if (!isValidOldPassword) {
-            isValidOldPassword = user.password === oldPassword;
-        }
+        const isValidOldPassword = await bcrypt.compare(oldPassword, user.password).catch(() => false);
         if (!isValidOldPassword) {
             return res.status(400).json({ message: 'Current password is incorrect' });
         }
@@ -523,6 +832,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
         user.requiresPasswordChange = false;
         await user.save();
 
+        securityLog('password_reset_with_old_password', { userId: user.id, ip: req.ip });
         res.json({ message: 'Password updated successfully' });
     } catch (err) {
         res.status(500).json({ message: 'Failed to reset password', error: err.message });
@@ -560,6 +870,7 @@ app.put('/api/auth/change-password', async (req, res) => {
         user.temporaryPassword = undefined; // Remove temp password
         await user.save();
 
+        securityLog('password_changed_first_login', { userId: user.id, ip: req.ip });
         res.json({ message: 'Password updated successfully' });
     } catch (err) {
         res.status(500).json({ message: 'Failed to update password', error: err.message });
@@ -742,10 +1053,7 @@ app.put('/api/auth/password', async (req, res) => {
         }
 
         // Verify current password — bcrypt compare with plain-text fallback
-        let isMatch = await bcrypt.compare(currentPassword, user.password).catch(() => false);
-        if (!isMatch) {
-            isMatch = user.password === currentPassword;
-        }
+        const isMatch = await bcrypt.compare(currentPassword, user.password).catch(() => false);
         if (!isMatch) {
             return res.status(400).json({ message: 'Current password is incorrect' });
         }
@@ -764,6 +1072,7 @@ app.put('/api/auth/password', async (req, res) => {
 
         await user.save();
 
+        securityLog('password_updated_from_profile', { userId: user.id, ip: req.ip });
         res.json({ message: 'Password updated successfully' });
     } catch (err) {
         console.error('Password update error:', err);
@@ -811,13 +1120,17 @@ app.put('/api/profile/:id', async (req, res) => {
         }
 
         // Update shared fields
-        if (full_name) profile.full_name = full_name;
-        if (contact_number !== undefined) profile.contact_number = contact_number;
-        if (location !== undefined) profile.location = location;
+        if (full_name) profile.full_name = sanitizeText(full_name, 120);
+        if (contact_number !== undefined) profile.contact_number = sanitizeText(contact_number, 40);
+        if (location !== undefined) profile.location = sanitizeText(location, 120);
 
         // Update Candidate specific fields
         if (profile.role === 'CANDIDATE') {
-            if (skills) profile.skills = skills;
+            if (skills) {
+                profile.skills = Array.isArray(skills)
+                    ? skills.map(s => sanitizeText(s, 80)).filter(Boolean)
+                    : [];
+            }
             if (experience_years !== undefined) profile.experience_years = experience_years;
         }
 
@@ -852,6 +1165,45 @@ app.post('/api/profile/:id/avatar', upload.single('avatar'), async (req, res) =>
     } catch (err) {
         console.error('Avatar upload error:', err);
         res.status(500).json({ message: 'Failed to upload avatar', error: err.message });
+    }
+});
+
+// DELETE: Delete Agent Account (and all linked data)
+app.delete('/api/profile/:id/delete-account', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Find profile by MongoDB _id or custom id field
+        let profile;
+        const isMongoId = /^[0-9a-fA-F]{24}$/.test(id);
+        if (isMongoId) profile = await Profile.findById(id);
+        if (!profile) profile = await Profile.findOne({ id });
+
+        if (!profile) {
+            return res.status(404).json({ message: 'Account not found' });
+        }
+
+        // Only allow agents to self-delete via this route
+        if (profile.role !== 'AGENT') {
+            return res.status(403).json({ message: 'This endpoint is only for agent accounts' });
+        }
+
+        // Delete all applications submitted by this agent
+        await Application.deleteMany({ agent_id: profile._id.toString() })
+            .catch(() => Application.deleteMany({ agent_id: id }));
+
+        // Delete all job requests created by this agent
+        await JobRequest.deleteMany({ agent_id: profile._id.toString() })
+            .catch(() => JobRequest.deleteMany({ agent_id: id }));
+
+        // Delete the profile itself (this removes login credentials)
+        await Profile.findByIdAndDelete(profile._id);
+
+        securityLog('account_deleted', { userId: profile.id, role: profile.role, ip: req.ip });
+        res.json({ message: 'Account and all associated data deleted successfully' });
+    } catch (err) {
+        console.error('Delete account error:', err);
+        res.status(500).json({ message: 'Failed to delete account', error: err.message });
     }
 });
 
@@ -920,6 +1272,7 @@ app.delete('/api/profile/:id/delete-account', async (req, res) => {
         if (!agent) {
             return res.status(404).json({ message: 'Account not found' });
         }
+        securityLog('account_deleted', { userId: agent.id, role: agent.role, ip: req.ip });
         res.json({ message: 'Account permanently deleted' });
     } catch (err) {
         res.status(500).json({ message: 'Failed to delete account', error: err.message });
@@ -968,6 +1321,8 @@ app.put('/api/admin/agents/:id/approve', async (req, res) => {
         agent.status = 'ACTIVE';
         await agent.save();
 
+        securityLog('admin_agent_approved', { adminId: req.user?.id, agentId: agent.id, ip: req.ip });
+
         res.json({
             message: 'Agent approved successfully',
             agent: {
@@ -997,6 +1352,8 @@ app.put('/api/admin/agents/:id/reject', async (req, res) => {
         agent.status = 'BANNED';
         await agent.save();
 
+        securityLog('admin_agent_rejected', { adminId: req.user?.id, agentId: agent.id, ip: req.ip });
+
         res.json({
             message: 'Agent rejected/blocked',
             agent: {
@@ -1020,6 +1377,7 @@ app.put('/api/admin/agents/:id/hold', async (req, res) => {
         }
         agent.status = 'ON_HOLD';
         await agent.save();
+        securityLog('admin_agent_on_hold', { adminId: req.user?.id, agentId: agent.id, ip: req.ip });
         res.json({ message: 'Agent placed on hold', agent: { name: agent.full_name, email: agent.email, status: agent.status } });
     } catch (err) {
         res.status(500).json({ message: 'Failed to place agent on hold', error: err.message });
@@ -1034,6 +1392,7 @@ app.delete('/api/admin/agents/:id', async (req, res) => {
         if (!agent) {
             return res.status(404).json({ message: 'Agent not found' });
         }
+        securityLog('admin_agent_deleted', { adminId: req.user?.id, agentId: agent.id, ip: req.ip });
         res.json({ message: 'Agent permanently deleted' });
     } catch (err) {
         res.status(500).json({ message: 'Failed to delete agent', error: err.message });
@@ -1088,6 +1447,7 @@ app.put('/api/admin/agencies/:id/approve', async (req, res) => {
             return password.split('').sort(() => 0.5 - Math.random()).join('');
         };
         const tempPassword = generateStrongTempPassword();
+        const hashedTempPassword = await bcrypt.hash(tempPassword, 12);
 
         // Check if agent profile already exists
         let agentProfile = await Profile.findOne({ email: agency.email });
@@ -1097,8 +1457,8 @@ app.put('/api/admin/agencies/:id/approve', async (req, res) => {
             agentProfile = new Profile({
                 full_name: agency.name,
                 email: agency.email.toLowerCase().trim(),
-                password: tempPassword,
-                temporaryPassword: tempPassword,
+                password: hashedTempPassword,
+                temporaryPassword: undefined,
                 role: 'AGENT',
                 agency_name: agency.name,
                 contact_number: agency.contact,
@@ -1109,23 +1469,24 @@ app.put('/api/admin/agencies/:id/approve', async (req, res) => {
             await agentProfile.save();
         } else {
             // Update existing profile with temp password
-            agentProfile.temporaryPassword = tempPassword;
+            agentProfile.password = hashedTempPassword;
+            agentProfile.temporaryPassword = undefined;
             agentProfile.requiresPasswordChange = true;
             await agentProfile.save();
         }
 
-        res.json({
+        const response = {
             message: 'Agency approved successfully',
             agency: {
                 name: agency.name,
                 email: agency.email.toLowerCase().trim(),
                 status: agency.status
-            },
-            agentCredentials: {
-                email: agency.email.toLowerCase().trim(),
-                temporaryPassword: tempPassword
             }
-        });
+        };
+
+        securityLog('admin_agency_approved', { adminId: req.user?.id, agencyId: agency._id?.toString(), ip: req.ip });
+
+        res.json(response);
     } catch (err) {
         res.status(500).json({ message: 'Failed to approve agency', error: err.message });
     }
@@ -1169,7 +1530,11 @@ app.get('/api/jobs', async (req, res) => {
 
         // Search Filter
         if (search) {
-            const searchRegex = new RegExp(search, 'i');
+            if (/[.*+?^${}()|[\]\\]/.test(String(search))) {
+                securityLog('suspicious_search_pattern', { ip: req.ip, search: String(search).slice(0, 120) });
+            }
+            const safeSearch = escapeRegex(String(search).slice(0, 100));
+            const searchRegex = new RegExp(safeSearch, 'i');
             console.log(`Search Term: "${search}", Regex: ${searchRegex}`);
             filter.$or = [
                 { title: searchRegex },
@@ -1203,8 +1568,16 @@ app.post('/api/jobs', async (req, res) => {
             description, requirements, headcount, education, experience
         } = req.body;
 
+        const sanitizedTitle = sanitizeText(title, 120);
+        const sanitizedCompany = sanitizeText(company, 120);
+        const sanitizedLocation = sanitizeText(location, 120);
+        const sanitizedDescription = sanitizeText(description, 4000);
+        const sanitizedSalaryRange = sanitizeText(salary_range, 120);
+        const sanitizedEducation = sanitizeText(education, 120);
+        const sanitizedExperience = sanitizeText(experience, 120);
+
         // Validation
-        if (!title || !company || !location || !category || !description) {
+        if (!sanitizedTitle || !sanitizedCompany || !sanitizedLocation || !category || !sanitizedDescription) {
             return res.status(400).json({ message: 'Missing required fields' });
         }
 
@@ -1214,16 +1587,18 @@ app.post('/api/jobs', async (req, res) => {
 
         const newJob = new Job({
             id: newId,
-            title,
-            company,
-            location,
+            title: sanitizedTitle,
+            company: sanitizedCompany,
+            location: sanitizedLocation,
             category,
-            salary_range,
-            description,
-            requirements: Array.isArray(requirements) ? requirements : requirements.split(',').map(r => r.trim()),
+            salary_range: sanitizedSalaryRange,
+            description: sanitizedDescription,
+            requirements: Array.isArray(requirements)
+                ? requirements.map(r => sanitizeText(r, 200)).filter(Boolean)
+                : String(requirements || '').split(',').map(r => sanitizeText(r, 200)).filter(Boolean),
             vacancies: headcount || 1,
-            education,
-            experience,
+            education: sanitizedEducation,
+            experience: sanitizedExperience,
             posted_date: new Date(),
             status: 'OPEN'
         });
@@ -1741,14 +2116,24 @@ app.post('/api/applications', upload.fields([
         const pccFile = files.pcc ? files.pcc[0] : null;
         const goodStandingFile = files.goodStanding ? files.goodStanding[0] : null;
 
+        const sanitizedName = sanitizeText(req.body.name, 120);
+        const sanitizedEmail = normalizeEmail(req.body.email);
+        const sanitizedContact = sanitizeText(req.body.contact, 40);
+        const sanitizedNationality = sanitizeText(req.body.nationality, 80);
+        const sanitizedJobId = sanitizeText(req.body.job_id, 120);
+
+        if (!sanitizedJobId || !sanitizedName || !sanitizedEmail || !sanitizedContact) {
+            return res.status(400).json({ message: 'Missing required fields: job_id, name, email, contact' });
+        }
+
         // Create application with Base64-encoded files stored directly in MongoDB
         const newApplication = new Application({
-            job_id: req.body.job_id,
-            candidate_name: req.body.name,
-            email: req.body.email,
-            contact_number: req.body.contact,
-            nationality: req.body.nationality,
-            agent_id: req.body.agent_id || null, // Capture agent ID if provided
+            job_id: sanitizedJobId,
+            candidate_name: sanitizedName,
+            email: sanitizedEmail,
+            contact_number: sanitizedContact,
+            nationality: sanitizedNationality,
+            agent_id: req.body.agent_id ? sanitizeText(req.body.agent_id, 120) : null,
             resume: {
                 filename: resumeFile.originalname,
                 contentType: resumeFile.mimetype,
@@ -1800,6 +2185,7 @@ app.post('/api/applications', upload.fields([
                 applied_at: savedApp.applied_at
             }
         });
+        securityLog('application_submitted', { applicationId: savedApp.id, email: savedApp.email, ip: req.ip });
     } catch (err) {
         console.error('Application Error:', err);
         res.status(500).json({ message: 'Failed to submit application', error: err.message });
@@ -2107,6 +2493,8 @@ app.put('/api/admin/visibility-requests/:id/approve', async (req, res) => {
         application.visibility_reviewed_at = new Date();
         await application.save();
 
+        securityLog('admin_visibility_approved', { adminId: req.user?.id, applicationId: application.id, ip: req.ip });
+
         res.json({ message: 'Visibility request approved', application });
     } catch (err) {
         res.status(500).json({ message: 'Failed to approve visibility request', error: err.message });
@@ -2132,6 +2520,8 @@ app.put('/api/admin/visibility-requests/:id/reject', async (req, res) => {
         application.visibility_reviewed_by = req.body.reviewed_by || 'Admin';
         application.visibility_reviewed_at = new Date();
         await application.save();
+
+        securityLog('admin_visibility_rejected', { adminId: req.user?.id, applicationId: application.id, ip: req.ip });
 
         res.json({ message: 'Visibility request rejected', application });
     } catch (err) {
@@ -2165,6 +2555,7 @@ app.get('/api/applications/:id/resume', async (req, res) => {
             'Content-Type': application.resume.contentType,
             'Content-Disposition': `attachment; filename="${application.resume.filename}"`
         });
+        securityLog('file_download_resume', { applicationId: application.id, requesterId: req.user?.id, ip: req.ip });
         res.send(fileBuffer);
     } catch (err) {
         res.status(500).json({ message: 'Failed to download resume', error: err.message });
@@ -2184,6 +2575,7 @@ app.get('/api/applications/:id/certificates', async (req, res) => {
             'Content-Type': application.certificates.contentType,
             'Content-Disposition': `attachment; filename="${application.certificates.filename}"`
         });
+        securityLog('file_download_certificates', { applicationId: application.id, requesterId: req.user?.id, ip: req.ip });
         res.send(fileBuffer);
     } catch (err) {
         res.status(500).json({ message: 'Failed to download certificates', error: err.message });
@@ -2265,6 +2657,7 @@ app.get('/api/applications/:id/documents', async (req, res) => {
             candidateName: application.candidate_name,
             documents: documents
         });
+        securityLog('file_preview_documents', { applicationId: application.id || application._id?.toString(), requesterId: req.user?.id, ip: req.ip });
     } catch (err) {
         console.error('Error fetching documents:', err);
         res.status(500).json({ message: 'Failed to fetch documents', error: err.message });
@@ -2296,6 +2689,7 @@ app.get('/api/documents/:id', async (req, res) => {
         if (!document) {
             return res.status(404).json({ message: 'Document not found' });
         }
+        securityLog('document_accessed', { documentId: document._id?.toString(), requesterId: req.user?.id, ip: req.ip });
         res.json(document);
     } catch (err) {
         res.status(500).json({ message: 'Failed to fetch document', error: err.message });
@@ -2353,82 +2747,6 @@ app.delete('/api/documents/:id', async (req, res) => {
 // CANDIDATE APPLICATIONS
 // ==========================================
 
-// POST: Submit a Candidate Application (Agent → Admin)
-app.post('/api/applications', upload.fields([
-    { name: 'resume', maxCount: 1 },
-    { name: 'identity', maxCount: 1 },
-    { name: 'certs', maxCount: 1 },
-    { name: 'pcc', maxCount: 1 },
-    { name: 'goodStanding', maxCount: 1 }
-]), async (req, res) => {
-    try {
-        const { agent_id, job_id, name, email, contact, nationality } = req.body;
-
-        if (!job_id || !name || !email || !contact) {
-            return res.status(400).json({ message: 'Missing required fields: job_id, name, email, contact' });
-        }
-
-        // Helper to serialize uploaded file to Base64
-        const fileToBase64 = (fileArray) => {
-            if (!fileArray || fileArray.length === 0) return null;
-            const file = fileArray[0];
-            return {
-                filename: file.originalname,
-                contentType: file.mimetype,
-                data: file.buffer.toString('base64')
-            };
-        };
-
-        const newApplication = new Application({
-            job_id,
-            candidate_name: name,
-            email,
-            contact_number: contact,
-            agent_id: agent_id || null,
-            nationality: nationality || '',
-            resume: fileToBase64(req.files?.resume),
-            identity: fileToBase64(req.files?.identity),
-            certificates: fileToBase64(req.files?.certs),
-            pcc: fileToBase64(req.files?.pcc),
-            goodStanding: fileToBase64(req.files?.goodStanding),
-            status: 'PENDING'
-        });
-
-        await newApplication.save();
-
-        res.status(201).json({
-            message: 'Candidate submitted successfully',
-            application: {
-                id: newApplication._id,
-                candidate_name: newApplication.candidate_name,
-                job_id: newApplication.job_id,
-                status: newApplication.status,
-                applied_at: newApplication.applied_at
-            }
-        });
-    } catch (err) {
-        console.error('Error submitting application:', err);
-        res.status(500).json({ message: 'Failed to submit application', error: err.message });
-    }
-});
-
-// GET: Fetch Applications (Admin view all, Agent view own)
-app.get('/api/admin/applications', async (req, res) => {
-    try {
-        const { agent_id, job_id, status } = req.query;
-        const filter = {};
-        if (agent_id) filter.agent_id = agent_id;
-        if (job_id) filter.job_id = job_id;
-        if (status) filter.status = status;
-
-        const applications = await Application.find(filter).sort({ applied_at: -1 });
-        res.json(applications);
-    } catch (err) {
-        console.error('Error fetching admin applications:', err);
-        res.status(500).json({ message: 'Failed to fetch applications', error: err.message });
-    }
-});
-
 app.get('/api/applications', async (req, res) => {
     try {
         const { agent_id, job_id, status } = req.query;
@@ -2474,17 +2792,6 @@ app.get('/api/applications', async (req, res) => {
     } catch (err) {
         console.error('Error fetching applications:', err);
         res.status(500).json({ message: 'Failed to fetch applications', error: err.message });
-    }
-});
-
-// GET: Single Application by ID
-app.get('/api/applications/:id', async (req, res) => {
-    try {
-        const application = await Application.findById(req.params.id);
-        if (!application) return res.status(404).json({ message: 'Application not found' });
-        res.json(application);
-    } catch (err) {
-        res.status(500).json({ message: 'Failed to fetch application', error: err.message });
     }
 });
 

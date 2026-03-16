@@ -43,7 +43,9 @@ const AgentLoginPage = () => {
                 // Fetch fresh full profile from DB to get latest avatar, phone etc.
                 let fullProfile = null;
                 try {
-                    const profileRes = await fetch(`${API_BASE_URL}/api/profile/${data.user.id}`);
+                    const profileRes = await fetch(`${API_BASE_URL}/api/profile/${data.user.id}`, {
+                        headers: data.token ? { Authorization: `Bearer ${data.token}` } : {}
+                    });
                     if (profileRes.ok) fullProfile = await profileRes.json();
                 } catch (e) {
                     console.warn('Could not fetch agent profile after login:', e);
@@ -61,7 +63,8 @@ const AgentLoginPage = () => {
                     agency_name: fullProfile?.agency_name || data.user.agency_name || null,
                     contact_number: fullProfile?.contact_number || data.user.contact_number || '',
                     phone: fullProfile?.contact_number || data.user.contact_number || '',
-                    location: fullProfile?.location || data.user.location || ''
+                    location: fullProfile?.location || data.user.location || '',
+                    token: data.token || null
                 };
                 // Use mockLogin to set user in AuthContext state AND localStorage
                 mockLogin(userData);
@@ -77,12 +80,17 @@ const AgentLoginPage = () => {
 
     // Temporary Logic for Developer Access
     const handleTempAccess = () => {
+        if (!import.meta.env.DEV) {
+            popup.error('Temporary developer access is not available in production.');
+            return;
+        }
         mockLogin({
             id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
             name: 'Developer Agent',
             email: 'dev@agent.com',
             role: 'agent',
-            status: 'APPROVED'
+            status: 'APPROVED',
+            token: null
         });
         navigate('/recruiter');
     };
