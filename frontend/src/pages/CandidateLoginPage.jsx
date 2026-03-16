@@ -37,7 +37,8 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
         name: '',
         email: '',
         password: '',
-        phone: ''
+        phone: '',
+        countryCode: '+960'
     });
     const [showLoginPassword, setShowLoginPassword] = useState(false);
     const [showSignupPassword, setShowSignupPassword] = useState(false);
@@ -167,8 +168,27 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
         setIsLoading(true);
         setNotification(null);
 
-        if (!formData.phone || formData.phone.length < 10) {
-            setNotification({ type: 'error', text: 'Please enter a valid phone number' });
+        if (!/^[a-zA-Z\s]+$/.test(formData.name)) {
+            setNotification({ type: 'error', text: 'Name can only contain alphabets and spaces.' });
+            setIsLoading(false);
+            return;
+        }
+
+        if (/[<>\/]/.test(formData.email)) {
+            setNotification({ type: 'error', text: 'Email contains invalid characters (<, >, /).' });
+            setIsLoading(false);
+            return;
+        }
+
+        const phoneDigits = formData.phone.replace(/\D/g, '');
+        
+        let isValidPhone = false;
+        if (formData.countryCode === '+960' && phoneDigits.length === 7) isValidPhone = true;
+        else if (formData.countryCode === '+91' && phoneDigits.length === 10) isValidPhone = true;
+        else if (phoneDigits.length >= 7 && phoneDigits.length <= 15) isValidPhone = true;
+
+        if (!formData.phone || !/^\d+$/.test(formData.phone) || !isValidPhone) {
+            setNotification({ type: 'error', text: formData.countryCode === '+91' ? 'Please enter a valid 10-digit phone number' : formData.countryCode === '+960' ? 'Please enter a valid 7-digit phone number' : 'Please enter a valid phone number' });
             setIsLoading(false);
             return;
         }
@@ -195,7 +215,7 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
                     email: formData.email,
                     password: formData.password,
                     name: formData.name,
-                    phone: formData.phone,
+                    phone: `${formData.countryCode}${formData.phone}`,
                     role: 'CANDIDATE',
                     skills: []
                 })
@@ -304,7 +324,11 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
                             <form onSubmit={handleLoginSubmit} className="space-y-5">
                                 <div className="relative group">
                                     <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
-                                    <input type="email" required placeholder="Email Address" className="w-full pl-14 pr-6 py-5 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-slate-700 placeholder:text-slate-400" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                                    <input type="email" required placeholder="Email Address" className="w-full pl-14 pr-6 py-5 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all font-bold text-slate-700 placeholder:text-slate-400" value={formData.email} onChange={e => {
+                                        if (!/[<>\/]/.test(e.target.value)) {
+                                            setFormData({ ...formData, email: e.target.value });
+                                        }
+                                    }} />
                                 </div>
                                 <div className="relative group">
                                     <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
@@ -351,7 +375,11 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
                                                 placeholder="Your email address"
                                                 className="flex-1 px-4 py-3 bg-white border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all placeholder:text-slate-400"
                                                 value={forgotEmail}
-                                                onChange={e => setForgotEmail(e.target.value)}
+                                                onChange={e => {
+                                                    if (!/[<>\/]/.test(e.target.value)) {
+                                                        setForgotEmail(e.target.value);
+                                                    }
+                                                }}
                                             />
                                             <button
                                                 type="submit"
@@ -388,21 +416,42 @@ const CandidateLoginPage = ({ initialMode = 'login' }) => {
                                     <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-2 block">Full Name</label>
                                     <div className="relative group">
                                         <User className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
-                                        <input type="text" required className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-500/10 outline-none font-bold text-slate-700 transition-all placeholder:text-slate-400" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+                                        <input type="text" required className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-500/10 outline-none font-bold text-slate-700 transition-all placeholder:text-slate-400" value={formData.name} onChange={e => {
+                                            if (/^[a-zA-Z\s]*$/.test(e.target.value)) {
+                                                setFormData({ ...formData, name: e.target.value });
+                                            }
+                                        }} />
                                     </div>
                                 </div>
                                 <div>
                                     <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-2 block">Email Address</label>
                                     <div className="relative group">
                                         <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
-                                        <input type="email" required className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-500/10 outline-none font-bold text-slate-700 transition-all placeholder:text-slate-400" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                                        <input type="email" required className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-500/10 outline-none font-bold text-slate-700 transition-all placeholder:text-slate-400" value={formData.email} onChange={e => {
+                                            if (!/[<>\/]/.test(e.target.value)) {
+                                                setFormData({ ...formData, email: e.target.value });
+                                            }
+                                        }} />
                                     </div>
                                 </div>
                                 <div>
                                     <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-2 block">Mobile Number</label>
-                                    <div className="relative group">
-                                        <Phone className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors" />
-                                        <input type="tel" required className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-500/10 outline-none font-bold text-slate-700 transition-all placeholder:text-slate-400" placeholder="7779999" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
+                                    <div className="relative flex items-center group">
+                                        <Phone className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-teal-600 transition-colors z-10" />
+                                        <select
+                                            className="absolute left-[44px] h-full bg-transparent border-none text-slate-700 font-bold text-sm focus:ring-0 outline-none cursor-pointer z-10 w-[78px]"
+                                            value={formData.countryCode}
+                                            onChange={e => setFormData({ ...formData, countryCode: e.target.value })}
+                                        >
+                                            <option value="+960">+960 (MV)</option>
+                                            <option value="+91">+91 (IN)</option>
+                                        </select>
+                                        <div className="absolute left-[122px] w-px h-6 bg-slate-200 z-10"></div>
+                                        <input type="tel" required className="w-full pl-[135px] pr-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-500/10 outline-none font-bold text-slate-700 transition-all placeholder:text-slate-400" placeholder={formData.countryCode === '+91' ? "9876543210" : "7779999"} value={formData.phone} onChange={e => {
+                                            if (/^\d*$/.test(e.target.value)) {
+                                                setFormData({ ...formData, phone: e.target.value });
+                                            }
+                                        }} />
                                     </div>
                                 </div>
                                 <div>
