@@ -33,7 +33,13 @@ const RecruiterDashboard = () => {
         if (!user?.id || deleteConfirmInput !== user?.email) return;
         setIsDeletingAccount(true);
         try {
-            const res = await fetch(`${API_BASE_URL}/api/profile/${user.id}/delete-account`, { method: 'DELETE' });
+            const res = await fetch(`${API_BASE_URL}/api/profile/${user.id}/delete-account`, { 
+                method: 'DELETE',
+                headers: {
+                    ...(user?.token ? { 'Authorization': `Bearer ${user.token}` } : {}),
+                    'x-requested-with': 'XMLHttpRequest'
+                }
+            });
             const data = await res.json().catch(() => ({}));
             if (!res.ok) {
                 throw new Error(data.message || 'Failed to delete account');
@@ -63,7 +69,9 @@ const RecruiterDashboard = () => {
         if (!user?.id) return;
         setIsRefreshingPipeline(true);
         try {
-            const response = await fetch(`${API_BASE_URL}/api/applications/agent/${user.id}/all`);
+            const response = await fetch(`${API_BASE_URL}/api/applications/agent/${user.id}/all`, {
+                headers: user?.token ? { 'Authorization': `Bearer ${user.token}` } : {}
+            });
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -121,7 +129,9 @@ const RecruiterDashboard = () => {
         const fetchRequests = async () => {
             try {
                 // CHANGED: Use the path parameter endpoint as requested
-                const response = await fetch(`${API_BASE_URL}/api/job-requests/agent/${user.id}`);
+                const response = await fetch(`${API_BASE_URL}/api/job-requests/agent/${user.id}`, {
+                    headers: user?.token ? { 'Authorization': `Bearer ${user.token}` } : {}
+                });
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -165,7 +175,14 @@ const RecruiterDashboard = () => {
         formData.append('avatar', file);
         try {
             setIsUploadingAgentAvatar(true);
-            const res = await fetch(`${API_BASE_URL}/api/profile/${user.id}/avatar`, { method: 'POST', body: formData });
+            const res = await fetch(`${API_BASE_URL}/api/profile/${user.id}/avatar`, { 
+                method: 'POST', 
+                headers: {
+                    ...(user?.token ? { 'Authorization': `Bearer ${user.token}` } : {}),
+                    'x-requested-with': 'XMLHttpRequest'
+                },
+                body: formData 
+            });
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Upload failed');
             setAgentAvatarPreview(data.avatar);
@@ -185,7 +202,11 @@ const RecruiterDashboard = () => {
         try {
             const res = await fetch(`${API_BASE_URL}/api/profile/${user.id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    ...(user?.token ? { 'Authorization': `Bearer ${user.token}` } : {}),
+                    'x-requested-with': 'XMLHttpRequest'
+                },
                 body: JSON.stringify({ contact_number: editPhoneValue })
             });
             const data = await res.json();
@@ -329,6 +350,10 @@ const RecruiterDashboard = () => {
 
             const response = await fetch(`${API_BASE_URL}/api/applications`, {
                 method: 'POST',
+                headers: {
+                    ...(user?.token ? { 'Authorization': `Bearer ${user.token}` } : {}),
+                    'x-requested-with': 'XMLHttpRequest'
+                },
                 body: formDataPayload,
             });
 
@@ -546,7 +571,11 @@ const RecruiterDashboard = () => {
 
                                                     const response = await fetch(`${API_BASE_URL}/api/job-requests`, {
                                                         method: 'POST',
-                                                        headers: { 'Content-Type': 'application/json' },
+                                                        headers: {
+                                                            'Content-Type': 'application/json',
+                                                            ...(user?.token ? { 'Authorization': `Bearer ${user.token}` } : {}),
+                                                            'x-requested-with': 'XMLHttpRequest'
+                                                        },
                                                         body: JSON.stringify(payload)
                                                     });
 
@@ -558,7 +587,9 @@ const RecruiterDashboard = () => {
                                                     setShowJobRequestForm(false);
 
                                                     // Refresh list
-                                                    const refreshResponse = await fetch(`${API_BASE_URL}/api/job-requests/agent/${user.id}`);
+                                                    const refreshResponse = await fetch(`${API_BASE_URL}/api/job-requests/agent/${user.id}`, {
+                                                        headers: user?.token ? { 'Authorization': `Bearer ${user.token}` } : {}
+                                                    });
                                                     const data = await refreshResponse.json();
                                                     if (data) setJobRequests(Array.isArray(data) ? data : []);
 
