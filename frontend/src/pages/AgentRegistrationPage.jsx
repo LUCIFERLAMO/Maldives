@@ -57,7 +57,7 @@ const AgentRegistrationPage = () => {
                 />
                 <label 
                     htmlFor={id} 
-                    className={`flex items-center gap-3 w-full p-4 bg-slate-50 border rounded-xl hover:bg-slate-100 transition-colors cursor-pointer ${file ? 'border-teal-500 bg-teal-50/30' : 'border-slate-100 focus-within:border-teal-600'}`}
+                    className={`flex items-center gap-3 w-full p-4 bg-transparent border-2 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer ${file ? 'border-teal-600 bg-teal-50/30' : 'border-slate-800 focus-within:border-slate-900'}`}
                 >
                     <div className={`p-2 rounded-lg ${file ? 'bg-teal-100 text-teal-600' : 'bg-white text-slate-400 border border-slate-200'} transition-colors`}>
                         <FileText className="w-5 h-5" />
@@ -336,7 +336,7 @@ const AgentRegistrationPage = () => {
                                         <input
                                             type="text"
                                             required
-                                            className={`w-full pl-12 pr-4 py-4 bg-slate-50 border rounded-xl focus:bg-white outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300 ${errors.fullName ? 'border-red-400 focus:border-red-500' : 'border-slate-100 focus:border-teal-600'}`}
+                                            className={`w-full pl-12 pr-4 py-4 bg-transparent border-2 rounded-xl focus:bg-slate-50 outline-none font-bold text-slate-900 transition-all placeholder:font-medium placeholder:text-slate-400 ${errors.fullName ? 'border-red-500 focus:border-red-600' : 'border-slate-800 focus:border-slate-900'}`}
                                             placeholder="John Doe (letters only)"
                                             value={formData.fullName}
                                             onChange={handleNameChange}
@@ -352,7 +352,7 @@ const AgentRegistrationPage = () => {
                                         <input
                                             type="tel"
                                             required
-                                            className={`w-full pl-12 pr-4 py-4 bg-slate-50 border rounded-xl focus:bg-white outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300 ${errors.phone ? 'border-red-400 focus:border-red-500' : 'border-slate-100 focus:border-teal-600'}`}
+                                            className={`w-full pl-12 pr-4 py-4 bg-transparent border-2 rounded-xl focus:bg-slate-50 outline-none font-bold text-slate-900 transition-all placeholder:font-medium placeholder:text-slate-400 ${errors.phone ? 'border-red-500 focus:border-red-600' : 'border-slate-800 focus:border-slate-900'}`}
                                             placeholder="10 digits only"
                                             value={formData.phone}
                                             onChange={handlePhoneChange}
@@ -370,7 +370,7 @@ const AgentRegistrationPage = () => {
                                     <input
                                         type="email"
                                         required
-                                        className={`w-full pl-12 pr-4 py-4 bg-slate-50 border rounded-xl focus:bg-white outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300 ${errors.workEmail ? 'border-red-400 focus:border-red-500' : 'border-slate-100 focus:border-teal-600'}`}
+                                        className={`w-full pl-12 pr-4 py-4 bg-transparent border-2 rounded-xl focus:bg-slate-50 outline-none font-bold text-slate-900 transition-all placeholder:font-medium placeholder:text-slate-400 ${errors.workEmail ? 'border-red-500 focus:border-red-600' : 'border-slate-800 focus:border-slate-900'}`}
                                         placeholder="agent@company.com"
                                         value={formData.workEmail}
                                         onChange={handleEmailChange}
@@ -386,7 +386,7 @@ const AgentRegistrationPage = () => {
                                         <input
                                             type={showPassword ? "text" : "password"}
                                             required
-                                            className={`w-full pl-12 pr-12 py-4 bg-slate-50 border rounded-xl focus:bg-white outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300 ${errors.password ? 'border-red-400 focus:border-red-500' : 'border-slate-100 focus:border-teal-600'}`}
+                                            className={`w-full pl-12 pr-12 py-4 bg-transparent border-2 rounded-xl focus:bg-slate-50 outline-none font-bold text-slate-900 transition-all placeholder:font-medium placeholder:text-slate-400 ${errors.password ? 'border-red-500 focus:border-red-600' : 'border-slate-800 focus:border-slate-900'}`}
                                             placeholder="Create a strong password"
                                             value={formData.password}
                                             onChange={handlePasswordChange}
@@ -429,7 +429,7 @@ const AgentRegistrationPage = () => {
                                         <input
                                             type="text"
                                             required
-                                            className={`w-full pl-12 pr-4 py-4 bg-slate-50 border rounded-xl focus:bg-white outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300 ${errors.companyName ? 'border-red-400 focus:border-red-500' : 'border-slate-100 focus:border-teal-600'}`}
+                                            className={`w-full pl-12 pr-4 py-4 bg-transparent border-2 rounded-xl focus:bg-slate-50 outline-none font-bold text-slate-900 transition-all placeholder:font-medium placeholder:text-slate-400 ${errors.companyName ? 'border-red-500 focus:border-red-600' : 'border-slate-800 focus:border-slate-900'}`}
                                             placeholder="Letters and numbers only"
                                             value={formData.companyName}
                                             onChange={handleCompanyChange}
@@ -445,7 +445,7 @@ const AgentRegistrationPage = () => {
                                         <input
                                             type="text"
                                             required
-                                            className={`w-full pl-12 pr-4 py-4 bg-slate-50 border rounded-xl focus:bg-white outline-none font-bold text-slate-700 transition-all placeholder:font-medium placeholder:text-slate-300 ${errors.experienceRegion ? 'border-red-400 focus:border-red-500' : 'border-slate-100 focus:border-teal-600'}`}
+                                            className={`w-full pl-12 pr-4 py-4 bg-transparent border-2 rounded-xl focus:bg-slate-50 outline-none font-bold text-slate-900 transition-all placeholder:font-medium placeholder:text-slate-400 ${errors.experienceRegion ? 'border-red-500 focus:border-red-600' : 'border-slate-800 focus:border-slate-900'}`}
                                             placeholder="Letters only (e.g. South Asia)"
                                             value={formData.experienceRegion}
                                             onChange={handleRegionChange}
