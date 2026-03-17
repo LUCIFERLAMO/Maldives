@@ -1624,14 +1624,12 @@ app.post('/api/jobs', async (req, res) => {
 
         await newJob.save();
 
-        await logAudit(
-            req.user?.email || "anonymous",
-            "RECRUITER",
-            "CREATE_JOB",
-            "/jobs/create",
-            req.ip,
-            "SUCCESS"
-        );
+        securityLog('CREATE_JOB', {
+            email: req.user?.email || "anonymous",
+            role: "RECRUITER",
+            ip: req.ip,
+            status: "SUCCESS"
+        });
 
         res.status(201).json(newJob);
     } catch (err) {
@@ -1828,14 +1826,12 @@ app.delete('/api/jobs/:id', async (req, res) => {
         // For now, we will just delete the job as per requirement
         await Job.deleteOne({ _id: job._id });
 
-        await logAudit(
-            req.user?.email || "anonymous",
-            "ADMIN",
-            "DELETE_JOB",
-            "/jobs/delete",
-            req.ip,
-            "SUCCESS"
-        );
+        securityLog('DELETE_JOB', {
+            email: req.user?.email || "anonymous",
+            role: "ADMIN",
+            ip: req.ip,
+            status: "SUCCESS"
+        });
 
         res.json({ message: 'Job deleted successfully' });
     } catch (err) {
@@ -2183,14 +2179,12 @@ app.post('/api/applications', upload.fields([
 
         const savedApp = await newApplication.save();
 
-        await logAudit(
-            req.body.email || "anonymous",
-            "CANDIDATE",
-            "APPLY_JOB",
-            "/jobs/apply",
-            req.ip,
-            "SUCCESS"
-        );
+        securityLog('APPLY_JOB', {
+            email: req.body.email || "anonymous",
+            role: "CANDIDATE",
+            ip: req.ip,
+            status: "SUCCESS"
+        });
 
         // Return success without the file data (to keep response small)
         res.status(201).json({
