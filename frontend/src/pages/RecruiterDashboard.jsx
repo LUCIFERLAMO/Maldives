@@ -1431,7 +1431,7 @@ const RecruiterDashboard = () => {
                                             <thead>
                                                 <tr className="bg-slate-50 border-b border-slate-200">
                                                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Candidate</th>
-                                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Role & Company</th>
+                                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Role & Category</th>
                                                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Submission Date</th>
                                                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Status</th>
                                                 </tr>
@@ -1457,8 +1457,8 @@ const RecruiterDashboard = () => {
                                                                     </div>
                                                                 </td>
                                                                 <td className="px-6 py-4">
-                                                                    <div className="font-medium text-slate-900 text-sm">{app.jobs?.title || 'Unknown Role'}</div>
-                                                                    <div className="text-xs text-slate-500">{app.jobs?.company || 'Unknown Company'}</div>
+                                                                    <div className="font-medium text-slate-900 text-sm">{app.job?.title || 'Unknown Role'}</div>
+                                                                    <div className="text-xs text-slate-500">{app.job?.category || app.job?.company || 'Unknown Category'}</div>
                                                                 </td>
                                                                 <td className="px-6 py-4">
                                                                     <div className="text-sm text-slate-600 font-medium">{new Date().toLocaleDateString()}</div>

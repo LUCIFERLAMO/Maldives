@@ -869,7 +869,13 @@ app.put('/api/auth/change-password', async (req, res) => {
             email = email.toLowerCase().trim();
             user = await Profile.findOne({ email });
         } else if (agentId) {
-            user = await Profile.findById(agentId);
+            const isMongoId = /^[0-9a-fA-F]{24}$/.test(agentId);
+            if (isMongoId) {
+                user = await Profile.findById(agentId);
+            }
+            if (!user) {
+                user = await Profile.findOne({ id: agentId });
+            }
         }
 
         if (!user) {
@@ -1103,10 +1109,17 @@ app.put('/api/auth/password', async (req, res) => {
 // GET: Get Profile Details
 app.get('/api/profile/:id', async (req, res) => {
     try {
-        let profile = await Profile.findById(req.params.id);
+        let profile;
+        const isMongoId = /^[0-9a-fA-F]{24}$/.test(req.params.id);
+        
+        if (isMongoId) {
+            profile = await Profile.findById(req.params.id);
+        }
+        
         if (!profile) {
             profile = await Profile.findOne({ id: req.params.id });
         }
+        
         if (!profile) {
             return res.status(404).json({ message: 'User not found' });
         }
