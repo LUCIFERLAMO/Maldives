@@ -13,10 +13,30 @@ const FileUpload = ({
     id
 }) => {
     const fileInputRef = useRef(null);
+    const [uploadError, setUploadError] = React.useState(null);
 
     const handleFileChange = (e) => {
+        setUploadError(null);
         if (e.target.files && e.target.files.length > 0) {
-            onChange(e.target.files[0]);
+            const file = e.target.files[0];
+            
+            // Validate size (Max 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                setUploadError("File size exceeds 5MB limit");
+                e.target.value = '';
+                return;
+            }
+
+            // Validate extension
+            const ext = file.name.split('.').pop().toLowerCase();
+            const allowedExts = ['pdf', 'doc', 'docx', 'jpg', 'jpeg'];
+            if (!allowedExts.includes(ext)) {
+                setUploadError("Invalid file type. Only PDF, DOC, JPG are allowed.");
+                e.target.value = '';
+                return;
+            }
+
+            onChange(file);
         }
     };
 
@@ -109,6 +129,9 @@ const FileUpload = ({
                     <p className="text-sm font-semibold text-slate-700">Click to upload document</p>
                     <p className="text-xs text-slate-400 mt-1">PDF, DOC, JPG (Max 5MB)</p>
                 </div>
+            )}
+            {uploadError && (
+                <p className="text-red-500 text-xs font-semibold mt-2 px-1">{uploadError}</p>
             )}
         </div>
     );

@@ -328,6 +328,22 @@ const RecruiterDashboard = () => {
             return;
         }
 
+        if (/[^A-Za-z\s]/.test(submissionData.name)) {
+            popup.warning("Candidate Name must contain only letters and spaces.");
+            return;
+        }
+
+        const phoneDigits = submissionData.whatsapp.replace(/[^\d+]/g, '');
+        if (phoneDigits.length < 10 || phoneDigits.length > 11) {
+            popup.warning("WhatsApp Number must be exactly 10 or 11 digits.");
+            return;
+        }
+
+        if (!['Indian', 'Maldivian', 'Maldives'].includes(submissionData.nationality)) {
+            popup.warning("Please select a valid Nationality from the drop down.");
+            return;
+        }
+
         if (!user?.id) {
             popup.error("User not authenticated. Please log in again.");
             return;
@@ -1531,7 +1547,8 @@ const RecruiterDashboard = () => {
                                             <label className="text-xs font-semibold text-slate-700">Candidate Full Name *</label>
                                             <input
                                                 type="text"
-                                                placeholder="As per passport"
+                                                maxLength="50"
+                                                placeholder="As per passport (Letters only)"
                                                 value={submissionData.name}
                                                 onChange={e => {
                                                     const val = e.target.value.replace(/[^A-Za-z\s]/g, '');
@@ -1557,7 +1574,8 @@ const RecruiterDashboard = () => {
                                             <label className="text-xs font-semibold text-slate-700">WhatsApp Number *</label>
                                             <input
                                                 type="tel"
-                                                placeholder="+CountryCode Number"
+                                                maxLength="11"
+                                                placeholder="10 or 11 digits"
                                                 value={submissionData.whatsapp}
                                                 onChange={e => {
                                                     const val = e.target.value.replace(/[^\d+]/g, '');
@@ -1568,16 +1586,16 @@ const RecruiterDashboard = () => {
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-xs font-semibold text-slate-700">Nationality *</label>
-                                            <input
-                                                type="text"
-                                                placeholder="Nationality"
+                                            <select
+                                                required
                                                 value={submissionData.nationality}
-                                                onChange={e => {
-                                                    const val = e.target.value.replace(/[^A-Za-z\s]/g, '');
-                                                    setSubmissionData({ ...submissionData, nationality: val });
-                                                }}
-                                                className="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-4 text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
-                                            />
+                                                onChange={e => setSubmissionData({ ...submissionData, nationality: e.target.value })}
+                                                className="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-4 text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all appearance-none"
+                                            >
+                                                <option value="" disabled>Select Nationality</option>
+                                                <option value="Indian">Indian</option>
+                                                <option value="Maldivian">Maldives</option>
+                                            </select>
                                         </div>
                                     </div>
                                 </div>
