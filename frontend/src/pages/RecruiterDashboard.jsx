@@ -1031,7 +1031,7 @@ const RecruiterDashboard = () => {
                                             <div>
                                                 <p className="text-sm font-bold text-slate-500 uppercase tracking-wide">Selected</p>
                                                 <h3 className="text-4xl font-black text-slate-900 mt-3">
-                                                    {pipelineData.filter(app => app.status === ApplicationStatus.SELECTED).length}
+                                                    {pipelineData.filter(app => ['SELECTED', 'APPROVED', 'ACCEPTED'].includes(app.status)).length}
                                                 </h3>
                                             </div>
                                             <div className="p-4 bg-teal-50 rounded-2xl text-teal-600">
@@ -1045,7 +1045,7 @@ const RecruiterDashboard = () => {
                                             <div>
                                                 <p className="text-sm font-bold text-slate-500 uppercase tracking-wide">In Waiting</p>
                                                 <h3 className="text-4xl font-black text-slate-900 mt-3">
-                                                    {pipelineData.filter(app => [ApplicationStatus.APPLIED, ApplicationStatus.PROCESSING, ApplicationStatus.INTERVIEW].includes(app.status)).length}
+                                                    {pipelineData.filter(app => ['PENDING', 'REVIEWING', 'HOLD'].includes(app.status)).length}
                                                 </h3>
                                             </div>
                                             <div className="p-4 bg-amber-50 rounded-2xl text-amber-600">
@@ -1059,7 +1059,7 @@ const RecruiterDashboard = () => {
                                             <div>
                                                 <p className="text-sm font-bold text-slate-500 uppercase tracking-wide">Blacklisted</p>
                                                 <h3 className="text-4xl font-black text-slate-900 mt-3">
-                                                    {pipelineData.filter(app => app.status === ApplicationStatus.BLACKLISTED).length}
+                                                    {pipelineData.filter(app => app.status === 'REJECTED').length}
                                                 </h3>
                                             </div>
                                             <div className="p-4 bg-red-50 rounded-2xl text-red-600">
