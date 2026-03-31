@@ -1209,7 +1209,7 @@ const RecruiterDashboard = () => {
                                                     return (
                                                         <tr key={app.id || index} className="hover:bg-slate-50 transition-colors">
                                                             <td className="px-8 py-5 font-medium text-slate-900">{app.candidate_name || app.candidateName || 'Unknown'}</td>
-                                                            <td className="px-8 py-5 text-slate-600">{app.jobs?.title || 'Unknown Role'}</td>
+                                                            <td className="px-8 py-5 text-slate-600">{app.job?.title || app.jobs?.title || 'Unknown Role'}</td>
                                                             <td className="px-8 py-5 text-right">
                                                                 <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide
                                                     ${app.status === 'APPROVED' ? 'bg-teal-50 text-teal-700 border border-teal-100' :
