@@ -4674,7 +4674,7 @@ const AdminDashboard = () => {
                            Cancel
                         </button>
                         <button
-                           onClick={handleRejectJobRequest}
+                           onClick={() => handleJobRequestStatus(selectedJobRequest, 'REJECTED', rejectReason)}
                            disabled={isRejectingJob}
                            className="flex-1 py-3 bg-red-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                         >
