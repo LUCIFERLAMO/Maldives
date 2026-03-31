@@ -426,13 +426,14 @@ const AdminDashboard = () => {
          statusColor: getStatusColor(app.status),
          appliedDate: app.appliedDate || new Date().toISOString(),
          documents: app.documents || {
-            resume: app.hasResume ? 'resume.pdf' : null,
-            passport: app.hasPassport ? 'passport.jpg' : null,
-            education: app.hasCerts ? 'certificates.pdf' : null,
-            pcc: null,
-            goodStanding: null
+            resume: app.hasResume ? { filename: 'resume.pdf' } : null,
+            passport: app.hasPassport ? { filename: 'passport.jpg' } : null,
+            education: app.hasCerts ? { filename: 'certificates.pdf' } : null,
+            pcc: app.hasPCC ? { filename: 'police_clearance.pdf' } : null,
+            goodStanding: app.hasGoodStanding ? { filename: 'good_standing.pdf' } : null
          },
-         whatsapp: app.contactNumber
+         whatsapp: app.contactNumber,
+         nationality: app.nationality || 'Not Specified'
       }));
       setAgentResumes(agencyApps);
    }, [jobApplications]);
@@ -1111,14 +1112,14 @@ const AdminDashboard = () => {
          agency: app.agentName || (app.source === 'Direct' ? 'Direct Application' : 'Agency'),
          email: app.email || 'N/A',
          whatsapp: app.contactNumber || 'N/A',
-         nationality: app.address ? app.address.split(',').pop().trim() : 'Maldivian',
+         nationality: app.nationality || (app.address ? app.address.split(',').pop().trim() : 'Not Specified'),
          status: app.status,
-         documents: {
-            resume: app.hasResume ? 'resume.pdf' : null,
-            passport: app.hasPassport ? 'passport.jpg' : null,
-            education: app.hasCerts ? 'certificates.pdf' : null,
-            pcc: app.hasPCC ? 'police_clearance.pdf' : null,
-            goodStanding: app.hasGoodStanding ? 'good_standing.pdf' : null
+         documents: app.documents || {
+            resume: app.hasResume ? { filename: 'resume.pdf' } : null,
+            passport: app.hasPassport ? { filename: 'passport.jpg' } : null,
+            education: app.hasCerts ? { filename: 'certificates.pdf' } : null,
+            pcc: app.hasPCC ? { filename: 'police_clearance.pdf' } : null,
+            goodStanding: app.hasGoodStanding ? { filename: 'good_standing.pdf' } : null
          }
       };
       setSelectedResume(resumeData);
@@ -4406,9 +4407,23 @@ const AdminDashboard = () => {
                               <ShieldCheck className="w-4 h-4" /> 2. Mandatory Document Bundle
                            </h3>
                            <div className="grid grid-cols-2 gap-6">
-                              <DocumentCard label="Resume / CV *" filename={selectedResume.documents?.resume?.filename || (typeof selectedResume.documents?.resume === 'string' ? selectedResume.documents.resume : 'resume.pdf')} fileObj={selectedResume.documents?.resume} />
-                              <DocumentCard label="Passport / ID Copy *" filename={selectedResume.documents?.identity?.filename || selectedResume.documents?.passport?.filename || (typeof selectedResume.documents?.passport === 'string' ? selectedResume.documents.passport : 'passport.pdf')} fileObj={selectedResume.documents?.identity || selectedResume.documents?.passport} />
-                              <DocumentCard label="Educational Certificates *" filename={selectedResume.documents?.certificates?.filename || selectedResume.documents?.education?.filename || (typeof selectedResume.documents?.education === 'string' ? selectedResume.documents.education : 'certificates.pdf')} fileObj={selectedResume.documents?.certificates || selectedResume.documents?.education} />
+                              {selectedResume.documents?.resume ? (
+                                 <DocumentCard label="Resume / CV *" filename={selectedResume.documents.resume.filename || (typeof selectedResume.documents.resume === 'string' ? selectedResume.documents.resume : 'resume.pdf')} fileObj={selectedResume.documents.resume} />
+                              ) : (
+                                 <div className="p-4 bg-slate-50 rounded-xl text-slate-400 font-bold text-[10px] uppercase tracking-wider flex items-center justify-center border border-dashed border-slate-200">Resume Not Provided</div>
+                              )}
+                              
+                              {(selectedResume.documents?.identity || selectedResume.documents?.passport) ? (
+                                 <DocumentCard label="Passport / ID Copy *" filename={(selectedResume.documents?.identity || selectedResume.documents?.passport).filename || (typeof (selectedResume.documents?.identity || selectedResume.documents?.passport) === 'string' ? (selectedResume.documents?.identity || selectedResume.documents?.passport) : 'passport.pdf')} fileObj={selectedResume.documents?.identity || selectedResume.documents?.passport} />
+                              ) : (
+                                 <div className="p-4 bg-slate-50 rounded-xl text-slate-400 font-bold text-[10px] uppercase tracking-wider flex items-center justify-center border border-dashed border-slate-200">Passport Not Provided</div>
+                              )}
+                              
+                              {(selectedResume.documents?.certificates || selectedResume.documents?.education) ? (
+                                 <DocumentCard label="Educational Certificates *" filename={(selectedResume.documents?.certificates || selectedResume.documents?.education).filename || (typeof (selectedResume.documents?.certificates || selectedResume.documents?.education) === 'string' ? (selectedResume.documents?.certificates || selectedResume.documents?.education) : 'certificates.pdf')} fileObj={selectedResume.documents?.certificates || selectedResume.documents?.education} />
+                              ) : (
+                                 <div className="p-4 bg-slate-50 rounded-xl text-slate-400 font-bold text-[10px] uppercase tracking-wider flex items-center justify-center border border-dashed border-slate-200">Certificates Not Provided</div>
+                              )}
                            </div>
                         </section>
 
@@ -4418,8 +4433,17 @@ const AdminDashboard = () => {
                               <ShieldCheck className="w-4 h-4" /> 3. Compliance & Governance
                            </h3>
                            <div className="grid grid-cols-2 gap-6">
-                              <DocumentCard label="Police Clearance (PCC)" filename={selectedResume.documents?.pcc?.filename || (typeof selectedResume.documents?.pcc === 'string' ? selectedResume.documents.pcc : 'pcc.pdf')} fileObj={selectedResume.documents?.pcc} />
-                              <DocumentCard label="Good Standing Certificate" filename={selectedResume.documents?.goodStanding?.filename || (typeof selectedResume.documents?.goodStanding === 'string' ? selectedResume.documents.goodStanding : 'good_standing.pdf')} fileObj={selectedResume.documents?.goodStanding} />
+                              {selectedResume.documents?.pcc ? (
+                                 <DocumentCard label="Police Clearance (PCC)" filename={selectedResume.documents.pcc.filename || (typeof selectedResume.documents.pcc === 'string' ? selectedResume.documents.pcc : 'pcc.pdf')} fileObj={selectedResume.documents.pcc} />
+                              ) : (
+                                 <div className="p-4 bg-slate-50 rounded-xl text-slate-400 font-bold text-[10px] uppercase tracking-wider flex items-center justify-center border border-dashed border-slate-200">PCC Not Submitted</div>
+                              )}
+                              
+                              {selectedResume.documents?.goodStanding ? (
+                                 <DocumentCard label="Good Standing Certificate" filename={selectedResume.documents.goodStanding.filename || (typeof selectedResume.documents.goodStanding === 'string' ? selectedResume.documents.goodStanding : 'good_standing.pdf')} fileObj={selectedResume.documents.goodStanding} />
+                              ) : (
+                                 <div className="p-4 bg-slate-50 rounded-xl text-slate-400 font-bold text-[10px] uppercase tracking-wider flex items-center justify-center border border-dashed border-slate-200">Good Standing Not Submitted</div>
+                              )}
                            </div>
                         </section>
                      </div>
