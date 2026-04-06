@@ -64,7 +64,8 @@ const RecruiterDashboard = () => {
     const [pipelineData, setPipelineData] = useState([]);
     const [isRefreshingPipeline, setIsRefreshingPipeline] = useState(false);
 
-    // Named function so it can be reused by Refresh button
+    // Fetches the list of all candidates submitted by this specific agent.
+    // The agent's JWT token is included in the headers to authenticate the request and return only their data.
     const fetchPipeline = async () => {
         if (!user?.id) return;
         setIsRefreshingPipeline(true);
@@ -92,7 +93,8 @@ const RecruiterDashboard = () => {
     // -------------------------
     const [jobs, setJobs] = useState([]);
 
-    // FETCH REAL JOBS
+    // Fetches the global list of jobs from the public endpoint.
+    // We filter the results locally to ensure the agent only sees and interacts with 'OPEN' jobs.
     const fetchJobs = async () => {
         try {
             const res = await fetch(`${API_BASE_URL}/api/jobs`);
@@ -312,6 +314,8 @@ const RecruiterDashboard = () => {
         });
     };
 
+    // Validates and processes the submission of a candidate to a specific job vacancy.
+    // Ensure that required files are present because this process uses FormData to send mixed media (text + files).
     const handleConfirmSubmission = async () => {
         if (!selectedJobForSubmission) {
             popup.warning("No job selected for submission.");
@@ -328,11 +332,13 @@ const RecruiterDashboard = () => {
             return;
         }
 
+        // Validate name format to prevent passing special characters or numbers to the backend
         if (/[^A-Za-z\s]/.test(submissionData.name)) {
             popup.warning("Candidate Name must contain only letters and spaces.");
             return;
         }
 
+        // Strip everything except numbers from the phone input and verify the required length
         const phoneDigits = submissionData.whatsapp.replace(/[^\d+]/g, '');
         if (phoneDigits.length < 10 || phoneDigits.length > 11) {
             popup.warning("WhatsApp Number must be exactly 10 or 11 digits.");
@@ -350,7 +356,8 @@ const RecruiterDashboard = () => {
         }
 
         try {
-            // Create FormData for file upload
+            // FormData is used here to construct the request payload.
+            // This is necessary because traditional JSON cannot transmit binary file objects like resumes.
             const formDataPayload = new FormData();
             formDataPayload.append('agent_id', user.id);
             formDataPayload.append('job_id', selectedJobForSubmission.id || selectedJobForSubmission._id || '');
@@ -364,6 +371,8 @@ const RecruiterDashboard = () => {
             if (submissionFiles.pcc) formDataPayload.append('pcc', submissionFiles.pcc);
             if (submissionFiles.goodStanding) formDataPayload.append('goodStanding', submissionFiles.goodStanding);
 
+            // Send the constructed payload to the applications endpoint.
+            // Include the agent's authentication token to authorize the creation of a new application record.
             const response = await fetch(`${API_BASE_URL}/api/applications`, {
                 method: 'POST',
                 headers: {
@@ -566,8 +575,70 @@ const RecruiterDashboard = () => {
                                                     popup.error("Session expired. Please log in again.");
                                                     return;
                                                 }
+
+                                                // --- Input Validation ---
+                                                const formData = new FormData(e.target);
+                                                const rawTitle = (formData.get('title') || '').trim();
+                                                const rawCompany = (formData.get('company') || '').trim();
+                                                const rawCategory = (formData.get('category') || '').trim();
+                                                const rawLocation = (formData.get('location') || '').trim();
+                                                const rawDescription = (formData.get('description') || '').trim();
+                                                const rawSalary = (formData.get('salary_range') || '').trim();
+                                                const rawVacancies = formData.get('vacancies');
+
+                                                if (!rawTitle) {
+                                                    popup.warning('Job Title is required.');
+                                                    return;
+                                                }
+                                                if (rawTitle.length < 3 || rawTitle.length > 100) {
+                                                    popup.warning('Job Title must be between 3 and 100 characters.');
+                                                    return;
+                                                }
+                                                if (!rawCompany) {
+                                                    popup.warning('Company Name is required.');
+                                                    return;
+                                                }
+                                                if (rawCompany.length < 2 || rawCompany.length > 100) {
+                                                    popup.warning('Company Name must be between 2 and 100 characters.');
+                                                    return;
+                                                }
+                                                if (!rawCategory) {
+                                                    popup.warning('Please select a Category.');
+                                                    return;
+                                                }
+                                                if (!rawLocation) {
+                                                    popup.warning('Please select a Location.');
+                                                    return;
+                                                }
+                                                if (!rawDescription) {
+                                                    popup.warning('Job Description is required.');
+                                                    return;
+                                                }
+                                                if (rawDescription.length < 20) {
+                                                    popup.warning('Job Description must be at least 20 characters.');
+                                                    return;
+                                                }
+                                                if (rawDescription.length > 3000) {
+                                                    popup.warning('Job Description must not exceed 3000 characters.');
+                                                    return;
+                                                }
+                                                // Block script injection in text fields
+                                                const scriptPattern = /<script|<\/script|javascript:/i;
+                                                if (scriptPattern.test(rawTitle) || scriptPattern.test(rawCompany) || scriptPattern.test(rawDescription)) {
+                                                    popup.error('Invalid content detected. Script tags are not allowed.');
+                                                    return;
+                                                }
+                                                if (rawVacancies && (isNaN(rawVacancies) || Number(rawVacancies) < 1 || Number(rawVacancies) > 500)) {
+                                                    popup.warning('Vacancies must be a number between 1 and 500.');
+                                                    return;
+                                                }
+                                                if (rawSalary && rawSalary.length > 60) {
+                                                    popup.warning('Salary Range must not exceed 60 characters.');
+                                                    return;
+                                                }
+                                                // --- End Validation ---
+
                                                 try {
-                                                    const formData = new FormData(e.target);
                                                     const payload = {
                                                         agent_id: user.id,
                                                         agent_name: user.full_name || user.name || '', // Required by model
@@ -1564,8 +1635,8 @@ const RecruiterDashboard = () => {
                                                 placeholder="email@candidate.com"
                                                 value={submissionData.email}
                                                 onChange={e => {
-                                                    const val = e.target.value.replace(/[<>/]/g, '');
-                                                    setSubmissionData({ ...submissionData, email: val });
+                                                    // Allow all characters — browser type="email" handles format validation
+                                                    setSubmissionData({ ...submissionData, email: e.target.value });
                                                 }}
                                                 className="w-full bg-white border border-slate-300 rounded-lg py-2.5 px-4 text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
                                             />
