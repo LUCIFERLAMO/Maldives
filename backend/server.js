@@ -460,7 +460,7 @@ app.post('/api/auth/register', authLimiter, upload.fields([
     { name: 'agencyProfile', maxCount: 1 }
 ]), async (req, res) => {
     try {
-        let { email, password, role, name, agencyName, skills, contact, phone } = req.body;
+        let { email, password, role, name, agencyName, skills, contact, phone, location } = req.body;
 
         // Backend Password Validation
         if (!validatePassword(password)) {
@@ -517,6 +517,7 @@ app.post('/api/auth/register', authLimiter, upload.fields([
             role,
             contact_number: contact || phone,
             agency_name: role === 'AGENT' ? agencyName : undefined,
+            location: location || '',
             skills: role === 'CANDIDATE' ? skills : undefined,
             status: role === 'AGENT' ? 'PENDING' : 'ACTIVE', // Agents need admin approval
             documents: role === 'AGENT' ? documents : undefined
