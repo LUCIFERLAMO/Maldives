@@ -225,7 +225,7 @@ const MyApplicationsPage = () => {
 
             {/* DRAWER details view */}
             {selectedApp && (
-                <div className="fixed inset-0 z-50 flex justify-end">
+                <div className="fixed inset-0 z-[150] flex justify-end">
                     <div className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm transition-opacity" onClick={() => setSelectedApp(null)}></div>
                     <div className="relative w-full max-w-lg bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
 
