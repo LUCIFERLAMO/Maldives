@@ -2421,6 +2421,25 @@ app.put('/api/admin/applications/:id/status', async (req, res) => {
         application.reviewed_at = new Date();
 
         await application.save();
+        
+        // NOTIFICATION LOGIC: Notify candidate about status update
+        try {
+            const candidateProfile = await Profile.findOne({ email: { $regex: new RegExp(`^${escapeRegex(application.email)}$`, 'i') } });
+            if (candidateProfile) {
+                const job = await Job.findOne({ id: application.job_id }) || await Job.findById(application.job_id);
+                const jobTitle = job ? job.title : 'Position';
+                
+                await new Notification({
+                    userId: candidateProfile.id,
+                    title: 'Application Status Updated',
+                    message: `The status of your application for "${jobTitle}" has been updated to ${status?.toUpperCase()}.`,
+                    type: 'APPLICATION_UPDATE',
+                    metadata: { jobId: application.job_id, applicationId: application.id }
+                }).save();
+            }
+        } catch (notifErr) {
+            console.error('Failed to create application update notification:', notifErr);
+        }
 
         res.json({ message: 'Application status updated', application });
     } catch (err) {
@@ -2851,6 +2870,26 @@ app.put('/api/applications/:id/status', async (req, res) => {
         }
 
         if (!application) return res.status(404).json({ message: 'Application not found' });
+
+        // NOTIFICATION LOGIC: Notify candidate about status update
+        try {
+            const candidateProfile = await Profile.findOne({ email: { $regex: new RegExp(`^${escapeRegex(application.email)}$`, 'i') } });
+            if (candidateProfile) {
+                const job = await Job.findOne({ id: application.job_id }) || await Job.findById(application.job_id);
+                const jobTitle = job ? job.title : 'Position';
+                
+                await new Notification({
+                    userId: candidateProfile.id,
+                    title: 'Application Status Updated',
+                    message: `The status of your application for "${jobTitle}" has been updated to ${status?.toUpperCase()}.`,
+                    type: 'APPLICATION_UPDATE',
+                    metadata: { jobId: application.job_id, applicationId: application.id }
+                }).save();
+            }
+        } catch (notifErr) {
+            console.error('Failed to create application update notification:', notifErr);
+        }
+
         res.json({ message: 'Status updated', application });
     } catch (err) {
         res.status(500).json({ message: 'Failed to update status', error: err.message });
