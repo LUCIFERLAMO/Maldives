@@ -771,7 +771,7 @@ const BrowseJobsPage = () => {
                                                     {/* Actions Column */}
                                                     <div className="flex flex-col items-end gap-3 pl-4 border-l border-slate-100 min-w-[140px]">
                                                         <div className="flex items-center gap-2">
-                                                            <span className="text-sm font-black text-slate-900">{job.salaryRange || job.salary_range}</span>
+                                                            <span className="text-sm font-black text-slate-900">{job.salaryRange || job.salary_range || ''}</span>
                                                         </div>
                                                         <span className="inline-flex items-center justify-center w-full px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-600">
                                                             {expandedJobId === job.id ? 'Close Details' : 'View Details'}
@@ -861,7 +861,7 @@ const BrowseJobsPage = () => {
                                                                 <Bookmark className="w-4 h-4" fill={savedJobIds.has(job.id || job._id) ? "currentColor" : "none"} />
                                                             </button>
                                                         )}
-                                                        <span className="text-sm font-black text-slate-900">{job.salaryRange || job.salary_range}</span>
+                                                        <span className="text-sm font-black text-slate-900">{job.salaryRange || job.salary_range || ''}</span>
                                                     </div>
                                                     <span className="inline-flex items-center justify-center w-full px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all bg-[#0B1A33] text-white md:bg-white md:border md:border-slate-200 md:text-slate-600 md:group-hover:bg-[#0B1A33] md:group-hover:text-white md:group-hover:border-transparent md:shadow-sm">
                                                         Apply Now
@@ -909,7 +909,7 @@ const BrowseJobsPage = () => {
                                             </div>
 
                                             <div className="mt-auto pt-6 border-t border-slate-100 flex items-center justify-between relative z-10">
-                                                <span className="text-sm font-black text-slate-900 bg-slate-50 px-3 py-1.5 rounded-lg group-hover:bg-white group-hover:shadow-sm transition-all">{job.salaryRange || job.salary_range}</span>
+                                                <span className="text-sm font-black text-slate-900 bg-slate-50 px-3 py-1.5 rounded-lg group-hover:bg-white group-hover:shadow-sm transition-all">{job.salaryRange || job.salary_range || ''}</span>
                                                 {job.status === JobStatus.CLOSED ? (
                                                     <div className="px-3 py-1.5 rounded-lg bg-red-100 text-red-600 text-[10px] font-black uppercase tracking-widest">
                                                         Closed
