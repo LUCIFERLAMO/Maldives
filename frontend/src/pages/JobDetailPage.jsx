@@ -113,6 +113,19 @@ const JobDetailPage = () => {
             
             const isNowSaved = !isSaved;
             setIsSaved(isNowSaved);
+
+            // Link with Notification Subscription
+            if (isNowSaved) {
+                try {
+                    await fetch(`${API_BASE_URL}/api/subscribe`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: user.id, jobId: id })
+                    });
+                } catch (subErr) {
+                    console.error('Failed to subscribe to job alerts:', subErr);
+                }
+            }
             
             // Show notification
             setToast({ show: true, message: isNowSaved ? 'Job saved to your dashboard' : 'Job removed from your dashboard' });
