@@ -2458,7 +2458,7 @@ const AdminDashboard = () => {
                                                    </td>
                                                    <td className="px-6 py-4">
                                                       <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${getStatusColor(request.status)}`}>
-                                                         {request.status}
+                                                         {request.status === 'PENDING' ? 'Processing' : request.status}
                                                       </span>
                                                    </td>
                                                    <td className="px-6 py-4 text-right">
