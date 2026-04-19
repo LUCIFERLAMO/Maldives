@@ -281,6 +281,12 @@ const DocumentCard = ({ label, filename, fileObj }) => {
    );
 };
 
+// Helper: preserve salary string formatting
+const formatSalary = (salary) => {
+   if (!salary) return 'N/A';
+   return salary;
+};
+
 // Helper: get badge color for application status
 const getStatusColor = (status) => {
    switch ((status || '').toUpperCase()) {
@@ -605,10 +611,12 @@ const AdminDashboard = () => {
          }
 
          // 2. Fetch Jobs — always overwrite, even if empty
+          let fetchedJobs = [];
          const jobRes = await fetch(`${API_BASE_URL}/api/jobs`);
          if (jobRes.ok) {
             const jobData = await jobRes.json();
-            const mappedJobs = (Array.isArray(jobData) ? jobData : []).map(j => ({
+             fetchedJobs = Array.isArray(jobData) ? jobData : [];
+             const mappedJobs = fetchedJobs.map(j => ({
                ...j,
                postedDate: j.posted_date || j.postedDate,
                salaryRange: j.salary_range || j.salaryRange,
@@ -651,15 +659,21 @@ const AdminDashboard = () => {
             setAllApplications(mappedApps);
             setJobApplications(mappedApps);
 
-            // Populate Audit Queue with REJECTED applications only
-            const rejectedApps = mappedApps
-               .filter(app => app.status === 'REJECTED')
-               .map(app => ({
-                  ...app,
-                  role: 'Applicant',
-                  statusColor: 'bg-red-50 text-red-600 border-red-100'
-               }));
-            setAuditQueue(rejectedApps);
+             // Populate Audit Queue with ALL applications (agent + direct)
+             const auditApps = mappedApps.map(app => {
+                const matchedJob = fetchedJobs.find(j => (j._id || j.id) === app.jobId);
+                return {
+                   ...app,
+                   name: app.candidateName || 'Unknown',
+                   category: matchedJob ? (matchedJob.category || matchedJob.industry || 'Other') : 'Other',
+                   role: matchedJob ? matchedJob.title : 'Applicant',
+                   source: app.source || 'Direct',
+                   region: app.nationality || 'Unknown',
+                   agency: app.agentName || 'Direct',
+                   statusColor: getStatusColor(app.status)
+                };
+             });
+             setAuditQueue(auditApps);
          }
       } catch (error) {
          console.error('Error fetching all admin data:', error);
@@ -1686,8 +1700,6 @@ const AdminDashboard = () => {
    };
 
    const filteredAuditQueue = auditQueue.filter(candidate => {
-      // Exclude Rejected (Moved to Blacklist)
-      if (candidate.status?.toUpperCase() === 'REJECTED') return false;
 
       // Search Filter
       if (auditSearchQuery) {
@@ -2644,7 +2656,7 @@ const AdminDashboard = () => {
                                                       </div>
                                                       <div className="flex items-center gap-2 text-sm text-slate-600">
                                                          <DollarSign className="w-4 h-4 text-black font-bold" />
-                                                         <span className="font-bold text-teal-600">{job.salary_range || 'N/A'}</span>
+                                                         <span className="font-bold text-teal-600">{formatSalary(job.salary_range)}</span>
                                                       </div>
                                                    </div>
 
@@ -2895,7 +2907,7 @@ const AdminDashboard = () => {
                                                             <span className={`text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-widest ${getStatusColor(app.status)}`}>
                                                                {app.status === 'APPROVED' ? 'Abroad' :
                                                                   app.status === 'HOLD' ? 'On Hold' :
-                                                                     app.status === 'REJECTED' ? 'Rejected' : 'Pending'}
+                                                                     app.status === 'REJECTED' ? 'Rejected' : 'Processing'}
                                                             </span>
                                                          </td>
                                                          <td className="px-6 py-4 text-right">
@@ -3100,7 +3112,7 @@ const AdminDashboard = () => {
                                                                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-medium text-slate-600 mt-2">
                                                                   <span className="flex items-center gap-1 font-bold"><Briefcase className="w-3.5 h-3.5 text-slate-400" /> {request.category}</span>
                                                                   <span className="flex items-center gap-1 font-bold"><MapPin className="w-3.5 h-3.5 text-slate-400" /> {request.location}</span>
-                                                                  <span className="flex items-center gap-1 font-bold"><DollarSign className="w-3.5 h-3.5 text-slate-400" /> {request.salary_range || 'Not specified'}</span>
+                                                                  <span className="flex items-center gap-1 font-bold"><DollarSign className="w-3.5 h-3.5 text-slate-400" /> {formatSalary(request.salary_range) || 'Not specified'}</span>
                                                                   <span className="flex items-center gap-1 font-bold"><Users className="w-3.5 h-3.5 text-slate-400" /> {request.vacancies || 1} Openings</span>
                                                                   <span className="flex items-center gap-1 font-bold"><Award className="w-3.5 h-3.5 text-slate-400" /> {request.experience || 'Any Experience'}</span>
                                                                </div>

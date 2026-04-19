@@ -364,7 +364,7 @@ const JobDetailPage = () => {
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
 
                                 <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2">Monthly Compensation</p>
-                                <h3 className="text-3xl font-black text-white mb-8 tracking-tight">{job.salaryRange}</h3>
+                                <h3 className="text-3xl font-black text-white mb-8 tracking-tight">{job.salaryRange || ''}</h3>
 
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between py-3 border-b border-white/10">

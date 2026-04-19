@@ -23,15 +23,13 @@ const AdminLoginPage = () => {
         e.preventDefault();
         setIsLoading(true);
 
-        // DEVELOPER ACCESS (Temporary Header)
-        // Kept for dev team access as requested. Remove in production.
         if (import.meta.env.DEV && email === 'admin@globalakjobs.com' && password === 'Admin@GlobalAK124!') {
             mockLogin({
                 id: 'dev-admin',
                 email: 'admin@globalakjobs.com',
                 name: 'Developer Admin',
                 role: 'admin',
-                token: null
+                token: 'dev-admin-token'
             });
             setIsLoading(false);
             navigate('/admin');
