@@ -3364,7 +3364,7 @@ const AdminDashboard = () => {
                                                          </td>
                                                          <td className="px-6 py-8 text-center align-middle">
                                                             <div className={`inline-flex px-4 py-2 rounded-full border ${resume.status === 'REJECTED' ? 'bg-red-50 text-red-600 border-red-100' : resume.statusColor} text-[10px] font-black uppercase tracking-widest`}>
-                                                               {resume.status}
+                                                               {resume.status === 'PENDING' ? 'Processing' : resume.status}
                                                             </div>
                                                          </td>
                                                          <td className="px-6 py-8 text-right align-middle">
@@ -3527,7 +3527,7 @@ const AdminDashboard = () => {
                                                          </td>
                                                          <td className="px-6 py-8 text-center align-middle">
                                                             <div className={`inline-flex px-4 py-2 rounded-full border ${app.status === 'REJECTED' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-slate-50 text-slate-600 border-slate-200'} text-[10px] font-black uppercase tracking-widest`}>
-                                                               {app.status}
+                                                               {app.status === 'PENDING' ? 'Processing' : app.status}
                                                             </div>
                                                          </td>
                                                          <td className="px-6 py-8 text-right align-middle">
@@ -3750,7 +3750,7 @@ const AdminDashboard = () => {
                                                       </td>
                                                       <td className="px-6 py-4">
                                                          <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${(candidate.status?.toUpperCase() === 'REJECTED' || candidate.status === 'Rejected') ? 'bg-red-50 text-red-600 border-red-100' : candidate.statusColor}`}>
-                                                            {candidate.status}
+                                                            {candidate.status === 'PENDING' ? 'Processing' : candidate.status}
                                                          </span>
                                                       </td>
                                                       <td className="px-6 py-4 text-right">
