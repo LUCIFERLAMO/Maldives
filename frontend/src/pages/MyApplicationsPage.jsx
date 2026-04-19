@@ -18,9 +18,11 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import API_BASE_URL from '../api/config.js';
+import { usePopup } from '../context/PopupContext';
 
 const MyApplicationsPage = () => {
     const { user } = useAuth();
+    const popup = usePopup();
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedApp, setSelectedApp] = useState(null);
     const [applications, setApplications] = useState([]);
@@ -140,13 +142,13 @@ const MyApplicationsPage = () => {
                 if (selectedApp && selectedApp.id === appId) {
                     setSelectedApp({ ...selectedApp, visibilityRequestStatus: 'PENDING' });
                 }
-                alert('✅ Request sent! The admin will review your request.');
+                popup.success('Request sent! The admin will review your request.');
             } else {
-                alert(`❌ ${data.message}`);
+                popup.error(data.message || 'Failed to send request');
             }
         } catch (error) {
             console.error('Error requesting visibility:', error);
-            alert('Failed to send request. Please try again.');
+            popup.error('An unexpected error occurred. Please try again.');
         }
     };
 
