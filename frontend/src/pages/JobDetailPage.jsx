@@ -20,6 +20,7 @@ const JobDetailPage = () => {
     
     // Saved Jobs state
     const [isSaved, setIsSaved] = useState(false);
+    const [hasApplied, setHasApplied] = useState(false);
     const [toast, setToast] = useState({ show: false, message: '' });
 
     // Form State
@@ -91,18 +92,27 @@ const JobDetailPage = () => {
 
     // Check saved job status
     useEffect(() => {
-        const checkSavedStatus = async () => {
+        const checkStatus = async () => {
             if (isAuthenticated && user?.role?.toLowerCase() === 'candidate' && id) {
                 try {
+                    // Check Saved Status
                     const savedJobsList = await fetchSavedJobs(user.id);
                     const isJobSaved = savedJobsList.some(j => j.id === id || j._id === id);
                     setIsSaved(isJobSaved);
+
+                    // Check Application Status
+                    const appResponse = await fetch(`${API_BASE_URL}/api/applications/candidate/${encodeURIComponent(user.email)}`);
+                    if (appResponse.ok) {
+                        const apps = await appResponse.json();
+                        const isAlreadyApplied = apps.some(app => app.job_id === id);
+                        setHasApplied(isAlreadyApplied);
+                    }
                 } catch (err) {
-                    console.error('Failed to check saved job status', err);
+                    console.error('Failed to check status', err);
                 }
             }
         };
-        checkSavedStatus();
+        checkStatus();
     }, [isAuthenticated, user, id]);
 
     const handleToggleSave = async () => {
@@ -401,6 +411,22 @@ const JobDetailPage = () => {
                                     <div className="bg-red-50 rounded-[2rem] p-6 text-center">
                                         <p className="text-red-600 font-black text-lg mb-2">Applications Closed</p>
                                         <p className="text-red-400 text-sm font-medium">This position is no longer accepting new candidates.</p>
+                                    </div>
+                                ) : hasApplied ? (
+                                    <div className="bg-emerald-50 rounded-[2rem] p-6 text-center">
+                                        <div className="flex flex-col items-center gap-2">
+                                            <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 mb-2">
+                                                <CheckCircle className="w-6 h-6" />
+                                            </div>
+                                            <p className="text-emerald-700 font-black text-xl tracking-tight">Application Submitted</p>
+                                            <p className="text-emerald-600/70 text-sm font-bold">You've already applied for this position.</p>
+                                            <button 
+                                                onClick={() => navigate('/career-history')}
+                                                className="mt-4 text-xs font-black uppercase tracking-widest text-emerald-700 hover:text-emerald-800 underline underline-offset-4"
+                                            >
+                                                View in History
+                                            </button>
+                                        </div>
                                     </div>
                                 ) : (
                                     <div className="p-4">
