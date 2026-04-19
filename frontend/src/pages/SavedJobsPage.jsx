@@ -10,8 +10,8 @@ import {
     Briefcase,
     Building2,
     MapPin,
-    IndianRupee,
     DollarSign,
+
     CheckCircle2,
     XCircle,
     Trash2
@@ -236,7 +236,7 @@ const SavedJobsPage = () => {
                                                     {job.salaryRange || job.salary_range ? (
                                                         <div className="flex items-center gap-1.5 text-emerald-600 font-bold bg-emerald-50 px-2.5 py-1 rounded-lg">
                                                             <DollarSign className="w-3.5 h-3.5" />
-                                                            {(job.salaryRange || job.salary_range).replace('$', '')}
+                                                            {job.salaryRange || job.salary_range}
                                                         </div>
                                                     ) : null}
                                                 </div>
